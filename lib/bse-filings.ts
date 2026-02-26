@@ -55,7 +55,12 @@ export async function fetchBSEFilings(limit = 50): Promise<BSEFiling[]> {
     }
 
     const xml = await res.text();
-    const parser = new XMLParser({ ignoreAttributes: false });
+    // Disable external entity processing to prevent XXE — CLAUDE.md §XXE
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      processEntities: false,      // do not resolve XML entities
+      allowBooleanAttributes: true,
+    });
     const parsed = parser.parse(xml);
 
     const items =
