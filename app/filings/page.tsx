@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { ExternalLink, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import type { FilingCategory } from "@/lib/bse-filings";
+import type { FilingCategory } from "@/lib/nse-filings";
 
 interface Filing {
   id: string;
