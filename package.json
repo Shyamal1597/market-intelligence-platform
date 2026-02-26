@@ -1,5 +1,5 @@
 {
-  "name": "sunidhi-temp",
+  "name": "sunidhi-intranet",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
+    "clsx": "^2.1.1",
+    "fast-xml-parser": "^5.4.1",
+    "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
+    "rss-parser": "^3.13.0",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
