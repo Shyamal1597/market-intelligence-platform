@@ -1,65 +1,78 @@
-import Image from "next/image";
+import { NewsHeadlines } from "@/components/dashboard/NewsHeadlines";
+import { MacroTiles } from "@/components/dashboard/MacroTiles";
+import { DashboardFilings } from "@/components/dashboard/DashboardFilings";
+import { QuickLinksPreview } from "@/components/dashboard/QuickLinksPreview";
 
-export default function Home() {
+export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+    <div className="p-6 space-y-6">
+      {/* Top 3-col grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* News Headlines — 6 cols */}
+        <div className="lg:col-span-6 bg-surface border border-[#1E2235] rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <h2 className="font-display text-2xl font-semibold text-primary tracking-tight">
+              Market Headlines
+            </h2>
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="/news"
+              className="ml-auto text-xs font-mono text-amber hover:underline"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
+              All news →
+            </a>
+          </div>
+          <NewsHeadlines />
+        </div>
+
+        {/* Macro — 3 cols */}
+        <div className="lg:col-span-3 bg-surface border border-[#1E2235] rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <h2 className="font-display text-xl font-semibold text-primary">
+              Markets
+            </h2>
             <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="/macro"
+              className="ml-auto text-xs font-mono text-amber hover:underline"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Full view →
+            </a>
+          </div>
+          <MacroTiles />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+
+        {/* Filings — 3 cols */}
+        <div className="lg:col-span-3 bg-surface border border-[#1E2235] rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <h2 className="font-display text-xl font-semibold text-primary">
+              BSE Filings
+            </h2>
+            <span className="flex items-center gap-1 text-xs font-mono text-danger">
+              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+              LIVE
+            </span>
+            <a
+              href="/filings"
+              className="ml-auto text-xs font-mono text-amber hover:underline"
+            >
+              All →
+            </a>
+          </div>
+          <DashboardFilings />
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="bg-surface border border-[#1E2235] rounded-xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-xl font-semibold text-primary">
+            Quick Links
+          </h2>
+          <a href="/links" className="text-xs text-amber hover:underline font-mono">
+            View all →
           </a>
         </div>
-      </main>
+        <QuickLinksPreview />
+      </div>
     </div>
   );
 }
