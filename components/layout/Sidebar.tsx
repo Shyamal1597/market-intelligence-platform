@@ -38,7 +38,7 @@ export function Sidebar() {
       <div className="flex items-center h-16 px-4 border-b border-[#1E2235] shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="w-8 h-8 rounded-lg bg-amber flex items-center justify-center shrink-0">
-            <Activity className="w-4 h-4 text-base" />
+            <Activity className="w-4 h-4 text-[#0C0E14]" />
           </div>
           {expanded && (
             <span className="font-display text-lg font-semibold text-primary whitespace-nowrap tracking-wide">
