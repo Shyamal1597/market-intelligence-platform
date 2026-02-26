@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import type { FilingCategory } from "@/lib/bse-filings";
@@ -29,7 +29,7 @@ export function DashboardFilings() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const mountedRef = useRef(true);
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch("/api/filings?limit=8")
       .then((r) => r.json())
       .then((d) => {
@@ -41,7 +41,7 @@ export function DashboardFilings() {
       .catch(() => {
         if (mountedRef.current) setLoading(false);
       });
-  };
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
