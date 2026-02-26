@@ -95,7 +95,7 @@ export async function fetchNSEFilings(limit = 50): Promise<NSEFiling[]> {
         const { symbol, description } = parseNSETitle(rawTitle);
         // Prefer item.link (always the NSE filing page URL); fall back to pdfLink custom field
         const link: string | null =
-          item.link ?? (item as Record<string, unknown>).pdfLink as string ?? null;
+          item.link ?? ((item as unknown as Record<string, unknown>).pdfLink as string) ?? null;
 
         return {
           id: `nse-${key}-${i}-${item.isoDate ?? Date.now()}`,
