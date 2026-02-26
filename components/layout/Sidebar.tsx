@@ -10,7 +10,6 @@ import {
   FileText,
   BookMarked,
   ChevronRight,
-  Activity,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -37,13 +36,24 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-[#1E2235] shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-amber flex items-center justify-center shrink-0">
-            <Activity className="w-4 h-4 text-[#0C0E14]" />
+          {/* Sunidhi brand mark: red square with S initial */}
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 select-none"
+            style={{ backgroundColor: "#CC1F37" }}
+          >
+            <span className="font-display font-bold text-white text-base leading-none">
+              S
+            </span>
           </div>
           {expanded && (
-            <span className="font-display text-lg font-semibold text-primary whitespace-nowrap tracking-wide">
-              Sunidhi
-            </span>
+            <div className="overflow-hidden">
+              <span className="font-display text-base font-semibold text-primary whitespace-nowrap tracking-wide block leading-tight">
+                SUNIDHI
+              </span>
+              <span className="font-mono text-[9px] text-muted whitespace-nowrap tracking-wider uppercase block">
+                Securities &amp; Finance
+              </span>
+            </div>
           )}
         </div>
       </div>
