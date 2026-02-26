@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, Clock } from "lucide-react";
 
 interface NewsItem {
   id: string;
@@ -15,8 +14,28 @@ function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ago`;
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins / 60)}h`;
+}
+
+/** Abbreviate source names to 2–4 char badges */
+const SOURCE_ABBR: Record<string, string> = {
+  Moneycontrol: "MC",
+  "ET Markets": "ET",
+  "Economic Times": "ET",
+  "Business Standard": "BS",
+  Reuters: "REU",
+  "Financial Times": "FT",
+  LiveMint: "MINT",
+  Mint: "MINT",
+  "NDTV Profit": "NDTV",
+  Bloomberg: "BBG",
+  "CNBC TV18": "CNBC",
+  CNBC: "CNBC",
+};
+
+function getAbbr(source: string): string {
+  return SOURCE_ABBR[source] ?? source.slice(0, 3).toUpperCase();
 }
 
 export function NewsHeadlines() {
@@ -31,62 +50,75 @@ export function NewsHeadlines() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="h-5 bg-[#1E2235] rounded w-full mb-1" />
-            <div className="h-3 bg-[#1E2235] rounded w-24" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (news.length === 0) {
-    return (
-      <p className="text-muted text-sm font-sans py-4">
-        No news yet — refresh to fetch latest stories.
-      </p>
-    );
-  }
-
   return (
-    <div className="divide-y divide-[#1E2235]">
-      {news.slice(0, 7).map((item, i) => (
+    <div>
+      {/* Section header — terminal label style */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
+          Market Headlines
+        </span>
+        <div className="flex-1 h-px bg-[#1E2235]" />
+        {!loading && (
+          <span className="font-mono text-[10px] text-muted">
+            {news.length} items
+          </span>
+        )}
         <a
-          key={item.id}
-          href={item.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group flex items-start justify-between gap-4 py-4 hover:bg-white/[0.02] transition-colors -mx-4 px-4 first:-mt-0"
+          href="/news"
+          className="font-mono text-[10px] text-amber hover:underline ml-1"
         >
-          <div className="flex-1 min-w-0">
-            <p
-              className={`font-display leading-snug group-hover:text-amber transition-colors ${
-                i === 0
-                  ? "text-2xl font-semibold text-primary"
-                  : "text-base text-primary/90"
-              }`}
+          All news →
+        </a>
+      </div>
+
+      {/* Loading skeletons */}
+      {loading && (
+        <div className="divide-y divide-[#1E2235]">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="py-3 animate-pulse">
+              <div className="h-4 bg-[#1E2235] rounded w-full mb-1.5" />
+              <div className="h-3 bg-[#1E2235] rounded w-20" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && news.length === 0 && (
+        <p className="text-muted text-sm font-mono py-4">
+          No news yet — refresh to fetch latest stories.
+        </p>
+      )}
+
+      {/* News rows */}
+      {!loading && news.length > 0 && (
+        <div className="divide-y divide-[#1E2235]">
+          {news.slice(0, 8).map((item) => (
+            <a
+              key={item.id}
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 py-3 hover:bg-white/[0.02] transition-colors -mx-4 px-4"
             >
-              {item.title}
-            </p>
-            <div className="flex items-center gap-3 mt-1.5">
+              {/* Source badge */}
               {item.source && (
-                <span className="text-xs font-mono text-amber/70 uppercase tracking-wider">
-                  {item.source}
+                <span className="font-mono text-[9px] text-muted bg-[#1E2235] rounded px-1.5 py-0.5 shrink-0 leading-tight">
+                  {getAbbr(item.source)}
                 </span>
               )}
-              <span className="flex items-center gap-1 text-xs text-muted font-mono">
-                <Clock className="w-3 h-3" />
+              {/* Time */}
+              <span className="font-mono text-[10px] text-muted shrink-0 w-7 text-right">
                 {timeAgo(item.pubDate)}
               </span>
-            </div>
-          </div>
-          <ExternalLink className="w-4 h-4 text-muted group-hover:text-amber shrink-0 mt-1 transition-colors" />
-        </a>
-      ))}
+              {/* Headline */}
+              <span className="text-sm text-primary group-hover:text-amber transition-colors truncate font-sans">
+                {item.title}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
