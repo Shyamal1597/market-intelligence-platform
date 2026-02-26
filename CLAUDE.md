@@ -15,7 +15,7 @@ Internal financial research intranet for Sunidhi Capital's research team. Next.j
 - **Aesthetic**: Bloomberg Terminal × Financial Times Editorial — dense, dark, precise
 - **Background**: `#0C0E14` with SVG grain texture
 - **Surface**: `#13151E` with `#1E2235` borders
-- **Accent amber**: `#E8A020` — primary interactive accent
+- **Accent amber**: `#F5820D` — primary interactive accent (Sunidhi brand orange)
 - **Teal**: `#00C9A7` — positive/up indicators
 - **Danger**: `#E84040` — negative/down indicators
 - **Text primary**: `#F0EDE8` (warm off-white)
