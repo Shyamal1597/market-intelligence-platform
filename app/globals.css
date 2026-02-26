@@ -7,7 +7,7 @@
   --color-base:    #0C0E14;
   --color-surface: #13151E;
   --color-border:  #1E2235;
-  --color-amber:   #E8A020;
+  --color-amber:   #F5820D;
   --color-teal:    #00C9A7;
   --color-danger:  #E84040;
   --color-primary: #F0EDE8;
@@ -30,7 +30,7 @@
 }
 
 @keyframes flash {
-  from { background-color: rgba(232, 160, 32, 0.3); }
+  from { background-color: rgba(245, 130, 13, 0.3); }
   to   { background-color: transparent; }
 }
 
