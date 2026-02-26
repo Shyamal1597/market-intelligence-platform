@@ -62,7 +62,7 @@ export function DashboardFilings() {
       {/* Section header */}
       <div className="flex items-center gap-2 mb-3">
         <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
-          BSE Filings
+          NSE Filings
         </span>
         {/* Live pulse dot */}
         <span className="flex items-center gap-1 font-mono text-[10px] text-danger">

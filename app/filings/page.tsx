@@ -83,7 +83,7 @@ export default function FilingsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="font-display text-5xl font-semibold text-primary tracking-tight">
-            BSE Filings
+            NSE Filings
           </h1>
           <span className="flex items-center gap-1.5 text-xs font-mono text-danger border border-danger/30 px-2 py-1 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
@@ -91,7 +91,7 @@ export default function FilingsPage() {
           </span>
         </div>
         <p className="text-muted text-sm font-sans">
-          Corporate announcements from BSE India · auto-polls every 2 min
+          Corporate announcements from NSE India · auto-polls every 2 min
         </p>
       </div>
 

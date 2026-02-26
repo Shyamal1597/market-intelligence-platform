@@ -17,7 +17,7 @@ const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/news", icon: Newspaper, label: "Market News" },
   { href: "/macro", icon: TrendingUp, label: "Macro" },
-  { href: "/filings", icon: FileText, label: "BSE Filings" },
+  { href: "/filings", icon: FileText, label: "NSE Filings" },
   { href: "/links", icon: BookMarked, label: "Quick Links" },
 ];
 
