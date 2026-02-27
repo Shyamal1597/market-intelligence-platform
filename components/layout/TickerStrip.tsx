@@ -13,7 +13,9 @@ interface Quote {
 
 function formatPrice(price: number, symbol: string): string {
   if (symbol === "INR=X") return price.toFixed(2);
-  if (symbol === "BZ=F" || symbol === "GC=F") return price.toFixed(1);
+  if (["BZ=F", "GC=F", "SI=F"].includes(symbol)) return price.toFixed(1);
+  if (["GOLD_INR", "SILVER_INR"].includes(symbol))
+    return "₹" + Math.round(price).toLocaleString("en-IN");
   if (price > 10000) return price.toLocaleString("en-IN", { maximumFractionDigits: 0 });
   return price.toFixed(2);
 }
@@ -59,7 +61,7 @@ export function TickerStrip() {
 
   useEffect(() => {
     fetchQuotes();
-    const interval = setInterval(fetchQuotes, 60000);
+    const interval = setInterval(fetchQuotes, 10000);
     return () => clearInterval(interval);
   }, []);
 
