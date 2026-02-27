@@ -50,9 +50,12 @@ export function TopBar() {
       : "bg-danger";
 
   return (
-    <div className="h-12 flex items-center justify-between px-6 border-b border-[#1E2235] bg-surface/80 backdrop-blur-sm shrink-0">
-      <h1 className="font-sans text-xs font-semibold text-muted tracking-widest uppercase">
-        Research Intelligence
+    <div className="h-12 flex items-center justify-between px-6 border-b border-[#1E2235] bg-surface/90 backdrop-blur-sm shrink-0">
+      <h1 className="font-mono text-[11px] font-medium tracking-[0.18em] uppercase flex items-center gap-2.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber opacity-80" />
+        <span className="text-amber/75">Sunidhi</span>
+        <span className="text-[#272B40]">·</span>
+        <span className="text-muted">Research Intelligence</span>
       </h1>
       <div className="flex items-center gap-6">
         <div className={`flex items-center gap-2 text-xs font-mono ${statusColor}`}>

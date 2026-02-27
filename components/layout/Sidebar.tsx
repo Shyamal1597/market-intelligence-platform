@@ -70,12 +70,12 @@ export function Sidebar() {
               className={clsx(
                 "flex items-center gap-3 rounded-lg px-2 py-2.5 transition-all duration-150 group relative",
                 active
-                  ? "bg-amber/10 text-amber"
-                  : "text-muted hover:text-primary hover:bg-white/5"
+                  ? "bg-amber/[0.13] text-amber shadow-[inset_0_0_0_1px_rgba(245,130,13,0.15)]"
+                  : "text-muted hover:text-primary hover:bg-white/[0.05]"
               )}
             >
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber rounded-r-full" />
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-amber rounded-r-full shadow-[0_0_8px_rgba(245,130,13,0.6)]" />
               )}
               <Icon className="w-5 h-5 shrink-0" />
               {expanded && (
@@ -84,7 +84,7 @@ export function Sidebar() {
                 </span>
               )}
               {!expanded && (
-                <div className="absolute left-full ml-3 px-2 py-1 bg-[#1E2235] text-primary text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                <div className="absolute left-full ml-3 px-2 py-1 bg-[#272B40] text-primary text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
                   {label}
                 </div>
               )}

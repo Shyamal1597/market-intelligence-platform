@@ -38,6 +38,24 @@ function getAbbr(source: string): string {
   return SOURCE_ABBR[source] ?? source.slice(0, 3).toUpperCase();
 }
 
+/** Color-coded badge style per source abbreviation */
+const SOURCE_BADGE_STYLE: Record<string, string> = {
+  MC:   "text-orange-400 bg-orange-500/10 border border-orange-500/20",
+  ET:   "text-sky-400   bg-sky-500/10    border border-sky-500/20",
+  BS:   "text-cyan-400  bg-cyan-500/10   border border-cyan-500/20",
+  REU:  "text-slate-400 bg-white/[0.05]  border border-white/10",
+  FT:   "text-amber-400 bg-amber-500/10  border border-amber-500/20",
+  MINT: "text-teal      bg-teal/10       border border-teal/25",
+  NDTV: "text-rose-400  bg-rose-500/10   border border-rose-500/20",
+  BBG:  "text-violet-400 bg-violet-500/10 border border-violet-500/20",
+  CNBC: "text-blue-400  bg-blue-500/10   border border-blue-500/20",
+};
+const DEFAULT_BADGE_STYLE = "text-muted bg-[#1E2235] border border-white/5";
+
+function getSourceBadgeStyle(abbr: string): string {
+  return SOURCE_BADGE_STYLE[abbr] ?? DEFAULT_BADGE_STYLE;
+}
+
 export function NewsHeadlines() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +72,7 @@ export function NewsHeadlines() {
     <div>
       {/* Section header — terminal label style */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
+        <span className="font-mono text-[10px] tracking-widest text-amber/70 uppercase">
           Market Headlines
         </span>
         <div className="flex-1 h-px bg-[#1E2235]" />
@@ -101,9 +119,9 @@ export function NewsHeadlines() {
               rel="noopener noreferrer"
               className="group flex items-center gap-3 py-3 hover:bg-white/[0.02] transition-colors -mx-4 px-4"
             >
-              {/* Source badge */}
+              {/* Source badge — color-coded by publication */}
               {item.source && (
-                <span className="font-mono text-[9px] text-muted bg-[#1E2235] rounded px-1.5 py-0.5 shrink-0 leading-tight">
+                <span className={`font-mono text-[9px] rounded px-1.5 py-0.5 shrink-0 leading-tight ${getSourceBadgeStyle(getAbbr(item.source))}`}>
                   {getAbbr(item.source)}
                 </span>
               )}

@@ -11,12 +11,12 @@ export default function DashboardPage() {
       {/* Two-column body: news (60%) + filings (40%) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Market Headlines */}
-        <div className="lg:col-span-3 bg-surface border border-[#1E2235] rounded-xl p-4">
+        <div className="lg:col-span-3 bg-surface-raised border border-[#1E2235] rounded-xl p-4">
           <NewsHeadlines />
         </div>
 
-        {/* BSE Filings */}
-        <div className="lg:col-span-2 bg-surface border border-[#1E2235] rounded-xl p-4">
+        {/* NSE Filings */}
+        <div className="lg:col-span-2 bg-surface-raised border border-[#1E2235] rounded-xl p-4">
           <DashboardFilings />
         </div>
       </div>

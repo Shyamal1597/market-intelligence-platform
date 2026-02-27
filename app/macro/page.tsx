@@ -78,9 +78,11 @@ export default function MacroPage() {
 
       {/* Live Market Quotes */}
       <section className="mb-10">
-        <h2 className="text-xs font-mono text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+        <h2 className="text-xs font-mono uppercase tracking-widest mb-4 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
-          Live Market Data · Yahoo Finance
+          <span className="text-teal/80">Live Market Data</span>
+          <span className="text-[#272B40]">·</span>
+          <span className="text-muted">Yahoo Finance</span>
         </h2>
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -102,7 +104,7 @@ export default function MacroPage() {
 
       {/* Static Macro Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-surface border border-[#1E2235] rounded-xl p-6">
+        <div className="bg-surface-raised border border-[#1E2235] rounded-xl p-6">
           <h2 className="font-display text-xl font-semibold text-primary mb-5">
             India Macro
           </h2>
@@ -119,7 +121,7 @@ export default function MacroPage() {
           </div>
         </div>
 
-        <div className="bg-surface border border-[#1E2235] rounded-xl p-6">
+        <div className="bg-surface-raised border border-[#1E2235] rounded-xl p-6">
           <h2 className="font-display text-xl font-semibold text-primary mb-5">
             Global Indicators
           </h2>

@@ -29,7 +29,7 @@ function MetricTile({ quote }: { quote: Quote }) {
 
   return (
     <div
-      className={`bg-surface border border-[#1E2235] border-l-2 ${borderColor} rounded-xl p-4 hover:bg-white/[0.02] transition-colors flex flex-col justify-between`}
+      className={`bg-surface-raised border border-[#1E2235] border-l-2 ${borderColor} rounded-xl p-4 hover:bg-white/[0.05] hover:border-[#272B40] transition-all duration-150 flex flex-col justify-between group/tile`}
     >
       <div>
         <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-1.5">

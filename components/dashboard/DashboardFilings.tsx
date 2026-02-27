@@ -61,12 +61,12 @@ export function DashboardFilings() {
     <div>
       {/* Section header */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="font-mono text-[10px] tracking-widest text-muted uppercase">
+        <span className="font-mono text-[10px] tracking-widest text-amber/70 uppercase">
           NSE Filings
         </span>
-        {/* Live pulse dot */}
-        <span className="flex items-center gap-1 font-mono text-[10px] text-danger">
-          <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+        {/* Live pulse dot — teal = real-time data stream, not an error state */}
+        <span className="flex items-center gap-1 font-mono text-[10px] text-teal/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
           LIVE
         </span>
         <div className="flex-1 h-px bg-[#1E2235]" />
