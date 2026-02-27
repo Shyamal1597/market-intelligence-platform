@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { getMarketStatus, getMarketStatusLabel } from "@/lib/market-status";
+import { useTheme } from "@/lib/theme";
 
 export function TopBar() {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [status, setStatus] = useState(getMarketStatus());
+  const { setSettingsOpen } = useTheme();
 
   useEffect(() => {
     const tick = () => {
@@ -57,7 +60,7 @@ export function TopBar() {
         <span className="text-[#272B40]">·</span>
         <span className="text-muted">Research Intelligence</span>
       </h1>
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         <div className={`flex items-center gap-2 text-xs font-mono ${statusColor}`}>
           <span className={`w-2 h-2 rounded-full ${dotClass}`} />
           {getMarketStatusLabel(status)}
@@ -67,6 +70,14 @@ export function TopBar() {
           <span className="mx-2 text-[#2A2D42]">|</span>
           {date} IST
         </div>
+        {/* Settings */}
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Display settings"
+          className="w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-primary hover:bg-white/[0.06] transition-all duration-150"
+        >
+          <Settings2 className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

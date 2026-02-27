@@ -85,8 +85,8 @@ export default function FilingsPage() {
           <h1 className="font-display text-5xl font-semibold text-primary tracking-tight">
             NSE Filings
           </h1>
-          <span className="flex items-center gap-1.5 text-xs font-mono text-danger border border-danger/30 px-2 py-1 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
+          <span className="flex items-center gap-1.5 text-xs font-mono text-teal border border-teal/30 px-2 py-1 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
             LIVE
           </span>
         </div>

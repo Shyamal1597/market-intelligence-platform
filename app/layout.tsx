@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ClientProviders } from "@/components/layout/ClientProviders";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 
@@ -25,14 +26,17 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-base text-primary antialiased">
-        <Sidebar />
-        {/* Main area: offset by sidebar width (64px collapsed) */}
-        <div className="ml-16 flex flex-col min-h-screen">
-          <TopBar />
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
+        {/* ClientProviders: ThemeProvider + SettingsPanel overlay */}
+        <ClientProviders>
+          <Sidebar />
+          {/* Main area: offset by sidebar width (64px collapsed) */}
+          <div className="ml-16 flex flex-col min-h-screen">
+            <TopBar />
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
+          </div>
+        </ClientProviders>
       </body>
     </html>
   );
