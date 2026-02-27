@@ -36,15 +36,17 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-[#1E2235] shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* Collapsed: Sunidhi brand mark — red square with S initial */}
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 select-none"
-            style={{ backgroundColor: "#CC1F37" }}
-          >
-            <span className="font-display font-bold text-white text-base leading-none">
-              S
-            </span>
-          </div>
+          {/* Collapsed: actual Sunidhi logo on white square */}
+          {!expanded && (
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0 select-none p-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/Sunidhi_logo_homepage.png"
+                alt="Sunidhi"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
           {/* Expanded: actual Sunidhi logo on white background pill */}
           {expanded && (
             <div className="bg-white rounded-md px-2.5 py-1 shrink-0">
