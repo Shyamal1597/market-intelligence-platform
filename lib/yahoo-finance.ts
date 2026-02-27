@@ -15,6 +15,7 @@ const SYMBOLS: Record<string, string> = {
   "^NSEBANK": "Bank Nifty",
   "BZ=F": "Brent Crude",
   "GC=F": "Gold",
+  "SI=F": "Silver",
   "INR=X": "USD/INR",
 };
 
@@ -60,14 +61,60 @@ export async function fetchQuote(symbol: string): Promise<QuoteData | null> {
   }
 }
 
+// Troy ounce conversion factors
+const TROY_OZ_PER_10G = 10 / 31.1035;
+const TROY_OZ_PER_KG  = 1000 / 31.1035;
+
 export async function fetchAllQuotes(): Promise<QuoteData[]> {
   const results = await Promise.allSettled(
     Object.keys(SYMBOLS).map(fetchQuote)
   );
 
-  return results
-    .filter((r): r is PromiseFulfilledResult<QuoteData> =>
-      r.status === "fulfilled" && r.value !== null
+  const quotes = results
+    .filter((r): r is PromiseFulfilledResult<QuoteData | null> =>
+      r.status === "fulfilled"
     )
-    .map((r) => r.value);
+    .map((r) => r.value)
+    .filter((v): v is QuoteData => v !== null);
+
+  // Find gold, silver (USD/oz) and INR rate for conversion
+  const gold    = quotes.find((q) => q.symbol === "GC=F");
+  const silver  = quotes.find((q) => q.symbol === "SI=F");
+  const inrRate = quotes.find((q) => q.symbol === "INR=X");
+
+  const derived: QuoteData[] = [];
+
+  if (gold && inrRate) {
+    const convertPrice = (usdOz: number) => usdOz * inrRate.price * TROY_OZ_PER_10G;
+    const goldInrPrice = convertPrice(gold.price);
+    const goldInrPrev  = convertPrice(gold.previousClose);
+    const goldInrChange = goldInrPrice - goldInrPrev;
+    derived.push({
+      symbol: "GOLD_INR",
+      label: "Gold ₹/10g",
+      price: goldInrPrice,
+      change: goldInrChange,
+      changePercent: (goldInrChange / goldInrPrev) * 100,
+      previousClose: goldInrPrev,
+      history: (gold.history ?? []).map((h) => h * inrRate.price * TROY_OZ_PER_10G),
+    });
+  }
+
+  if (silver && inrRate) {
+    const convertPrice = (usdOz: number) => usdOz * inrRate.price * TROY_OZ_PER_KG;
+    const silverInrPrice = convertPrice(silver.price);
+    const silverInrPrev  = convertPrice(silver.previousClose);
+    const silverInrChange = silverInrPrice - silverInrPrev;
+    derived.push({
+      symbol: "SILVER_INR",
+      label: "Silver ₹/kg",
+      price: silverInrPrice,
+      change: silverInrChange,
+      changePercent: (silverInrChange / silverInrPrev) * 100,
+      previousClose: silverInrPrev,
+      history: (silver.history ?? []).map((h) => h * inrRate.price * TROY_OZ_PER_KG),
+    });
+  }
+
+  return [...quotes, ...derived];
 }
