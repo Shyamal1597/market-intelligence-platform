@@ -145,6 +145,12 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get("source");
 
     const newsData = await getNews();
+
+    // Auto-populate if store is nearly empty — fire-and-forget, don't block response
+    if (newsData.news.length < 50) {
+      fetch(`${request.nextUrl.origin}/api/fetch-market-news`).catch(() => {});
+    }
+
     let news = newsData.news;
 
     // Filter by source if specified
