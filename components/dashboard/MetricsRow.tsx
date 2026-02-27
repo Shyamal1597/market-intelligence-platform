@@ -80,9 +80,12 @@ export function MetricsRow() {
       .catch(() => setLoading(false));
   }, []);
 
+  // Show exactly these 7 tiles in this order — INR commodity prices instead of raw USD
+  const DISPLAY_ORDER = ["^NSEI", "^BSESN", "^NSEBANK", "BZ=F", "INR=X", "GOLD_INR", "SILVER_INR"];
+  const tileMap = Object.fromEntries(quotes.map((q) => [q.symbol, q]));
   const tiles = loading
     ? Array.from({ length: 7 })
-    : quotes.slice(0, 7);
+    : DISPLAY_ORDER.map((s) => tileMap[s]).filter(Boolean);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
