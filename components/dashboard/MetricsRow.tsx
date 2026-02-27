@@ -16,7 +16,9 @@ interface Quote {
 /** Format price by symbol type — mirrors MacroTiles logic */
 function formatPrice(price: number, symbol: string): string {
   if (symbol === "INR=X") return price.toFixed(2);
-  if (["BZ=F", "GC=F"].includes(symbol)) return price.toFixed(1);
+  if (["BZ=F", "GC=F", "SI=F"].includes(symbol)) return price.toFixed(1);
+  if (["GOLD_INR", "SILVER_INR"].includes(symbol))
+    return "₹" + Math.round(price).toLocaleString("en-IN");
   if (price > 10000)
     return price.toLocaleString("en-IN", { maximumFractionDigits: 0 });
   return price.toFixed(2);
@@ -79,11 +81,11 @@ export function MetricsRow() {
   }, []);
 
   const tiles = loading
-    ? Array.from({ length: 5 })
-    : quotes.slice(0, 5);
+    ? Array.from({ length: 7 })
+    : quotes.slice(0, 7);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
       {loading
         ? tiles.map((_, i) => <SkeletonTile key={i} />)
         : (tiles as Quote[]).map((q) => <MetricTile key={q.symbol} quote={q} />)}
