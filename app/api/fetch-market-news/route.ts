@@ -15,20 +15,31 @@ const parser = new Parser({
 });
 
 const RSS_FEEDS = [
+  // --- Livemint ---
   "https://www.livemint.com/rss/companies",
   "https://www.livemint.com/rss/markets",
+  "https://www.livemint.com/rss/industry",
+  // --- Economic Times ---
   "https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms",
   "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+  "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms",
+  // --- Moneycontrol ---
+  "https://www.moneycontrol.com/rss/marketreports.xml",
+  "https://www.moneycontrol.com/rss/business.xml",
+  // --- NDTV Profit ---
+  "https://www.ndtv.com/business/rss",
+  // --- BQ Prime (Bloomberg India) ---
+  "https://www.bqprime.com/feeds/rss",
+  // --- Business Standard ---
+  "https://www.business-standard.com/rss/latest.rss",
+  // --- The Hindu / Times of India ---
   "http://www.thehindu.com/business/?service=rss",
   "http://timesofindia.indiatimes.com/rssfeeds/1898055.cms",
+  // --- Global ---
   "https://www.marketwatch.com/rss/topstories",
   "https://www.cnbc.com/id/100003114/device/rss/rss.html",
   "https://www.ft.com/markets",
   "https://www.ft.com/companies",
-  // Business Standard RSS feeds are blocked by their server
-  // Alternative: Using additional ET and Mint feeds for better coverage
-  "https://www.livemint.com/rss/industry",
-  "https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms",
 ];
 
 const SITEMAP_FEEDS = [
@@ -224,6 +235,10 @@ function detectSource(link: string): string {
     if (hostname.includes("ft.com")) return "Financial Times";
     if (hostname.includes("business-standard.com")) return "Business Standard";
     if (hostname.includes("vccircle.com")) return "VCCircle";
+    if (hostname.includes("moneycontrol.com")) return "Moneycontrol";
+    if (hostname.includes("ndtv.com")) return "NDTV Profit";
+    if (hostname.includes("bqprime.com")) return "BQ Prime";
+    if (hostname.includes("business-standard.com")) return "Business Standard";
 
     return "Unknown";
   } catch {

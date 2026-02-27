@@ -18,42 +18,46 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(mins / 60)}h`;
 }
 
-/** Abbreviate source names to 2–4 char badges */
-const SOURCE_ABBR: Record<string, string> = {
-  Moneycontrol: "MC",
-  "ET Markets": "ET",
-  "Economic Times": "ET",
-  "Business Standard": "BS",
-  Reuters: "REU",
-  "Financial Times": "FT",
-  LiveMint: "MINT",
-  Mint: "MINT",
-  "NDTV Profit": "NDTV",
-  Bloomberg: "BBG",
-  "CNBC TV18": "CNBC",
-  CNBC: "CNBC",
+const SOURCE_BADGE_STYLE: Record<string, string> = {
+  // Indian sources
+  Moneycontrol:         "text-orange-400 bg-orange-500/10 border border-orange-500/20",
+  "Economic Times":     "text-sky-400 bg-sky-500/10 border border-sky-500/20",
+  "Business Standard":  "text-cyan-400 bg-cyan-500/10 border border-cyan-500/20",
+  Mint:                 "text-teal bg-teal/10 border border-teal/25",
+  "NDTV Profit":        "text-rose-400 bg-rose-500/10 border border-rose-500/20",
+  "BQ Prime":           "text-violet-400 bg-violet-500/10 border border-violet-500/20",
+  VCCircle:             "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20",
+  "The Hindu":          "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20",
+  "Times of India":     "text-yellow-400 bg-yellow-500/10 border border-yellow-500/20",
+  // Global
+  Reuters:              "text-slate-400 bg-white/[0.05] border border-white/10",
+  "Financial Times":    "text-amber-400 bg-amber-500/10 border border-amber-500/20",
+  CNBC:                 "text-blue-400 bg-blue-500/10 border border-blue-500/20",
+  MarketWatch:          "text-green-400 bg-green-500/10 border border-green-500/20",
 };
 
-function getAbbr(source: string): string {
-  return SOURCE_ABBR[source] ?? source.slice(0, 3).toUpperCase();
+const SOURCE_ABBREV: Record<string, string> = {
+  "Moneycontrol":       "MC",
+  "Economic Times":     "ET",
+  "Business Standard":  "BS",
+  "Mint":               "MINT",
+  "NDTV Profit":        "NDTV",
+  "BQ Prime":           "BQ",
+  "VCCircle":           "VCC",
+  "The Hindu":          "TH",
+  "Times of India":     "TOI",
+  "Reuters":            "REU",
+  "Financial Times":    "FT",
+  "CNBC":               "CNBC",
+  "MarketWatch":        "MW",
+};
+
+function getBadgeStyle(source: string): string {
+  return SOURCE_BADGE_STYLE[source] ?? "text-muted bg-white/[0.03] border border-white/10";
 }
 
-/** Color-coded badge style per source abbreviation */
-const SOURCE_BADGE_STYLE: Record<string, string> = {
-  MC:   "text-orange-400 bg-orange-500/10 border border-orange-500/20",
-  ET:   "text-sky-400   bg-sky-500/10    border border-sky-500/20",
-  BS:   "text-cyan-400  bg-cyan-500/10   border border-cyan-500/20",
-  REU:  "text-slate-400 bg-white/[0.05]  border border-white/10",
-  FT:   "text-amber-400 bg-amber-500/10  border border-amber-500/20",
-  MINT: "text-teal      bg-teal/10       border border-teal/25",
-  NDTV: "text-rose-400  bg-rose-500/10   border border-rose-500/20",
-  BBG:  "text-violet-400 bg-violet-500/10 border border-violet-500/20",
-  CNBC: "text-blue-400  bg-blue-500/10   border border-blue-500/20",
-};
-const DEFAULT_BADGE_STYLE = "text-muted bg-[#1E2235] border border-white/5";
-
-function getSourceBadgeStyle(abbr: string): string {
-  return SOURCE_BADGE_STYLE[abbr] ?? DEFAULT_BADGE_STYLE;
+function getSourceAbbrev(source: string): string {
+  return SOURCE_ABBREV[source] ?? source.substring(0, 4).toUpperCase();
 }
 
 export function NewsHeadlines() {
@@ -121,8 +125,8 @@ export function NewsHeadlines() {
             >
               {/* Source badge — color-coded by publication */}
               {item.source && (
-                <span className={`font-mono text-[9px] rounded px-1.5 py-0.5 shrink-0 leading-tight ${getSourceBadgeStyle(getAbbr(item.source))}`}>
-                  {getAbbr(item.source)}
+                <span className={`font-mono text-[9px] rounded px-1.5 py-0.5 shrink-0 leading-tight ${getBadgeStyle(item.source ?? "")}`}>
+                  {getSourceAbbrev(item.source ?? "")}
                 </span>
               )}
               {/* Time */}
