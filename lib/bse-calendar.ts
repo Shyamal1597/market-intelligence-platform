@@ -1,60 +1,46 @@
 // lib/bse-calendar.ts
-import * as cheerio from "cheerio";
+// Uses NSE event-calendar API — returns upcoming board meetings for ~30 days
 
 export interface EarningsEntry {
   company: string;
-  bseCode: string;
-  date: string;       // ISO date string "YYYY-MM-DD"
-  purpose: string;    // raw purpose text from BSE
+  bseCode: string;   // populated with NSE symbol (e.g. "RELIANCE")
+  date: string;      // ISO date string "YYYY-MM-DD"
+  purpose: string;   // raw purpose text
   category: "Results" | "Dividend" | "Bonus" | "Other";
 }
 
-const BSE_HEADERS = {
+const NSE_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept: "application/json, text/html, */*",
+  Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://www.bseindia.com/",
+  Referer: "https://www.nseindia.com/",
+  "X-Requested-With": "XMLHttpRequest",
 };
 
-/** Normalise BSE date strings to ISO YYYY-MM-DD */
-function parseBseDate(raw: string): string {
+const MONTH_MAP: Record<string, string> = {
+  Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+  May: "05", Jun: "06", Jul: "07", Aug: "08",
+  Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+};
+
+/** Parse NSE date "03-Mar-2026" → "2026-03-03" */
+function parseNseDate(raw: string): string {
   const trimmed = raw.trim();
 
-  // ISO format with time component: "2026-02-28T00:00:00" or "2026-02-28"
+  // NSE format: "03-Mar-2026"
+  const nseMatch = trimmed.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})$/);
+  if (nseMatch) {
+    const month = MONTH_MAP[nseMatch[2]];
+    if (month) return `${nseMatch[3]}-${month}-${nseMatch[1]}`;
+  }
+
+  // ISO with optional time: "2026-03-03T..."
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
     return trimmed.slice(0, 10);
   }
 
-  // DD/MM/YYYY or DD-MM-YYYY
-  const parts = trimmed.split(/[\/\-]/);
-  if (parts.length === 3) {
-    const [first, second, third] = parts;
-    // Disambiguate: if first part length is 4 it's YYYY-MM-DD already handled above
-    // Here first is DD, second is MM, third is YYYY
-    if (third.length === 4) {
-      const dd = first.padStart(2, "0");
-      const mm = second.padStart(2, "0");
-      return `${third}-${mm}-${dd}`;
-    }
-  }
-
-  // Fallback: attempt native Date parse
-  const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) {
-    return d.toISOString().slice(0, 10);
-  }
-
-  // Fix 1: return empty string so downstream filters can exclude unparseable rows
   return "";
-}
-
-/** Format a Date object as DD%2FMM%2FYYYY for BSE URL params */
-function formatBseUrlDate(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}%2F${mm}%2F${yyyy}`;
 }
 
 function inferCategory(
@@ -67,7 +53,6 @@ function inferCategory(
   return "Other";
 }
 
-/** Deduplicate entries by (bseCode, date, category) */
 function deduplicate(entries: EarningsEntry[]): EarningsEntry[] {
   const seen = new Set<string>();
   return entries.filter((e) => {
@@ -78,143 +63,59 @@ function deduplicate(entries: EarningsEntry[]): EarningsEntry[] {
   });
 }
 
-/** Attempt primary BSE JSON API */
-async function fetchPrimary(
-  startDate: Date,
-  endDate: Date
-): Promise<EarningsEntry[]> {
-  const strdate = formatBseUrlDate(startDate);
-  const enddate = formatBseUrlDate(endDate);
-  const url = `https://api.bseindia.com/BseIndiaAPI/api/BoardMeetings/w?strdate=${strdate}&enddate=${enddate}&ddlcategorys=&scripcode=`;
+interface NseEventItem {
+  symbol?: string;
+  company?: string;
+  purpose?: string;
+  bm_desc?: string;
+  date?: string;
+}
 
-  const res = await fetch(url, {
-    headers: BSE_HEADERS,
+/** Fetch from NSE event-calendar API */
+async function fetchNseCalendar(): Promise<EarningsEntry[]> {
+  const res = await fetch("https://www.nseindia.com/api/event-calendar", {
+    headers: NSE_HEADERS,
     next: { revalidate: 3600 },
   });
 
-  if (!res.ok) {
-    throw new Error(`BSE primary API returned ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`NSE event-calendar returned ${res.status}`);
 
-  // BSE sometimes returns non-JSON on bot detection — guard against it
-  const text = await res.text();
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error("BSE primary API did not return valid JSON");
-  }
+  const json: unknown = await res.json();
+  const items: NseEventItem[] = Array.isArray(json) ? json : [];
 
-  // BSE returns { Table: [...] } or { Table1: [...] } or nested object
-  const root = json as Record<string, unknown>;
-  const table: unknown[] =
-    (Array.isArray(root.Table) ? root.Table : null) ??
-    (Array.isArray(root.Table1) ? root.Table1 : null) ??
-    [];
-
-  return table.map((item) => {
-    const row = item as Record<string, unknown>;
-
-    const bseCode = String(
-      row.SCRIP_CD ?? row.scripcd ?? row.ScripCode ?? ""
-    ).trim();
-
-    const company = String(
-      row.COMP_NAME ?? row.company_name ?? row.CompanyName ?? row.COMPANYNAME ?? "Unknown"
-    ).trim();
-
-    const rawDate = String(
-      row.DT_TM ?? row.meeting_date ?? row.MEETING_DATE ?? row.MeetingDate ?? ""
-    ).trim();
-
-    const purpose = String(
-      row.PURPOSE ?? row.purpose ?? row.PURPOSEOFMEETING ?? row.PurposeOfMeeting ?? ""
-    ).trim();
-
-    return {
-      company,
-      bseCode,
-      date: parseBseDate(rawDate),
-      purpose,
-      category: inferCategory(purpose),
-    };
-  // Fix 2: validate ISO format instead of just checking for non-empty string
-  }).filter((e) => e.bseCode !== "" && /^\d{4}-\d{2}-\d{2}$/.test(e.date));
-}
-
-/** Fallback: cheerio scrape of the BSE board meetings HTML page */
-async function fetchFallback(): Promise<EarningsEntry[]> {
-  // Fix 3: warn that the HTML fallback may not cover the full 30-day window
-  console.warn("BSE calendar: using HTML fallback — date range may be narrower than requested 30-day window");
-
-  const url = "https://www.bseindia.com/corporates/Board_Meetings.html";
-
-  const res = await fetch(url, {
-    headers: BSE_HEADERS,
-    next: { revalidate: 3600 },
-  });
-
-  if (!res.ok) {
-    throw new Error(`BSE fallback HTML returned ${res.status}`);
-  }
-
-  const html = await res.text();
-  const $ = cheerio.load(html);
-  const entries: EarningsEntry[] = [];
-
-  // The board meetings page renders a table — rows contain: company, code, date, purpose
-  $("table tr").each((_i, row) => {
-    const cells = $(row).find("td");
-    if (cells.length < 4) return;
-
-    const company = $(cells[0]).text().trim();
-    const bseCode = $(cells[1]).text().trim();
-    const rawDate = $(cells[2]).text().trim();
-    const purpose = $(cells[3]).text().trim();
-
-    if (!company || !bseCode || !rawDate) return;
-
-    entries.push({
-      company,
-      bseCode,
-      date: parseBseDate(rawDate),
-      purpose,
-      category: inferCategory(purpose),
-    });
-  });
-
-  // Fix 2: validate ISO format instead of just checking for non-empty string
-  return entries.filter((e) => /^\d{6}$/.test(e.bseCode) && /^\d{4}-\d{2}-\d{2}$/.test(e.date));
-}
-
-/** Fetch board meetings for today → today + 30 days. Returns entries sorted by date ascending. */
-export async function fetchBoardMeetings(): Promise<EarningsEntry[]> {
   const today = new Date();
-  const endDate = new Date(today);
-  endDate.setDate(endDate.getDate() + 30);
+  today.setHours(0, 0, 0, 0);
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() + 30);
 
-  let entries: EarningsEntry[] = [];
+  return items
+    .map((item) => {
+      const date = parseNseDate(item.date ?? "");
+      const purpose = (item.purpose ?? item.bm_desc ?? "").trim();
+      return {
+        company: (item.company ?? "").trim(),
+        bseCode: (item.symbol ?? "").trim(),
+        date,
+        purpose,
+        category: inferCategory(purpose),
+      };
+    })
+    .filter((e) => {
+      if (!e.company || !e.bseCode || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return false;
+      const d = new Date(e.date);
+      return d >= today && d <= cutoff;
+    });
+}
 
+/** Fetch board meetings for today → today + 30 days. Returns entries sorted ascending. */
+export async function fetchBoardMeetings(): Promise<EarningsEntry[]> {
   try {
-    entries = await fetchPrimary(today, endDate);
-  } catch (primaryErr) {
-    console.error("BSE calendar primary API failed:", primaryErr);
-
-    try {
-      entries = await fetchFallback();
-    } catch (fallbackErr) {
-      console.error("BSE calendar fallback scrape failed:", fallbackErr);
-      return [];
-    }
+    const entries = await fetchNseCalendar();
+    const deduped = deduplicate(entries);
+    deduped.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return deduped;
+  } catch (err) {
+    console.error("NSE event-calendar failed:", err);
+    return [];
   }
-
-  const deduped = deduplicate(entries);
-
-  deduped.sort((a, b) => {
-    if (a.date < b.date) return -1;
-    if (a.date > b.date) return 1;
-    return 0;
-  });
-
-  return deduped;
 }

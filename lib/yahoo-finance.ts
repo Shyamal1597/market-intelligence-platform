@@ -23,7 +23,7 @@ const SECTOR_SYMBOLS: Record<string, string> = {
   "^CNXAUTO":    "Auto",
   "^CNXIT":      "IT",
   "^CNXFMCG":    "FMCG",
-  "^CNXBANK":    "Banking",
+  "^NSEBANK":    "Banking",
   "^CNXMETAL":   "Metal",
   "^CNXPHARMA":  "Pharma",
   "^CNXREALTY":  "Realty",
