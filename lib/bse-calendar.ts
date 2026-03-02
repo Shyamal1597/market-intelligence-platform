@@ -45,7 +45,8 @@ function parseBseDate(raw: string): string {
     return d.toISOString().slice(0, 10);
   }
 
-  return trimmed;
+  // Fix 1: return empty string so downstream filters can exclude unparseable rows
+  return "";
 }
 
 /** Format a Date object as DD%2FMM%2FYYYY for BSE URL params */
@@ -137,11 +138,15 @@ async function fetchPrimary(
       purpose,
       category: inferCategory(purpose),
     };
-  }).filter((e) => e.bseCode !== "" && e.date !== "");
+  // Fix 2: validate ISO format instead of just checking for non-empty string
+  }).filter((e) => e.bseCode !== "" && /^\d{4}-\d{2}-\d{2}$/.test(e.date));
 }
 
 /** Fallback: cheerio scrape of the BSE board meetings HTML page */
 async function fetchFallback(): Promise<EarningsEntry[]> {
+  // Fix 3: warn that the HTML fallback may not cover the full 30-day window
+  console.warn("BSE calendar: using HTML fallback — date range may be narrower than requested 30-day window");
+
   const url = "https://www.bseindia.com/corporates/Board_Meetings.html";
 
   const res = await fetch(url, {
@@ -178,7 +183,8 @@ async function fetchFallback(): Promise<EarningsEntry[]> {
     });
   });
 
-  return entries.filter((e) => /^\d{6}$/.test(e.bseCode));
+  // Fix 2: validate ISO format instead of just checking for non-empty string
+  return entries.filter((e) => /^\d{6}$/.test(e.bseCode) && /^\d{4}-\d{2}-\d{2}$/.test(e.date));
 }
 
 /** Fetch board meetings for today → today + 30 days. Returns entries sorted by date ascending. */
