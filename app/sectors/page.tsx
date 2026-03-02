@@ -12,31 +12,34 @@ export default function SectorsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let currentController: AbortController | null = null;
+
     const fetchData = () => {
-      fetch("/api/sectors", { signal: controller.signal })
+      currentController?.abort(); // cancel any in-flight request from previous tick
+      currentController = new AbortController();
+      fetch("/api/sectors", { signal: currentController.signal })
         .then((r) => {
-          if (!r.ok) throw new Error(`Server error: ${r.status}`);
+          if (!r.ok) throw new Error(`API error ${r.status}`);
           return r.json();
         })
-        .then((data) => {
+        .then((data: { quotes?: QuoteData[] }) => {
           setQuotes(data.quotes ?? []);
           setError(null);
           setLoading(false);
         })
-        .catch((err) => {
-          if (err.name !== "AbortError") {
-            setError(err.message ?? "Failed to load sector data");
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name !== "AbortError") {
+            setError("Could not load sector data.");
             setLoading(false);
           }
         });
     };
 
     fetchData();
-    const id = setInterval(fetchData, 60000);
+    const intervalId = setInterval(fetchData, 60000);
     return () => {
-      clearInterval(id);
-      controller.abort();
+      clearInterval(intervalId);
+      currentController?.abort();
     };
   }, []);
 
