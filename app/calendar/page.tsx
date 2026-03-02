@@ -156,8 +156,8 @@ export default function CalendarPage() {
         </div>
       ) : (
         /* Date-grouped list */
-        dateGroups.map(({ label, entries: groupEntries }) => (
-          <div key={label} className="mb-8">
+        dateGroups.map(({ date, label, entries: groupEntries }) => (
+          <div key={date} className="mb-8">
             <div className="flex items-center gap-3 mb-3">
               <h2 className="font-mono text-xs tracking-widest uppercase text-muted">
                 {label}

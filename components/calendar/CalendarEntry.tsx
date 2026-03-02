@@ -12,7 +12,7 @@ const BADGE_STYLES: Record<EarningsEntry["category"], string> = {
   Results:  "bg-teal/10 text-teal border border-teal/30",
   Dividend: "bg-amber/10 text-amber border border-amber/30",
   Bonus:    "bg-purple-500/10 text-purple-400 border border-purple-500/30",
-  Other:    "bg-[#1E2235] text-muted border border-[#2A2D42]",
+  Other:    "bg-surface text-muted border border-[#1E2235]",
 };
 
 export function CalendarEntry({ entry }: { entry: EarningsEntry }) {
