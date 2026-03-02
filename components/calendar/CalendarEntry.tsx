@@ -1,12 +1,7 @@
 "use client";
 
-export interface EarningsEntry {
-  company: string;
-  bseCode: string;
-  date: string;
-  purpose: string;
-  category: "Results" | "Dividend" | "Bonus" | "Other";
-}
+export type { EarningsEntry } from "@/lib/bse-calendar";
+import type { EarningsEntry } from "@/lib/bse-calendar";
 
 const BADGE_STYLES: Record<EarningsEntry["category"], string> = {
   Results:  "bg-teal/10 text-teal border border-teal/30",

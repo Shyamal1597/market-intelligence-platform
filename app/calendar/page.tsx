@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
-import { CalendarEntry, EarningsEntry } from "@/components/calendar/CalendarEntry";
+import { CalendarEntry } from "@/components/calendar/CalendarEntry";
+import type { EarningsEntry } from "@/lib/bse-calendar";
 
 type FilterKey = "all" | "Results" | "Dividend" | "Bonus";
 
@@ -69,22 +70,36 @@ export default function CalendarPage() {
   const [entries, setEntries] = useState<EarningsEntry[]>([]);
   const [filter,  setFilter]  = useState<FilterKey>("all");
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchData = () => {
-      fetch("/api/calendar")
-        .then(r => r.json())
+      fetch("/api/calendar", { signal: controller.signal })
+        .then(r => {
+          if (!r.ok) throw new Error(`API error ${r.status}`);
+          return r.json();
+        })
         .then(data => {
           setEntries(data.entries ?? []);
+          setError(null);
           setLoading(false);
         })
-        .catch(() => setLoading(false));
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.name !== "AbortError") {
+            setError("Could not load calendar data.");
+            setLoading(false);
+          }
+        });
     };
 
     fetchData();
-
     const intervalId = setInterval(fetchData, 60 * 60 * 1000);
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      controller.abort();
+    };
   }, []);
 
   const filtered =
@@ -129,6 +144,13 @@ export default function CalendarPage() {
         ))}
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mb-6 px-4 py-3 rounded-lg border border-danger/30 bg-danger/5 text-danger text-sm font-mono">
+          {error}
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         /* Loading skeleton */
@@ -168,8 +190,11 @@ export default function CalendarPage() {
               </span>
             </div>
             <div className="space-y-2">
-              {groupEntries.map((e, i) => (
-                <CalendarEntry key={`${e.bseCode}-${i}`} entry={e} />
+              {groupEntries.map(e => (
+                <CalendarEntry
+                  key={`${e.bseCode}-${e.category}-${e.purpose.slice(0, 20)}`}
+                  entry={e}
+                />
               ))}
             </div>
           </div>
