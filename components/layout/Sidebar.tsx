@@ -9,6 +9,8 @@ import {
   TrendingUp,
   FileText,
   BookMarked,
+  CalendarDays,
+  LayoutGrid,
   ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -18,6 +20,8 @@ const NAV = [
   { href: "/news", icon: Newspaper, label: "Market News" },
   { href: "/macro", icon: TrendingUp, label: "Macro" },
   { href: "/filings", icon: FileText, label: "NSE Filings" },
+  { href: "/calendar", icon: CalendarDays, label: "Earnings" },
+  { href: "/sectors", icon: LayoutGrid, label: "Sectors" },
   { href: "/links", icon: BookMarked, label: "Quick Links" },
 ];
 
