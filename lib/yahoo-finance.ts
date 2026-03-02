@@ -19,6 +19,19 @@ const SYMBOLS: Record<string, string> = {
   "INR=X": "USD/INR",
 };
 
+const SECTOR_SYMBOLS: Record<string, string> = {
+  "^CNXAUTO":    "Auto",
+  "^CNXIT":      "IT",
+  "^CNXFMCG":    "FMCG",
+  "^CNXBANK":    "Banking",
+  "^CNXMETAL":   "Metal",
+  "^CNXPHARMA":  "Pharma",
+  "^CNXREALTY":  "Realty",
+  "^CNXENERGY":  "Energy",
+  "^CNXINFRA":   "Infra",
+  "^CNXPSUBANK": "PSU Bank",
+};
+
 export async function fetchQuote(symbol: string): Promise<QuoteData | null> {
   try {
     const encodedSymbol = encodeURIComponent(symbol);
@@ -117,4 +130,20 @@ export async function fetchAllQuotes(): Promise<QuoteData[]> {
   }
 
   return [...quotes, ...derived];
+}
+
+export async function fetchSectorQuotes(): Promise<QuoteData[]> {
+  const results = await Promise.allSettled(
+    Object.keys(SECTOR_SYMBOLS).map(fetchQuote)
+  );
+
+  const quotes = results
+    .filter((r): r is PromiseFulfilledResult<QuoteData | null> =>
+      r.status === "fulfilled"
+    )
+    .map((r) => r.value)
+    .filter((v): v is QuoteData => v !== null)
+    .map((q) => ({ ...q, label: SECTOR_SYMBOLS[q.symbol] ?? q.symbol }));
+
+  return quotes;
 }
