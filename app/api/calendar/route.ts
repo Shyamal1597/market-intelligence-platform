@@ -10,9 +10,6 @@ export async function GET() {
     return NextResponse.json({ entries, fetchedAt: new Date().toISOString() });
   } catch (error) {
     console.error("Calendar API error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch calendar" },
-      { status: 500 }
-    );
+    return NextResponse.json({ entries: [], fetchedAt: new Date().toISOString() });
   }
 }

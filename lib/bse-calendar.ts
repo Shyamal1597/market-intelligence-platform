@@ -178,7 +178,7 @@ async function fetchFallback(): Promise<EarningsEntry[]> {
     });
   });
 
-  return entries.filter((e) => /^\d{3,6}$/.test(e.bseCode));
+  return entries.filter((e) => /^\d{6}$/.test(e.bseCode));
 }
 
 /** Fetch board meetings for today → today + 30 days. Returns entries sorted by date ascending. */
