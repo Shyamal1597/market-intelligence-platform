@@ -11,6 +11,7 @@ import {
   BookMarked,
   CalendarDays,
   LayoutGrid,
+  Activity,
   ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/filings", icon: FileText, label: "NSE Filings" },
   { href: "/calendar", icon: CalendarDays, label: "Earnings" },
   { href: "/sectors", icon: LayoutGrid, label: "Sectors" },
+  { href: "/flows", icon: Activity, label: "Flows" },
   { href: "/links", icon: BookMarked, label: "Quick Links" },
 ];
 
