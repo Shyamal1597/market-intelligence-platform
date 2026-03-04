@@ -166,16 +166,18 @@ export async function addToWatchlist(entry: WatchlistEntry): Promise<void> {
 }
 
 export async function removeFromWatchlist(symbol: string): Promise<void> {
+  const normalized = symbol.toUpperCase();
   const list = await loadWatchlist();
-  await saveWatchlist(list.filter((e) => e.symbol !== symbol));
+  await saveWatchlist(list.filter((e) => e.symbol !== normalized));
 }
 
 export async function patchWatchlistEntry(
   symbol: string,
   patch: Partial<Pick<WatchlistEntry, "analyst" | "rating" | "targetPrice" | "bseCode" | "marketCapBucket" | "name" | "sector">>
 ): Promise<WatchlistEntry | null> {
+  const normalized = symbol.toUpperCase();
   const list = await loadWatchlist();
-  const idx = list.findIndex((e) => e.symbol === symbol);
+  const idx = list.findIndex((e) => e.symbol === normalized);
   if (idx === -1) return null;
   list[idx] = { ...list[idx], ...patch };
   await saveWatchlist(list);
