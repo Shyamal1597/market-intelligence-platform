@@ -11,6 +11,7 @@ import {
   CalendarDays,
   LayoutGrid,
   Activity,
+  BarChart2,
   BookMarked,
   Search,
   Sparkles,
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/calendar", label: "Earnings", icon: CalendarDays },
   { href: "/sectors", label: "Sectors", icon: LayoutGrid },
   { href: "/flows", label: "Flows", icon: Activity },
+  { href: "/results", label: "Results", icon: BarChart2 },
   { href: "/links", label: "Quick Links", icon: BookMarked },
 ];
 
