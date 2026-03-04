@@ -126,8 +126,13 @@ export async function loadWatchlist(): Promise<WatchlistEntry[]> {
     const raw = await fs.readFile(WATCHLIST_PATH, "utf-8");
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as WatchlistEntry[]) : [];
-  } catch {
-    // File missing — seed from NSE Nifty50
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") {
+      console.error("[watchlist] loadWatchlist failed (not ENOENT):", err);
+      throw err;
+    }
+    // File genuinely missing — seed from NSE Nifty50
     const seeded = await seedFromNse();
     if (seeded.length > 0) {
       await saveWatchlist(seeded);
@@ -137,6 +142,7 @@ export async function loadWatchlist(): Promise<WatchlistEntry[]> {
 }
 
 export async function saveWatchlist(entries: WatchlistEntry[]): Promise<void> {
+  await fs.mkdir(path.dirname(WATCHLIST_PATH), { recursive: true });
   await fs.writeFile(WATCHLIST_PATH, JSON.stringify(entries, null, 2), "utf-8");
 }
 
@@ -150,11 +156,12 @@ export async function resetWatchlist(): Promise<WatchlistEntry[]> {
 }
 
 export async function addToWatchlist(entry: WatchlistEntry): Promise<void> {
+  const normalizedEntry = { ...entry, symbol: entry.symbol.toUpperCase() };
   const list = await loadWatchlist();
-  if (list.some((e) => e.symbol === entry.symbol)) {
-    throw new Error(`${entry.symbol} already in watchlist`);
+  if (list.some((e) => e.symbol.toUpperCase() === normalizedEntry.symbol)) {
+    throw new Error(`${normalizedEntry.symbol} already in watchlist`);
   }
-  list.push(entry);
+  list.push(normalizedEntry);
   await saveWatchlist(list);
 }
 
