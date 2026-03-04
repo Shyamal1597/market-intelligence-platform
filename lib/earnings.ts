@@ -15,7 +15,7 @@ export interface EarningsQuarter {
   totalRevenue: number; // ₹ crores
   ebit: number;         // ₹ crores
   netIncome: number;    // PAT, ₹ crores
-  basicEps: number;     // ₹ per share
+  basicEps: number | null; // ₹ per share
 }
 
 export interface EarningsData {
@@ -111,7 +111,7 @@ export async function fetchEarnings(symbol: string): Promise<EarningsData | null
           totalRevenue: Math.round((s.totalRevenue?.raw ?? 0) / 1e7),
           ebit: Math.round((s.ebit?.raw ?? 0) / 1e7),
           netIncome: Math.round((s.netIncome?.raw ?? 0) / 1e7),
-          basicEps: s.basicEps?.raw ?? 0,
+          basicEps: s.basicEps?.raw ?? null,
         };
       })
       .reverse(); // oldest → newest
