@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { clsx } from "clsx";
 import type { WatchlistEntry } from "@/lib/watchlist";
 import type { EarningsData } from "@/lib/earnings";
@@ -37,6 +38,14 @@ export function EarningsListRow({ entry, earnings, selected, onClick }: Props) {
           <span className={clsx("text-xs font-mono", selected ? "text-amber" : "text-primary")}>
             {entry.symbol}
           </span>
+          <Link
+            href={`/research/${entry.symbol}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] font-mono text-muted hover:text-amber transition-colors leading-none"
+            title={`Open ${entry.symbol} research page`}
+          >
+            ↗
+          </Link>
           {entry.rating && (
             <span className="text-[9px] font-mono px-1 py-0.5 rounded border border-[#1E2235] text-muted leading-none">
               {entry.rating}

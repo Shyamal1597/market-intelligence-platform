@@ -9,7 +9,16 @@ export async function GET(request: NextRequest) {
     // Clamp limit to [1, 100] — reject NaN and out-of-range values
     const rawLimit = parseInt(searchParams.get("limit") ?? "50", 10);
     const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 100);
-    const filings = await fetchNSEFilings(limit);
+    const symbol = searchParams.get("symbol")?.toUpperCase() ?? null;
+
+    // Fetch more items upfront when filtering by symbol so we have enough after filter
+    const fetchLimit = symbol ? Math.min(limit * 10, 1000) : limit;
+    let filings = await fetchNSEFilings(fetchLimit);
+
+    if (symbol) {
+      filings = filings.filter((f) => f.scripCode === symbol).slice(0, limit);
+    }
+
     return NextResponse.json({ filings, fetchedAt: new Date().toISOString() });
   } catch (error) {
     console.error("Filings API error:", error);
