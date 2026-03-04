@@ -55,8 +55,8 @@ export function FlowSummaryStrip({ entries }: FlowSummaryStripProps) {
   }
 
   const sorted = [...entries].sort((a, b) => b.fiiEquityNet - a.fiiEquityNet);
-  const topInflows = sorted.slice(0, 5);
-  const topOutflows = sorted.slice(-5).reverse();
+  const topInflows = sorted.filter((e) => e.fiiEquityNet > 0).slice(0, 5);
+  const topOutflows = sorted.filter((e) => e.fiiEquityNet < 0).slice(-5).reverse();
 
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -100,7 +100,9 @@ export function FlowSummaryStrip({ entries }: FlowSummaryStripProps) {
             Biggest Inflows (FII Equity)
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-1">
-            {topInflows.map((e) => (
+            {topInflows.length === 0 ? (
+              <span className="font-mono text-xs text-muted italic">No net buy days yet</span>
+            ) : topInflows.map((e) => (
               <span key={e.date} className="font-mono text-xs">
                 <span className="text-muted">{formatDate(e.date)}</span>
                 &nbsp;
@@ -116,7 +118,9 @@ export function FlowSummaryStrip({ entries }: FlowSummaryStripProps) {
             Biggest Outflows (FII Equity)
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-1">
-            {topOutflows.map((e) => (
+            {topOutflows.length === 0 ? (
+              <span className="font-mono text-xs text-muted italic">No net sell days yet</span>
+            ) : topOutflows.map((e) => (
               <span key={e.date} className="font-mono text-xs">
                 <span className="text-muted">{formatDate(e.date)}</span>
                 &nbsp;

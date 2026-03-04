@@ -1,13 +1,26 @@
 // lib/nse-flows.ts
+//
+// Data strategy:
+//   1. Snapshot (today): NSE fiidiiTradeReact — requires session cookies, always works
+//   2. Historical: file-based accumulation in data/fii-dii-history.json
+//      - On each request, today's snapshot is appended if not yet present
+//      - NSE historical API attempted as one-shot bootstrap (fails gracefully)
+//   3. Nifty: Yahoo Finance — no auth required, always works
 
-const NSE_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+import { promises as fs } from "fs";
+import path from "path";
+
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const NSE_BASE_HEADERS: Record<string, string> = {
+  "User-Agent": USER_AGENT,
   Accept: "application/json, text/plain, */*",
   "Accept-Language": "en-US,en;q=0.9",
-  Referer: "https://www.nseindia.com/",
   "X-Requested-With": "XMLHttpRequest",
 };
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface FiiDiiEntry {
   date: string; // "YYYY-MM-DD"
@@ -20,7 +33,7 @@ export interface FiiDiiEntry {
   diiEquitySell: number;
   diiEquityNet: number;
 
-  // Debt segment
+  // Debt segment (may be 0 if source doesn't provide it)
   fiiDebtBuy: number;
   fiiDebtSell: number;
   fiiDebtNet: number;
@@ -55,6 +68,8 @@ export interface NiftyDayClose {
   close: number;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 const MONTH_MAP: Record<string, string> = {
   Jan: "01", Feb: "02", Mar: "03", Apr: "04",
   May: "05", Jun: "06", Jul: "07", Aug: "08",
@@ -84,21 +99,95 @@ function num(v: string | number | undefined | null): number {
   return parseFloat(String(v).replace(/,/g, "")) || 0;
 }
 
+type StoredEntry = Omit<FiiDiiEntry, "cumulativeFiiEquityNet" | "cumulativeDiiEquityNet" | "rollingAvg20FiiEquity" | "rollingAvg20DiiEquity">;
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+
+const HISTORY_PATH = path.join(process.cwd(), "data", "fii-dii-history.json");
+
+async function loadHistory(): Promise<StoredEntry[]> {
+  try {
+    const raw = await fs.readFile(HISTORY_PATH, "utf-8");
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as StoredEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveHistory(entries: StoredEntry[]): Promise<void> {
+  try {
+    await fs.writeFile(HISTORY_PATH, JSON.stringify(entries, null, 2), "utf-8");
+  } catch (e) {
+    console.error("[nse-flows] failed to save history:", e);
+  }
+}
+
+// ── NSE Session ──────────────────────────────────────────────────────────────
+
+function nseHeaders(cookie: string, referer = "https://www.nseindia.com/market-data/fii-dii-data"): Record<string, string> {
+  return {
+    ...NSE_BASE_HEADERS,
+    Referer: referer,
+    ...(cookie ? { Cookie: cookie } : {}),
+  };
+}
+
+async function getNseCookies(): Promise<string> {
+  function extractCookies(res: Response): string {
+    const h = res.headers as Headers & { getSetCookie?: () => string[] };
+    const arr: string[] = h.getSetCookie
+      ? h.getSetCookie()
+      : (res.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
+    return arr.map((c) => c.split(";")[0].trim()).filter(Boolean).join("; ");
+  }
+
+  const htmlHeaders = {
+    "User-Agent": USER_AGENT,
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+  };
+
+  try {
+    // Step 1: homepage — establishes base session
+    const homeRes = await fetch("https://www.nseindia.com", { headers: htmlHeaders });
+    const cookie = extractCookies(homeRes);
+
+    // Step 2: warm up the FII/DII page — required for historical API access
+    await fetch("https://www.nseindia.com/market-data/fii-dii-data", {
+      headers: { ...htmlHeaders, Cookie: cookie, Referer: "https://www.nseindia.com/" },
+    });
+
+    return cookie;
+  } catch (e) {
+    console.error("[nse-flows] session error:", e);
+    return "";
+  }
+}
+
+// ── Today's Snapshot ─────────────────────────────────────────────────────────
+
 interface NseSnapshotItem {
   category?: string;
   buyValue?: string | number;
   sellValue?: string | number;
   netValue?: string | number;
-  type?: string;
+  [key: string]: unknown;
 }
 
-export async function fetchTodaySnapshot(): Promise<FlowsSnapshot | null> {
+export async function fetchTodaySnapshot(cookie = ""): Promise<FlowsSnapshot | null> {
   try {
     const res = await fetch("https://www.nseindia.com/api/fiidiiTradeReact", {
-      headers: NSE_HEADERS,
+      headers: nseHeaders(cookie),
       next: { revalidate: 0 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[nse-flows] fiidiiTradeReact HTTP ${res.status}`);
+      return null;
+    }
+
     const json: unknown = await res.json();
     const items: NseSnapshotItem[] = Array.isArray(json) ? (json as NseSnapshotItem[]) : [];
 
@@ -109,35 +198,46 @@ export async function fetchTodaySnapshot(): Promise<FlowsSnapshot | null> {
       diiDebtBuy: 0,   diiDebtSell: 0,   diiDebtNet: 0,
     };
 
+    // fiidiiTradeReact returns equity-only data — no "type" field present.
     for (const item of items) {
-      const isFii = /fii|fpi/i.test(item.category ?? "");
-      const isDii = /dii/i.test(item.category ?? "");
-      const isEquity = /equity/i.test(item.type ?? "");
-      const isDebt = /debt/i.test(item.type ?? "");
-
-      if (isFii && isEquity) {
+      const cat = String(item.category ?? "").toLowerCase();
+      if (/fii|fpi/.test(cat)) {
         snap.fiiEquityBuy = num(item.buyValue);
         snap.fiiEquitySell = num(item.sellValue);
         snap.fiiEquityNet = num(item.netValue);
-      } else if (isDii && isEquity) {
+      } else if (/dii/.test(cat)) {
         snap.diiEquityBuy = num(item.buyValue);
         snap.diiEquitySell = num(item.sellValue);
         snap.diiEquityNet = num(item.netValue);
-      } else if (isFii && isDebt) {
-        snap.fiiDebtBuy = num(item.buyValue);
-        snap.fiiDebtSell = num(item.sellValue);
-        snap.fiiDebtNet = num(item.netValue);
-      } else if (isDii && isDebt) {
-        snap.diiDebtBuy = num(item.buyValue);
-        snap.diiDebtSell = num(item.sellValue);
-        snap.diiDebtNet = num(item.netValue);
       }
     }
     return snap;
-  } catch {
+  } catch (e) {
+    console.error("[nse-flows] snapshot error:", e);
     return null;
   }
 }
+
+/** Convert a snapshot + date into a StoredEntry for persistence */
+function snapshotToEntry(snap: FlowsSnapshot, date: string): StoredEntry {
+  return {
+    date,
+    fiiEquityBuy:  snap.fiiEquityBuy,
+    fiiEquitySell: snap.fiiEquitySell,
+    fiiEquityNet:  snap.fiiEquityNet,
+    diiEquityBuy:  snap.diiEquityBuy,
+    diiEquitySell: snap.diiEquitySell,
+    diiEquityNet:  snap.diiEquityNet,
+    fiiDebtBuy:    snap.fiiDebtBuy,
+    fiiDebtSell:   snap.fiiDebtSell,
+    fiiDebtNet:    snap.fiiDebtNet,
+    diiDebtBuy:    snap.diiDebtBuy,
+    diiDebtSell:   snap.diiDebtSell,
+    diiDebtNet:    snap.diiDebtNet,
+  };
+}
+
+// ── Historical Bootstrap (NSE API — best-effort) ─────────────────────────────
 
 interface NseHistoricalItem {
   date?: string;
@@ -156,50 +256,69 @@ interface NseHistoricalItem {
   [key: string]: unknown;
 }
 
-type RawEntry = Omit<FiiDiiEntry, "cumulativeFiiEquityNet" | "cumulativeDiiEquityNet" | "rollingAvg20FiiEquity" | "rollingAvg20DiiEquity">;
-
-export async function fetchHistoricalFlows(
-  fromIso: string,
-  toIso: string
-): Promise<RawEntry[]> {
-  const from = toNseParam(fromIso);
-  const to = toNseParam(toIso);
-  const url = `https://www.nseindia.com/api/historicaldata-fiiDii?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-
-  const res = await fetch(url, {
-    headers: NSE_HEADERS,
-    next: { revalidate: 0 },
-  });
-  if (!res.ok) throw new Error(`NSE historicaldata-fiiDii returned ${res.status}`);
-
-  const json: unknown = await res.json();
-  const raw = Array.isArray(json) ? json : ((json as Record<string, unknown>)?.data ?? []);
-  const items: NseHistoricalItem[] = Array.isArray(raw) ? (raw as NseHistoricalItem[]) : [];
-
-  return items
-    .map((item): RawEntry | null => {
-      const date = parseNseDate(String(item.date ?? ""));
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-      return {
-        date,
-        fiiEquityBuy:  num(item.fiiBuyEquity),
-        fiiEquitySell: num(item.fiiSellEquity),
-        fiiEquityNet:  num(item.fiiNetEquity),
-        diiEquityBuy:  num(item.diiBuyEquity),
-        diiEquitySell: num(item.diiSellEquity),
-        diiEquityNet:  num(item.diiNetEquity),
-        fiiDebtBuy:    num(item.fiiBuyDebt),
-        fiiDebtSell:   num(item.fiiSellDebt),
-        fiiDebtNet:    num(item.fiiNetDebt),
-        diiDebtBuy:    num(item.diiBuyDebt),
-        diiDebtSell:   num(item.diiSellDebt),
-        diiDebtNet:    num(item.diiNetDebt),
-      };
-    })
-    .filter((e): e is RawEntry => e !== null);
+function parseHistoricalItem(item: NseHistoricalItem): StoredEntry | null {
+  const date = parseNseDate(String(item.date ?? ""));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return {
+    date,
+    fiiEquityBuy:  num(item.fiiBuyEquity),
+    fiiEquitySell: num(item.fiiSellEquity),
+    fiiEquityNet:  num(item.fiiNetEquity),
+    diiEquityBuy:  num(item.diiBuyEquity),
+    diiEquitySell: num(item.diiSellEquity),
+    diiEquityNet:  num(item.diiNetEquity),
+    fiiDebtBuy:    num(item.fiiBuyDebt),
+    fiiDebtSell:   num(item.fiiSellDebt),
+    fiiDebtNet:    num(item.fiiNetDebt),
+    diiDebtBuy:    num(item.diiBuyDebt),
+    diiDebtSell:   num(item.diiSellDebt),
+    diiDebtNet:    num(item.diiNetDebt),
+  };
 }
 
-function computeDerived(entries: RawEntry[]): FiiDiiEntry[] {
+/** Attempt NSE historical API (fails gracefully — NSE changes endpoints frequently) */
+async function tryNseHistoricalBootstrap(
+  fromIso: string,
+  toIso: string,
+  cookie: string
+): Promise<StoredEntry[]> {
+  const from = toNseParam(fromIso);
+  const to = toNseParam(toIso);
+  const headers = nseHeaders(cookie);
+
+  const endpoints = [
+    `https://www.nseindia.com/api/historical/fii-dii?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    `https://www.nseindia.com/api/historicaldata-fiiDii?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, { headers, next: { revalidate: 0 } });
+      const key = url.split("/api/")[1]?.split("?")[0] ?? url;
+      console.log(`[nse-flows] bootstrap ${key}: HTTP ${res.status}`);
+      if (!res.ok) continue;
+
+      const json: unknown = await res.json();
+      const rawArr: unknown = Array.isArray(json)
+        ? json
+        : (json as Record<string, unknown>)?.data ?? [];
+
+      if (Array.isArray(rawArr) && rawArr.length > 0) {
+        const items = rawArr as NseHistoricalItem[];
+        const entries = items.map(parseHistoricalItem).filter((e): e is StoredEntry => e !== null);
+        console.log(`[nse-flows] bootstrap loaded ${entries.length} entries`);
+        return entries;
+      }
+    } catch (e) {
+      console.error("[nse-flows] bootstrap endpoint error:", e);
+    }
+  }
+  return [];
+}
+
+// ── Derived Metrics ──────────────────────────────────────────────────────────
+
+function computeDerived(entries: StoredEntry[]): FiiDiiEntry[] {
   let cumFii = 0;
   let cumDii = 0;
 
@@ -222,11 +341,14 @@ function computeDerived(entries: RawEntry[]): FiiDiiEntry[] {
   });
 }
 
+// ── Nifty ────────────────────────────────────────────────────────────────────
+
 export async function fetchNiftyDailyHistory(): Promise<NiftyDayClose[]> {
   try {
-    const url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?interval=1d&range=1y";
+    const url =
+      "https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?interval=1d&range=1y";
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      headers: { "User-Agent": USER_AGENT },
       next: { revalidate: 0 },
     });
     if (!res.ok) return [];
@@ -248,31 +370,60 @@ export async function fetchNiftyDailyHistory(): Promise<NiftyDayClose[]> {
   }
 }
 
+// ── Main Entry Point ─────────────────────────────────────────────────────────
+
 export async function fetchAllFlowData(): Promise<{
   entries: FiiDiiEntry[];
   snapshot: FlowsSnapshot | null;
   nifty: NiftyDayClose[];
 }> {
-  const toDate = new Date();
-  const fromDate = new Date();
-  fromDate.setFullYear(fromDate.getFullYear() - 1);
+  const today = new Date().toISOString().slice(0, 10);
 
-  const fromIso = fromDate.toISOString().slice(0, 10);
-  const toIso = toDate.toISOString().slice(0, 10);
+  // Establish NSE session — required for non-empty API responses
+  const cookie = await getNseCookies();
 
-  const [rawEntries, snapshot, nifty] = await Promise.allSettled([
-    fetchHistoricalFlows(fromIso, toIso),
-    fetchTodaySnapshot(),
+  // Load existing history + fetch today's snapshot + Nifty in parallel
+  const [history, snapshot, nifty] = await Promise.all([
+    loadHistory(),
+    fetchTodaySnapshot(cookie),
     fetchNiftyDailyHistory(),
   ]);
 
-  const historical = rawEntries.status === "fulfilled" ? rawEntries.value : [];
-  historical.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const entries = computeDerived(historical);
+  let entries = [...history];
+  let dirty = false;
+
+  // Bootstrap from NSE historical API if file is empty (best-effort, fails gracefully)
+  if (entries.length === 0) {
+    const fromDate = new Date();
+    fromDate.setFullYear(fromDate.getFullYear() - 1);
+    const fromIso = fromDate.toISOString().slice(0, 10);
+    const bootstrapped = await tryNseHistoricalBootstrap(fromIso, today, cookie);
+    if (bootstrapped.length > 0) {
+      entries = bootstrapped;
+      dirty = true;
+    }
+  }
+
+  // Merge today's snapshot into history if not already present
+  if (snapshot && !entries.some((e) => e.date === today)) {
+    const todayEntry = snapshotToEntry(snapshot, today);
+    entries.push(todayEntry);
+    dirty = true;
+    console.log(`[nse-flows] appended ${today} to history (total: ${entries.length})`);
+  }
+
+  // Persist updated history
+  if (dirty) {
+    const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
+    await saveHistory(sorted);
+    entries = sorted;
+  } else {
+    entries.sort((a, b) => (a.date < b.date ? -1 : 1));
+  }
 
   return {
-    entries,
-    snapshot: snapshot.status === "fulfilled" ? snapshot.value : null,
-    nifty: nifty.status === "fulfilled" ? nifty.value : [],
+    entries: computeDerived(entries),
+    snapshot,
+    nifty,
   };
 }

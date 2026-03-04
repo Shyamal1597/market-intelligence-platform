@@ -1,0 +1,17 @@
+[
+  {
+    "date": "2026-03-04",
+    "fiiEquityBuy": 12737.34,
+    "fiiEquitySell": 16032.98,
+    "fiiEquityNet": -3295.64,
+    "diiEquityBuy": 21110.66,
+    "diiEquitySell": 12516.79,
+    "diiEquityNet": 8593.87,
+    "fiiDebtBuy": 0,
+    "fiiDebtSell": 0,
+    "fiiDebtNet": 0,
+    "diiDebtBuy": 0,
+    "diiDebtSell": 0,
+    "diiDebtNet": 0
+  }
+]
