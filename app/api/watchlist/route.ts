@@ -63,6 +63,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(entry, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to add";
-    return NextResponse.json({ error: message }, { status: 409 });
+    // addToWatchlist throws a recognizable message for duplicates
+    if (message.includes("already in watchlist")) {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+    console.error("[watchlist] POST error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

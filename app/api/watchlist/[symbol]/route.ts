@@ -23,7 +23,15 @@ export async function PATCH(
   try {
     const { symbol } = await params;
     const body = await req.json() as Record<string, unknown>;
-    const updated = await patchWatchlistEntry(symbol.toUpperCase(), body);
+
+    // Whitelist — only these fields may be patched
+    const patch: Record<string, unknown> = {};
+    const allowed = ["analyst", "rating", "targetPrice", "bseCode", "marketCapBucket", "name", "sector"] as const;
+    for (const key of allowed) {
+      if (key in body) patch[key] = body[key];
+    }
+
+    const updated = await patchWatchlistEntry(symbol.toUpperCase(), patch as Parameters<typeof patchWatchlistEntry>[1]);
     if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(updated);
   } catch {
