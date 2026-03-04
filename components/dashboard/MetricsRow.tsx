@@ -28,19 +28,23 @@ function MetricTile({ quote }: { quote: Quote }) {
   const up = quote.changePercent >= 0;
   const valueColor = up ? "text-teal" : "text-danger";
   const borderColor = up ? "border-teal" : "border-danger";
+  const glowColor = up ? "shadow-teal" : "shadow-danger";
 
   return (
     <div
-      className={`bg-surface-raised border border-[#1E2235] border-l-2 ${borderColor} rounded-xl p-4 hover:bg-white/[0.05] hover:border-[#272B40] transition-all duration-150 flex flex-col justify-between group/tile`}
+      className={`glass-panel border-l-2 ${borderColor} rounded-xl p-4 hover:-translate-y-1 hover:shadow-lg hover:${glowColor}/20 transition-all duration-300 flex flex-col justify-between group/tile relative overflow-hidden`}
     >
-      <div>
-        <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-1.5">
+      {/* Subtle background glow on hover */}
+      <div className={`absolute inset-0 bg-gradient-to-br from-${up ? 'teal' : 'danger'}/5 to-transparent opacity-0 group-hover/tile:opacity-100 transition-opacity duration-300 pointer-events-none`} />
+
+      <div className="relative z-10">
+        <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-1.5 font-semibold">
           {quote.label}
         </p>
-        <p className="font-mono text-xl font-bold text-primary leading-none mb-1">
+        <p className={`font-mono text-xl font-bold text-primary leading-none mb-1 group-hover/tile:text-glow transition-all`}>
           {formatPrice(quote.price, quote.symbol)}
         </p>
-        <p className={`font-mono text-xs ${valueColor} flex items-center gap-1`}>
+        <p className={`font-mono text-xs ${valueColor} flex items-center gap-1 opacity-90 group-hover/tile:opacity-100 group-hover/tile:text-glow`}>
           {up ? (
             <TrendingUp className="w-3 h-3 shrink-0" />
           ) : (
@@ -52,7 +56,7 @@ function MetricTile({ quote }: { quote: Quote }) {
         </p>
       </div>
       {quote.history && quote.history.length > 1 && (
-        <div className="mt-2 -mx-1">
+        <div className="mt-2 -mx-1 relative z-10 opacity-80 group-hover/tile:opacity-100 transition-opacity">
           <Sparkline data={quote.history} positive={up} />
         </div>
       )}
@@ -62,7 +66,7 @@ function MetricTile({ quote }: { quote: Quote }) {
 
 function SkeletonTile() {
   return (
-    <div className="bg-surface border border-[#1E2235] rounded-xl p-4 animate-pulse h-[120px]" />
+    <div className="glass-panel border-border rounded-xl p-4 animate-pulse h-[120px]" />
   );
 }
 

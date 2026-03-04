@@ -1,55 +1,61 @@
 "use client";
 
 import { useTheme, FONT_SIZE_PX, type FontSize, type ThemeMode, type CustomColors } from "@/lib/theme";
-import { X, Sun, Moon, Palette, ALargeSmall, Check, RotateCcw } from "lucide-react";
+import { X, Sun, Moon, Palette, ALargeSmall, Check, RotateCcw, Monitor } from "lucide-react";
 
 // ── Option definitions ─────────────────────────────────────────────────────────
 const FONT_OPTIONS: { key: FontSize; symbol: string; label: string }[] = [
-  { key: "sm", symbol: "A",  label: "Compact"  },
-  { key: "md", symbol: "A",  label: "Default"  },
-  { key: "lg", symbol: "A",  label: "Spacious" },
+  { key: "sm", symbol: "A", label: "Compact" },
+  { key: "md", symbol: "A", label: "Default" },
+  { key: "lg", symbol: "A", label: "Spacious" },
 ];
 
 const THEME_OPTIONS: {
-  key:   ThemeMode;
+  key: ThemeMode;
   label: string;
-  icon:  React.FC<{ className?: string }>;
+  icon: React.FC<{ className?: string }>;
   previewColors: string[];
 }[] = [
-  {
-    key:   "dark",
-    label: "Dark",
-    icon:  Moon,
-    previewColors: ["#0C0E14", "#13151E", "#F5820D", "#00C9A7"],
-  },
-  {
-    key:   "light",
-    label: "Light",
-    icon:  Sun,
-    previewColors: ["#F4F1EB", "#FFFFFF", "#C95D08", "#007A5E"],
-  },
-  {
-    key:   "custom",
-    label: "Custom",
-    icon:  Palette,
-    previewColors: [],   // filled dynamically from custom state
-  },
-];
+    {
+      key: "dark",
+      label: "Dark",
+      icon: Moon,
+      previewColors: ["#0C0E14", "#13151E", "#F5820D", "#00C9A7"],
+    },
+    {
+      key: "light",
+      label: "Light",
+      icon: Sun,
+      previewColors: ["#F4F1EB", "#FFFFFF", "#C95D08", "#007A5E"],
+    },
+    {
+      key: "system",
+      label: "System",
+      icon: Monitor,
+      previewColors: ["#8B9BB4", "#13151E", "#F5820D"],
+    },
+    {
+      key: "custom",
+      label: "Custom",
+      icon: Palette,
+      previewColors: [],   // filled dynamically from custom state
+    },
+  ];
 
 const CUSTOM_FIELDS: { key: keyof CustomColors; label: string; hint: string }[] = [
-  { key: "accent",     label: "Accent",     hint: "Actions / highlights" },
-  { key: "positive",   label: "Positive",   hint: "Gains / up indicators" },
-  { key: "danger",     label: "Danger",     hint: "Losses / down indicators" },
-  { key: "background", label: "Background", hint: "Page base colour"     },
+  { key: "accent", label: "Accent", hint: "Actions / highlights" },
+  { key: "positive", label: "Positive", hint: "Gains / up indicators" },
+  { key: "danger", label: "Danger", hint: "Losses / down indicators" },
+  { key: "background", label: "Background", hint: "Page base colour" },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function SettingsPanel() {
   const {
     settingsOpen, setSettingsOpen,
-    mode,     setMode,
+    mode, setMode,
     fontSize, setFontSize,
-    custom,   setCustomColors,
+    custom, setCustomColors,
   } = useTheme();
 
   return (
@@ -125,9 +131,9 @@ export function SettingsPanel() {
                     onClick={() => setFontSize(opt.key)}
                     className="relative flex flex-col items-center gap-2 py-3.5 rounded-lg border transition-all duration-150"
                     style={{
-                      background:   active ? "rgba(245,130,13,0.12)" : "transparent",
-                      borderColor:  active ? "rgba(245,130,13,0.35)" : "var(--color-border)",
-                      color:        active ? "var(--color-amber)"    : "var(--color-muted)",
+                      background: active ? "rgba(245,130,13,0.12)" : "transparent",
+                      borderColor: active ? "rgba(245,130,13,0.35)" : "var(--color-border)",
+                      color: active ? "var(--color-amber)" : "var(--color-muted)",
                     }}
                   >
                     {active && (
@@ -173,9 +179,9 @@ export function SettingsPanel() {
                     onClick={() => setMode(key)}
                     className="flex flex-col items-center gap-2.5 py-4 rounded-lg border transition-all duration-150"
                     style={{
-                      background:  active ? "rgba(245,130,13,0.12)" : "transparent",
+                      background: active ? "rgba(245,130,13,0.12)" : "transparent",
                       borderColor: active ? "rgba(245,130,13,0.35)" : "var(--color-border)",
-                      color:       active ? "var(--color-amber)"    : "var(--color-muted)",
+                      color: active ? "var(--color-amber)" : "var(--color-muted)",
                     }}
                   >
                     <Icon className="w-4 h-4" />
@@ -187,9 +193,9 @@ export function SettingsPanel() {
                           key={ci}
                           className="w-3 h-1.5 rounded-full"
                           style={{
-                            background:   c,
-                            outline:      "1px solid rgba(255,255,255,0.08)",
-                            outlineOffset:"0px",
+                            background: c,
+                            outline: "1px solid rgba(255,255,255,0.08)",
+                            outlineOffset: "0px",
                           }}
                         />
                       ))}
@@ -233,7 +239,7 @@ export function SettingsPanel() {
                         <div
                           className="w-10 h-10 rounded-lg border-2 transition-all duration-150 shadow-md"
                           style={{
-                            background:  custom[key],
+                            background: custom[key],
                             borderColor: "var(--color-border-strong)",
                           }}
                         />
@@ -259,15 +265,15 @@ export function SettingsPanel() {
                 {/* Reset to dark defaults */}
                 <button
                   onClick={() => setCustomColors({
-                    accent:     "#F5820D",
-                    positive:   "#00C9A7",
-                    danger:     "#E84040",
+                    accent: "#F5820D",
+                    positive: "#00C9A7",
+                    danger: "#E84040",
                     background: "#0C0E14",
                   })}
                   className="mt-6 w-full flex items-center justify-center gap-2 py-2 rounded-lg border text-xs font-mono transition-all duration-150"
                   style={{
                     borderColor: "var(--color-border)",
-                    color:       "var(--color-muted)",
+                    color: "var(--color-muted)",
                   }}
                 >
                   <RotateCcw className="w-3 h-3" />

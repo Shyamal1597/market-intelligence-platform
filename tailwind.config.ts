@@ -9,14 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#0C0E14",
-        surface: "#13151E",
-        border: "#1E2235",
-        amber: "#E8A020",
-        teal: "#00C9A7",
-        danger: "#E84040",
-        primary: "#F0EDE8",
-        muted: "#6B7280",
+        base: "var(--color-base)",
+        surface: "var(--color-surface)",
+        "surface-raised": "var(--color-surface-raised)",
+        border: "var(--color-border)",
+        "border-strong": "var(--color-border-strong)",
+        amber: "var(--color-amber)",
+        teal: "var(--color-teal)",
+        danger: "var(--color-danger)",
+        primary: "var(--color-primary)",
+        muted: "var(--color-muted)",
       },
       fontFamily: {
         display: ["var(--font-cormorant)", "Georgia", "serif"],

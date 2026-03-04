@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClientProviders } from "@/components/layout/ClientProviders";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopBar } from "@/components/layout/TopBar";
+import { OmniCore } from "@/components/layout/OmniCore";
+import { InteractiveBackground } from "@/components/layout/InteractiveBackground";
 
 export const metadata: Metadata = {
-  title: "Sunidhi Research Intelligence",
-  description: "Internal research platform for Sunidhi Capital",
+  title: "Project NEBULA | Sunidhi Research",
+  description: "Futuristic internal research platform for Sunidhi Capital",
 };
 
 export default function RootLayout({
@@ -17,24 +17,43 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Google Fonts loaded via <link> to avoid Turbopack/PostCSS Windows NUL device bug */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="bg-base text-primary antialiased">
-        {/* ClientProviders: ThemeProvider + SettingsPanel overlay */}
+      <body className="text-primary antialiased selection:bg-teal selection:text-base">
+        <InteractiveBackground />
         <ClientProviders>
-          <Sidebar />
-          {/* Main area: offset by sidebar width (64px collapsed) */}
-          <div className="ml-16 flex flex-col min-h-screen">
-            <TopBar />
-            <main className="flex-1 overflow-auto">
+          <div className="flex flex-col min-h-screen relative pb-24 z-10">
+            {/* Global Top Header */}
+            <header className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-4 animate-[slideIn_0.4s_ease-out]">
+                <div className="bg-white/90 p-2 rounded-xl backdrop-blur-md border border-white/20 shadow-lg shadow-amber/10">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/Sunidhi_logo_homepage.png"
+                    alt="Sunidhi"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-display font-bold text-xl tracking-tight text-primary">
+                    Project <span className="text-teal">NEBULA</span>
+                  </span>
+                  <span className="text-muted text-[10px] tracking-[0.2em] uppercase font-mono">
+                    Neural Data Interface
+                  </span>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
             </main>
+            <OmniCore />
           </div>
         </ClientProviders>
       </body>

@@ -9,46 +9,46 @@ import {
 } from "react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-export type FontSize  = "sm" | "md" | "lg";
-export type ThemeMode = "dark" | "light" | "custom";
+export type FontSize = "sm" | "md" | "lg";
+export type ThemeMode = "dark" | "light" | "system" | "custom";
 
 export interface CustomColors {
-  accent:     string;   // amber-equivalent   — action / highlight
-  positive:   string;   // teal-equivalent    — gains / up
-  danger:     string;   // red-equivalent     — losses / down
+  accent: string;   // amber-equivalent   — action / highlight
+  positive: string;   // teal-equivalent    — gains / up
+  danger: string;   // red-equivalent     — losses / down
   background: string;   // base bg colour
 }
 
 interface ThemeState {
-  mode:        ThemeMode;
-  fontSize:    FontSize;
-  custom:      CustomColors;
+  mode: ThemeMode;
+  fontSize: FontSize;
+  custom: CustomColors;
   settingsOpen: boolean;
 }
 
 interface ThemeContextValue {
-  mode:        ThemeMode;
-  fontSize:    FontSize;
-  custom:      CustomColors;
+  mode: ThemeMode;
+  fontSize: FontSize;
+  custom: CustomColors;
   settingsOpen: boolean;
-  setMode:         (m: ThemeMode) => void;
-  setFontSize:     (s: FontSize) => void;
+  setMode: (m: ThemeMode) => void;
+  setFontSize: (s: FontSize) => void;
   setCustomColors: (c: Partial<CustomColors>) => void;
   setSettingsOpen: (v: boolean) => void;
 }
 
 // ── Defaults ───────────────────────────────────────────────────────────────────
 const DEFAULT_CUSTOM: CustomColors = {
-  accent:     "#F5820D",
-  positive:   "#00C9A7",
-  danger:     "#E84040",
+  accent: "#F5820D",
+  positive: "#00C9A7",
+  danger: "#E84040",
   background: "#0C0E14",
 };
 
 const DEFAULTS: ThemeState = {
-  mode:        "dark",
-  fontSize:    "md",
-  custom:      DEFAULT_CUSTOM,
+  mode: "dark",
+  fontSize: "md",
+  custom: DEFAULT_CUSTOM,
   settingsOpen: false,
 };
 
@@ -61,53 +61,61 @@ export const FONT_SIZE_PX: Record<FontSize, string> = {
 
 // ── CSS variable token maps ────────────────────────────────────────────────────
 export const DARK_TOKENS: Record<string, string> = {
-  "--color-base":           "#0C0E14",
-  "--color-surface":        "#13151E",
+  "--color-base": "#0C0E14",
+  "--color-surface": "#13151E",
   "--color-surface-raised": "#161A28",
-  "--color-border":         "#1E2235",
-  "--color-border-strong":  "#272B40",
-  "--color-primary":        "#F0EDE8",
-  "--color-muted":          "#8890A4",
-  "--color-amber":          "#F5820D",
-  "--color-teal":           "#00C9A7",
-  "--color-danger":         "#E84040",
+  "--color-border": "#1E2235",
+  "--color-border-strong": "#272B40",
+  "--color-primary": "#F0EDE8",
+  "--color-muted": "#8890A4",
+  "--color-amber": "#F5820D",
+  "--color-teal": "#00C9A7",
+  "--color-danger": "#E84040",
 };
 
 export const LIGHT_TOKENS: Record<string, string> = {
-  "--color-base":           "#F4F1EB",
-  "--color-surface":        "#FFFFFF",
+  "--color-base": "#F4F1EB",
+  "--color-surface": "#FFFFFF",
   "--color-surface-raised": "#FAFAF7",
-  "--color-border":         "#E2DDD6",
-  "--color-border-strong":  "#CCC6BA",
-  "--color-primary":        "#1C1814",
-  "--color-muted":          "#6B6459",
-  "--color-amber":          "#C95D08",
-  "--color-teal":           "#007A5E",
-  "--color-danger":         "#B91C1C",
+  "--color-border": "#E2DDD6",
+  "--color-border-strong": "#CCC6BA",
+  "--color-primary": "#1C1814",
+  "--color-muted": "#6B6459",
+  "--color-amber": "#C95D08",
+  "--color-teal": "#007A5E",
+  "--color-danger": "#B91C1C",
 };
 
 // ── Apply theme to DOM ─────────────────────────────────────────────────────────
 function applyTheme(state: ThemeState) {
   const html = document.documentElement;
 
-  // Root font size (all rem-based Tailwind classes cascade)
+  // Root font size
   html.style.fontSize = FONT_SIZE_PX[state.fontSize];
 
-  // Data attributes for CSS hooks (body background switching, etc.)
+  // Data attributes for CSS hooks
   html.setAttribute("data-theme", state.mode);
   html.setAttribute("data-font-size", state.fontSize);
 
   // Resolve token set
   let tokens: Record<string, string>;
-  if (state.mode === "light") {
+  let resolvedMode = state.mode;
+
+  if (state.mode === "system") {
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    resolvedMode = isDark ? "dark" : "light";
+    html.setAttribute("data-theme", resolvedMode); // pass down actual resolved mode for CSS
+  }
+
+  if (resolvedMode === "light") {
     tokens = LIGHT_TOKENS;
   } else if (state.mode === "custom") {
     tokens = {
       ...DARK_TOKENS,
-      "--color-amber":   state.custom.accent,
-      "--color-teal":    state.custom.positive,
-      "--color-danger":  state.custom.danger,
-      "--color-base":    state.custom.background,
+      "--color-amber": state.custom.accent,
+      "--color-teal": state.custom.positive,
+      "--color-danger": state.custom.danger,
+      "--color-base": state.custom.background,
     };
   } else {
     tokens = DARK_TOKENS;
@@ -127,9 +135,9 @@ function loadStored(): Persisted {
     if (!raw) return DEFAULTS;
     const p = JSON.parse(raw) as Partial<Persisted>;
     return {
-      mode:     p.mode     ?? DEFAULTS.mode,
+      mode: p.mode ?? DEFAULTS.mode,
       fontSize: p.fontSize ?? DEFAULTS.fontSize,
-      custom:   { ...DEFAULTS.custom, ...(p.custom ?? {}) },
+      custom: { ...DEFAULTS.custom, ...(p.custom ?? {}) },
     };
   } catch {
     return DEFAULTS;
@@ -152,6 +160,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const full: ThemeState = { ...stored, settingsOpen: false };
     setState(full);
     applyTheme(full);
+
+    // Watch for system mode changes
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      setState((s) => {
+        if (s.mode === "system") applyTheme(s);
+        return s;
+      });
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
   function patch(partial: Partial<Persisted>) {
@@ -166,14 +185,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider
       value={{
-        mode:        state.mode,
-        fontSize:    state.fontSize,
-        custom:      state.custom,
+        mode: state.mode,
+        fontSize: state.fontSize,
+        custom: state.custom,
         settingsOpen: state.settingsOpen,
-        setMode:         (mode)    => patch({ mode }),
-        setFontSize:     (fontSize) => patch({ fontSize }),
-        setCustomColors: (c)       => patch({ custom: { ...state.custom, ...c } }),
-        setSettingsOpen: (v)       =>
+        setMode: (mode) => patch({ mode }),
+        setFontSize: (fontSize) => patch({ fontSize }),
+        setCustomColors: (c) => patch({ custom: { ...state.custom, ...c } }),
+        setSettingsOpen: (v) =>
           setState((prev) => ({ ...prev, settingsOpen: v })),
       }}
     >
