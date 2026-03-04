@@ -147,10 +147,10 @@ export function EarningsSplitView() {
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="animate-pulse h-12 bg-surface rounded-lg border border-[#1E2235]" />
+        <div className="animate-pulse h-12 bg-surface rounded-lg border border-border" />
         <div className="flex gap-4 h-[calc(100vh-16rem)]">
-          <div className="w-64 animate-pulse bg-surface rounded-xl border border-[#1E2235]" />
-          <div className="flex-1 animate-pulse bg-surface rounded-xl border border-[#1E2235]" />
+          <div className="w-64 animate-pulse bg-surface rounded-xl border border-border" />
+          <div className="flex-1 animate-pulse bg-surface rounded-xl border border-border" />
         </div>
       </div>
     );
@@ -182,7 +182,7 @@ export function EarningsSplitView() {
             <select
               value={filters[key]}
               onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
-              className="bg-[#1E2235] border border-[#1E2235] rounded px-2 py-1 text-xs font-mono text-primary focus:outline-none focus:border-amber/60 transition-colors"
+              className="bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-primary focus:outline-none focus:border-amber/60 transition-colors"
             >
               {uniqueVals(key).map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -194,7 +194,7 @@ export function EarningsSplitView() {
       {/* Split view */}
       <div className="flex gap-4" style={{ height: "calc(100vh - 17rem)" }}>
         {/* Left: list */}
-        <div className="w-64 shrink-0 border border-[#1E2235] rounded-xl bg-surface overflow-y-auto">
+        <div className="w-64 shrink-0 border border-border rounded-xl bg-surface overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="text-muted text-xs font-mono p-4 text-center">No stocks match filter</p>
           ) : (
@@ -218,7 +218,7 @@ export function EarningsSplitView() {
         </div>
 
         {/* Right: chart */}
-        <div className="flex-1 border border-[#1E2235] rounded-xl bg-surface p-5">
+        <div className="flex-1 border border-border rounded-xl bg-surface p-5">
           {selectedEntry && !isSelectedFetching && selectedEarnings ? (
             <EarningsChart
               stock={selectedEntry}

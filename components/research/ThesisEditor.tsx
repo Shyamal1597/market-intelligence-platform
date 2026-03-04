@@ -43,7 +43,7 @@ export function ThesisEditor({ symbol }: Props) {
   }
 
   return (
-    <div className="border border-[#1E2235] rounded-xl bg-surface p-4">
+    <div className="border border-border rounded-xl bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-mono text-muted tracking-widest uppercase">
           Bull / Bear Thesis
@@ -70,7 +70,7 @@ export function ThesisEditor({ symbol }: Props) {
             }
             rows={4}
             placeholder="What makes this a buy…"
-            className="w-full bg-background border border-[#1E2235] rounded px-3 py-2 text-xs font-sans text-primary placeholder-[#3A4060] focus:outline-none focus:border-teal/40 resize-none transition-colors"
+            className="w-full bg-background border border-border rounded px-3 py-2 text-xs font-sans text-primary placeholder-muted focus:outline-none focus:border-teal/40 resize-none transition-colors"
           />
         </div>
         <div>
@@ -84,7 +84,7 @@ export function ThesisEditor({ symbol }: Props) {
             }
             rows={4}
             placeholder="Key risks and red flags…"
-            className="w-full bg-background border border-[#1E2235] rounded px-3 py-2 text-xs font-sans text-primary placeholder-[#3A4060] focus:outline-none focus:border-danger/40 resize-none transition-colors"
+            className="w-full bg-background border border-border rounded px-3 py-2 text-xs font-sans text-primary placeholder-muted focus:outline-none focus:border-danger/40 resize-none transition-colors"
           />
         </div>
       </div>

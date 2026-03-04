@@ -30,7 +30,7 @@ export function CompanyHeader({ entry }: Props) {
   const isUp = (live?.change ?? 0) >= 0;
 
   return (
-    <div className="flex items-start justify-between border-b border-[#1E2235] pb-5 mb-5">
+    <div className="flex items-start justify-between border-b border-border pb-5 mb-5">
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="font-display text-4xl font-semibold text-primary tracking-tight">
@@ -72,7 +72,7 @@ export function CompanyHeader({ entry }: Props) {
           </p>
         </div>
       ) : (
-        <div className="w-32 h-12 animate-pulse bg-[#1E2235] rounded" />
+        <div className="w-32 h-12 animate-pulse bg-border rounded" />
       )}
     </div>
   );

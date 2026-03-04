@@ -26,7 +26,7 @@ export function EarningsListRow({ entry, earnings, selected, onClick }: Props) {
     <button
       onClick={onClick}
       className={clsx(
-        "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all border-b border-[#1E2235] last:border-b-0 relative",
+        "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all border-b border-border last:border-b-0 relative",
         selected ? "bg-amber/[0.07]" : "hover:bg-white/[0.03]"
       )}
     >
@@ -47,7 +47,7 @@ export function EarningsListRow({ entry, earnings, selected, onClick }: Props) {
             ↗
           </Link>
           {entry.rating && (
-            <span className="text-[9px] font-mono px-1 py-0.5 rounded border border-[#1E2235] text-muted leading-none">
+            <span className="text-[9px] font-mono px-1 py-0.5 rounded border border-border text-muted leading-none">
               {entry.rating}
             </span>
           )}
@@ -56,7 +56,7 @@ export function EarningsListRow({ entry, earnings, selected, onClick }: Props) {
       </div>
       <div className="text-right shrink-0">
         {earnings === undefined ? (
-          <div className="w-12 h-3 bg-[#1E2235] rounded animate-pulse" />
+          <div className="w-12 h-3 bg-border rounded animate-pulse" />
         ) : latest ? (
           <>
             <p className="text-xs font-mono text-primary">

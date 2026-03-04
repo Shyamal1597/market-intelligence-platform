@@ -104,7 +104,7 @@ export function EarningsChart({ stock, earnings, onRefresh }: Props) {
               "px-3 py-1 text-[11px] font-mono rounded transition-colors",
               metric === m
                 ? "bg-amber text-background font-medium"
-                : "bg-[#1E2235] text-muted hover:text-primary"
+                : "bg-border text-muted hover:text-primary"
             )}
           >
             {METRIC_LABELS[m]}
@@ -119,11 +119,11 @@ export function EarningsChart({ stock, earnings, onRefresh }: Props) {
             data={chartData}
             margin={{ top: 8, right: 48, bottom: 0, left: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#1E2235" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
               dataKey="quarter"
               tick={{ fill: "#7A8099", fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={{ stroke: "#1E2235" }}
+              axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}
             />
             <YAxis
@@ -145,8 +145,8 @@ export function EarningsChart({ stock, earnings, onRefresh }: Props) {
             />
             <Tooltip
               contentStyle={{
-                background: "#13151E",
-                border: "1px solid #1E2235",
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
                 fontFamily: "JetBrains Mono",
                 fontSize: 12,
                 borderRadius: 8,
@@ -158,7 +158,7 @@ export function EarningsChart({ stock, earnings, onRefresh }: Props) {
                 name === "yoy" ? "QoQ \u0394" : METRIC_LABELS[metric],
               ]}
             />
-            <ReferenceLine yAxisId="line" y={0} stroke="#2A2E45" strokeDasharray="4 4" />
+            <ReferenceLine yAxisId="line" y={0} stroke="var(--color-border-strong, #2A2E45)" strokeDasharray="4 4" />
             <Bar
               yAxisId="bar"
               dataKey="value"

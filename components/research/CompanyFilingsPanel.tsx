@@ -49,10 +49,10 @@ export function CompanyFilingsPanel({ symbol }: Props) {
   }, [symbol]);
 
   if (loading)
-    return <div className="animate-pulse h-32 bg-[#1E2235] rounded-xl" />;
+    return <div className="animate-pulse h-32 bg-border rounded-xl" />;
 
   return (
-    <div className="border border-[#1E2235] rounded-xl bg-surface p-4">
+    <div className="border border-border rounded-xl bg-surface p-4">
       <h3 className="text-xs font-mono text-muted tracking-widest mb-3 uppercase">
         Recent Filings
       </h3>

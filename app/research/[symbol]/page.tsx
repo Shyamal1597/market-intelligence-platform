@@ -50,10 +50,10 @@ export default function ResearchPage({ params }: Props) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-16 bg-surface rounded-xl border border-[#1E2235]" />
+          <div className="h-16 bg-surface rounded-xl border border-border" />
           <div className="flex gap-5">
-            <div className="flex-1 h-96 bg-surface rounded-xl border border-[#1E2235]" />
-            <div className="w-80 h-96 bg-surface rounded-xl border border-[#1E2235]" />
+            <div className="flex-1 h-96 bg-surface rounded-xl border border-border" />
+            <div className="w-80 h-96 bg-surface rounded-xl border border-border" />
           </div>
         </div>
       </div>
@@ -124,7 +124,7 @@ function CoverageDetails({ entry }: { entry: WatchlistEntry }) {
   }
 
   return (
-    <div className="border border-[#1E2235] rounded-xl bg-surface p-4">
+    <div className="border border-border rounded-xl bg-surface p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-mono text-muted tracking-widest uppercase">
           Coverage Details
@@ -155,7 +155,7 @@ function CoverageDetails({ entry }: { entry: WatchlistEntry }) {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, [key]: e.target.value }))
                 }
-                className="w-32 px-2 py-0.5 text-xs font-mono bg-background border border-[#1E2235] rounded text-primary focus:outline-none focus:border-amber/60 text-right"
+                className="w-32 px-2 py-0.5 text-xs font-mono bg-background border border-border rounded text-primary focus:outline-none focus:border-amber/60 text-right"
               />
             ) : (
               <span className="text-xs font-mono text-primary">

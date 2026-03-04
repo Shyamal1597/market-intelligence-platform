@@ -67,6 +67,57 @@ async function saveCache(data: EarningsData): Promise<void> {
   );
 }
 
+// ── Yahoo Crumb Auth ──────────────────────────────────────────────────────────
+
+interface YahooAuth {
+  cookie: string;
+  crumb: string;
+}
+
+let authCache: { value: YahooAuth; expiresAt: number } | null = null;
+const AUTH_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+async function getYahooAuth(): Promise<YahooAuth | null> {
+  if (authCache && Date.now() < authCache.expiresAt) {
+    return authCache.value;
+  }
+
+  try {
+    // Step 1: Hit fc.yahoo.com to obtain session cookies
+    const cookieRes = await fetch("https://fc.yahoo.com", {
+      headers: { "User-Agent": USER_AGENT },
+      redirect: "follow",
+    });
+    const rawSetCookie = cookieRes.headers.get("set-cookie") ?? "";
+    // Collapse multi-cookie header into a single Cookie: string
+    const cookieStr = rawSetCookie
+      .split(/,(?=[^;]+=[^;]+)/) // split on commas that start a new k=v pair
+      .map((c) => c.split(";")[0].trim())
+      .join("; ");
+    if (!cookieStr) return null;
+
+    // Step 2: Fetch crumb using those cookies
+    const crumbRes = await fetch(
+      "https://query2.finance.yahoo.com/v1/test/getcrumb",
+      {
+        headers: {
+          "User-Agent": USER_AGENT,
+          Cookie: cookieStr,
+        },
+      }
+    );
+    const crumb = (await crumbRes.text()).trim();
+    // Guard against receiving an HTML error page instead of the crumb
+    if (!crumb || crumb.startsWith("<") || crumb.length > 20) return null;
+
+    const value: YahooAuth = { cookie: cookieStr, crumb };
+    authCache = { value, expiresAt: Date.now() + AUTH_TTL_MS };
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 // ── Yahoo Finance Fetch ───────────────────────────────────────────────────────
 
 interface YahooStatement {
@@ -84,9 +135,13 @@ export async function fetchEarnings(symbol: string): Promise<EarningsData | null
   try {
     // Yahoo ticker: "RELIANCE" → "RELIANCE.NS"; already-qualified symbols pass through
     const yahooTicker = symbol.includes(".") ? symbol : `${symbol}.NS`;
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooTicker)}?modules=incomeStatementHistoryQuarterly`;
+    const auth = await getYahooAuth();
+    const crumbParam = auth ? `&crumb=${encodeURIComponent(auth.crumb)}` : "";
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooTicker)}?modules=incomeStatementHistoryQuarterly${crumbParam}`;
+    const fetchHeaders: Record<string, string> = { "User-Agent": USER_AGENT };
+    if (auth) fetchHeaders["Cookie"] = auth.cookie;
     const res = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT },
+      headers: fetchHeaders,
       next: { revalidate: 0 },
     });
     if (!res.ok) {
