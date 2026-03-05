@@ -13,6 +13,8 @@ import {
   Activity,
   BarChart2,
   BookMarked,
+  BookOpen,
+  Users,
   Search,
   Sparkles,
   Settings
@@ -29,6 +31,8 @@ const NAV_ITEMS = [
   { href: "/flows", label: "Flows", icon: Activity },
   { href: "/results", label: "Results", icon: BarChart2 },
   { href: "/links", label: "Quick Links", icon: BookMarked },
+  { href: "/reports", label: "Reports", icon: BookOpen },
+  { href: "/analyst", label: "Analyst", icon: Users },
 ];
 
 export function OmniCore() {
