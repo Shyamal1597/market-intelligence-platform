@@ -1,22 +1,27 @@
 /**
- * Standalone PDF indexer — run with: node scripts/index-reports.mjs
- * Each PDF is extracted in its own child process to avoid OOM crashes.
+ * Standalone PDF indexer → SQLite
+ * Run with: node scripts/index-reports.mjs
+ *
+ * Each PDF is extracted in its own child process (memory isolation).
+ * Results are written to data/reports.db (SQLite, FTS5-indexed for RAG search).
  */
 
+import { execFile } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
-import { execFile } from "child_process";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "..");
 const EXTRACTOR = path.join(__dirname, "extract-single.mjs");
 
 const REPORTS_BASE = "D:\\Sunidhi Intranet\\Research Reports";
-const DATA_DIR = path.join(PROJECT_ROOT, "data", "reports");
-const METADATA_PATH = path.join(DATA_DIR, "metadata.json");
-const CHUNKS_PATH = path.join(DATA_DIR, "chunks.json");
+const DB_PATH = path.join(PROJECT_ROOT, "data", "reports.db");
 
 const MONTH_MAP = {
   jan:"01",feb:"02",mar:"03",apr:"04",may:"05",jun:"06",
@@ -26,12 +31,13 @@ const REPORT_TYPE_CODES = ["IC","RU","CU"];
 const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 150;
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function parseFilename(filename, analystFolder) {
   const base = path.basename(filename, ".pdf");
   const parts = base.split("_");
 
-  let typeIdx = -1;
-  let reportType = "Other";
+  let typeIdx = -1, reportType = "Other";
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i].toUpperCase();
     if (REPORT_TYPE_CODES.includes(p)) { typeIdx = i; reportType = p; break; }
@@ -40,14 +46,12 @@ function parseFilename(filename, analystFolder) {
 
   const company = typeIdx > 0 ? parts.slice(0, typeIdx).join(" ") : parts[0];
   const datePart = parts[parts.length - 1].replace(/^Sunidhi/i, "");
-  let date = "";
+  let date = new Date().toISOString().slice(0, 10);
   const m = datePart.match(/([A-Za-z]{3})(\d{2})$/);
   if (m) {
     const mon = MONTH_MAP[m[1].toLowerCase()];
     if (mon) date = `${parseInt(m[2]) + 2000}-${mon}-01`;
   }
-  if (!date) date = new Date().toISOString().slice(0, 10);
-
   return { analyst: analystFolder, company, reportType, date };
 }
 
@@ -82,32 +86,82 @@ function extractPDF(filePath) {
     execFile(
       process.execPath,
       [EXTRACTOR, filePath],
-      { maxBuffer: 1024 * 1024, timeout: 60000 }, // stdout is just a tmp file path
+      { maxBuffer: 4 * 1024 * 1024, timeout: 90000 },
       async (err, stdout) => {
-        const tmpPath = stdout?.trim();
-        if (!tmpPath) { resolve({ ok: false, error: err?.message ?? "no output" }); return; }
+        // stdout has warnings + one temp-file path as the LAST line
+        const lines = (stdout ?? "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const tmpPath = lines[lines.length - 1];
+
+        if (!tmpPath || !tmpPath.endsWith(".json")) {
+          resolve({ ok: false, error: err?.message ?? "no temp file path in output" });
+          return;
+        }
         try {
           const json = await fs.readFile(tmpPath, "utf-8");
-          await fs.unlink(tmpPath).catch(() => {}); // clean up temp file
+          await fs.unlink(tmpPath).catch(() => {});
           resolve(JSON.parse(json));
         } catch (e) {
-          resolve({ ok: false, error: `temp file read failed: ${e.message}` });
+          resolve({ ok: false, error: `temp read failed: ${e.message}` });
         }
       }
     );
   });
 }
 
-async function main() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+// ── DB setup ─────────────────────────────────────────────────────────────────
 
-  const allMeta = [];
-  const allChunks = [];
+function initDb() {
+  await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
+  const db = new Database(DB_PATH);
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id TEXT PRIMARY KEY, analyst TEXT, company TEXT,
+      symbol TEXT DEFAULT '', reportType TEXT DEFAULT 'Other',
+      date TEXT, rating TEXT DEFAULT '', cmp REAL DEFAULT 0,
+      targetPrice REAL DEFAULT 0, filePath TEXT
+    );
+    CREATE TABLE IF NOT EXISTS chunks (
+      id TEXT PRIMARY KEY, reportId TEXT REFERENCES reports(id) ON DELETE CASCADE,
+      text TEXT, pageNum INTEGER DEFAULT 1
+    );
+    CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts
+      USING fts5(text, reportId UNINDEXED, content=chunks, content_rowid=rowid);
+    CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
+      INSERT INTO chunks_fts(rowid, text, reportId) VALUES (new.rowid, new.text, new.reportId);
+    END;
+    CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
+      INSERT INTO chunks_fts(chunks_fts, rowid, text, reportId) VALUES ('delete', old.rowid, old.text, old.reportId);
+    END;
+  `);
+  return db;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+  await fs.mkdir(path.join(PROJECT_ROOT, "data"), { recursive: true });
+  const db = initDb();
+
+  // Wipe existing data (full re-index)
+  db.exec("DELETE FROM chunks; DELETE FROM reports;");
+
+  const insertReport = db.prepare(`
+    INSERT OR REPLACE INTO reports (id, analyst, company, symbol, reportType, date, rating, cmp, targetPrice, filePath)
+    VALUES (@id, @analyst, @company, @symbol, @reportType, @date, @rating, @cmp, @targetPrice, @filePath)
+  `);
+  const insertChunk = db.prepare(`
+    INSERT INTO chunks (id, reportId, text, pageNum) VALUES (@id, @reportId, @text, @pageNum)
+  `);
+  const insertBatch = db.transaction((chunks) => {
+    for (const c of chunks) insertChunk.run(c);
+  });
+
   let indexed = 0, skipped = 0, total = 0;
 
   const analystFolders = await fs.readdir(REPORTS_BASE);
-
-  // Count total PDFs first
   for (const folder of analystFolders) {
     const fp = path.join(REPORTS_BASE, folder);
     if (!(await fs.stat(fp)).isDirectory()) continue;
@@ -139,20 +193,21 @@ async function main() {
       const id = crypto.randomUUID();
       const fn = parseFilename(pdf, folder);
       const meta = extractMeta(result.text);
+      const chunks = chunkText(result.text, id);
 
-      allMeta.push({ id, analyst: fn.analyst, company: fn.company, symbol: "", reportType: fn.reportType, date: fn.date, ...meta, filePath });
-      allChunks.push(...chunkText(result.text, id));
+      insertReport.run({ id, symbol: "", ...fn, ...meta, filePath });
+      insertBatch(chunks);
+
       indexed++;
-      console.log(`OK  (${result.text.length} chars, ${allChunks.length - (indexed > 1 ? allChunks.length : 0)} chunks)`);
+      console.log(`OK  (${result.text.length} chars → ${chunks.length} chunks)`);
     }
   }
 
-  await fs.writeFile(METADATA_PATH, JSON.stringify(allMeta, null, 2));
-  await fs.writeFile(CHUNKS_PATH, JSON.stringify(allChunks, null, 2));
-
+  db.close();
   console.log(`\n✓ Done: ${indexed} indexed, ${skipped} skipped`);
-  console.log(`  metadata.json → ${allMeta.length} reports`);
-  console.log(`  chunks.json   → ${allChunks.length} chunks`);
+  console.log(`  DB: ${DB_PATH}`);
+  const stat = await fs.stat(DB_PATH);
+  console.log(`  Size: ${(stat.size / 1024 / 1024).toFixed(1)} MB`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

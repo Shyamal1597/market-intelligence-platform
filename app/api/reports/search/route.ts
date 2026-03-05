@@ -1,48 +1,13 @@
 import { NextRequest } from "next/server";
-import { readChunks, readMetadata, type Chunk, type ReportMeta } from "@/lib/reportIndexer";
-import { buildIndex, search, type BM25Doc } from "@/lib/bm25";
+import { getDb, type ReportRow } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// Module-level cache — reload on server restart
-let chunkCache: Chunk[] | null = null;
-let metaCache: ReportMeta[] | null = null;
-let indexCache: ReturnType<typeof buildIndex> | null = null;
-
-async function getIndex(symbol?: string, analyst?: string) {
-  if (!chunkCache) chunkCache = await readChunks();
-  if (!metaCache) metaCache = await readMetadata();
-
-  let chunks = chunkCache;
-
-  // Scope BM25 to filtered set if filters provided
-  if (symbol || analyst) {
-    const validIds = new Set(
-      metaCache
-        .filter(
-          (m) =>
-            (!symbol || m.symbol === symbol.toUpperCase()) &&
-            (!analyst || m.analyst.toLowerCase().includes(analyst.toLowerCase()))
-        )
-        .map((m) => m.id)
-    );
-    chunks = chunks.filter((c) => validIds.has(c.reportId));
-  }
-
-  // Only cache unfiltered index
-  if (!symbol && !analyst) {
-    if (!indexCache) indexCache = buildIndex(chunks as unknown as BM25Doc[]);
-    return { index: indexCache, meta: metaCache };
-  }
-
-  return { index: buildIndex(chunks as unknown as BM25Doc[]), meta: metaCache };
-}
+const OLLAMA_URL = "http://localhost:11434/api/chat";
 
 function makeSSE(encoder: TextEncoder, payload: unknown): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
 }
-
-const OLLAMA_URL = "http://localhost:11434/api/chat";
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as {
@@ -53,51 +18,64 @@ export async function POST(req: NextRequest) {
   };
 
   const { query, symbol, analyst, topK = 6 } = body;
-
-  if (!query?.trim()) {
-    return new Response("query required", { status: 400 });
-  }
+  if (!query?.trim()) return new Response("query required", { status: 400 });
 
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const { index, meta } = await getIndex(symbol, analyst);
+        const db = await getDb();
 
-        // BM25 retrieval
-        const hits = search(index, query, topK) as (BM25Doc & { reportId: string; pageNum: number })[];
+        // ── SQLite FTS5 search (built-in BM25 ranking) ────────────────────────
+        let ftsQuery = `
+          SELECT c.text, c.reportId, c.pageNum
+          FROM chunks_fts
+          JOIN chunks c ON chunks_fts.rowid = c.rowid
+        `;
+        const params: (string | number)[] = [];
 
-        const sources = hits
-          .map((h) => meta.find((m) => m.id === h.reportId))
-          .filter(Boolean) as ReportMeta[];
+        if (symbol || analyst) {
+          ftsQuery += `
+            JOIN reports r ON c.reportId = r.id
+            WHERE chunks_fts MATCH ?
+          `;
+          params.push(query.replace(/['"*^]/g, " ").trim()); // sanitize FTS5 query
+          if (symbol)  { ftsQuery += " AND r.symbol = ?";            params.push(symbol.toUpperCase()); }
+          if (analyst) { ftsQuery += " AND LOWER(r.analyst) LIKE ?"; params.push(`%${analyst.toLowerCase()}%`); }
+        } else {
+          ftsQuery += " WHERE chunks_fts MATCH ?";
+          params.push(query.replace(/['"*^]/g, " ").trim());
+        }
 
-        const uniqueSources = sources.filter(
-          (s, i, arr) => arr.findIndex((x) => x.id === s.id) === i
-        );
+        ftsQuery += " ORDER BY rank LIMIT ?";
+        params.push(topK);
 
-        // Send sources first
-        controller.enqueue(makeSSE(encoder, { type: "sources", sources: uniqueSources }));
+        const hits = db.prepare(ftsQuery).all(...params) as { text: string; reportId: string; pageNum: number }[];
+
+        // Fetch source report metadata
+        const reportIds = [...new Set(hits.map(h => h.reportId))];
+        const sources: ReportRow[] = reportIds
+          .map(id => db.prepare("SELECT * FROM reports WHERE id = ?").get(id) as ReportRow)
+          .filter(Boolean);
+
+        controller.enqueue(makeSSE(encoder, { type: "sources", sources }));
 
         if (hits.length === 0) {
-          controller.enqueue(
-            makeSSE(encoder, { type: "delta", text: "No relevant reports found for this query." })
-          );
+          controller.enqueue(makeSSE(encoder, { type: "delta", text: "No relevant reports found for this query." }));
           controller.enqueue(makeSSE(encoder, { type: "done" }));
           controller.close();
           return;
         }
 
-        // Build context block
-        const contextBlock = hits
-          .map((h) => {
-            const m = meta.find((x) => x.id === h.reportId);
-            const header = m
-              ? `[${m.company} — ${m.analyst}, ${m.date}, ${m.rating}]`
-              : `[report ${h.reportId}]`;
-            return `${header}\n${h.text}`;
-          })
-          .join("\n---\n");
+        // ── Build context for Ollama ──────────────────────────────────────────
+        const contextBlock = hits.map(h => {
+          const src = sources.find(s => s.id === h.reportId);
+          const header = src
+            ? `[${src.company} — ${src.analyst}, ${src.date}, ${src.rating}]`
+            : `[report ${h.reportId}]`;
+          return `${header}\n${h.text}`;
+        }).join("\n---\n");
 
         const systemPrompt = `You are an equity research analyst assistant at Sunidhi Capital.
 Answer questions based ONLY on the research reports provided below.
@@ -108,7 +86,7 @@ Be concise. Cite the company and analyst name when referencing a report.
 ${contextBlock}
 </context>`;
 
-        // Stream from Ollama
+        // ── Stream from Ollama ────────────────────────────────────────────────
         const ollamaRes = await fetch(OLLAMA_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -123,12 +101,10 @@ ${contextBlock}
         });
 
         if (!ollamaRes.ok || !ollamaRes.body) {
-          controller.enqueue(
-            makeSSE(encoder, {
-              type: "delta",
-              text: `Ollama error: ${ollamaRes.status} — is llama3.1:8b running?`,
-            })
-          );
+          controller.enqueue(makeSSE(encoder, {
+            type: "delta",
+            text: `Ollama error: ${ollamaRes.status} — is llama3.1:8b running?`,
+          }));
           controller.enqueue(makeSSE(encoder, { type: "done" }));
           controller.close();
           return;
@@ -140,16 +116,13 @@ ${contextBlock}
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const lines = dec.decode(value).split("\n").filter(Boolean);
-          for (const line of lines) {
+          for (const line of dec.decode(value).split("\n").filter(Boolean)) {
             try {
-              const parsed = JSON.parse(line) as { message?: { content?: string }; done?: boolean };
+              const parsed = JSON.parse(line) as { message?: { content?: string } };
               if (parsed.message?.content) {
                 controller.enqueue(makeSSE(encoder, { type: "delta", text: parsed.message.content }));
               }
-            } catch {
-              // partial JSON line, skip
-            }
+            } catch { /* partial line */ }
           }
         }
 

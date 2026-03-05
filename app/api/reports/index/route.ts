@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { indexReports } from "@/lib/reportIndexer";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 min — 161 PDFs take time
 
-export async function POST() {
+// Indexing is done via: node scripts/index-reports.mjs
+// This endpoint just returns current DB stats.
+export async function GET() {
   try {
-    const result = await indexReports((msg) => console.log("[index]", msg));
-    return NextResponse.json({ ok: true, ...result });
+    const db = await getDb();
+    const reports = (db.prepare("SELECT COUNT(*) as n FROM reports").get() as { n: number }).n;
+    const chunks  = (db.prepare("SELECT COUNT(*) as n FROM chunks").get() as { n: number }).n;
+    return NextResponse.json({ reports, chunks });
   } catch (err) {
-    console.error("[index] fatal:", err);
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

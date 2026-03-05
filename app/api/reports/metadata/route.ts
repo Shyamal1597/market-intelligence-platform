@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readMetadata } from "@/lib/reportIndexer";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const analyst = searchParams.get("analyst")?.toLowerCase();
-  const symbol = searchParams.get("symbol")?.toUpperCase();
+  const symbol  = searchParams.get("symbol")?.toUpperCase();
 
-  let meta = await readMetadata();
+  const db = await getDb();
 
-  if (analyst) meta = meta.filter((m) => m.analyst.toLowerCase().includes(analyst));
-  if (symbol) meta = meta.filter((m) => m.symbol === symbol);
+  let query = "SELECT * FROM reports WHERE 1=1";
+  const params: (string | number)[] = [];
 
-  // Sort newest first
-  meta = meta.sort((a, b) => b.date.localeCompare(a.date));
+  if (analyst) { query += " AND LOWER(analyst) LIKE ?"; params.push(`%${analyst}%`); }
+  if (symbol)  { query += " AND symbol = ?"; params.push(symbol); }
+  query += " ORDER BY date DESC";
 
-  return NextResponse.json(meta);
+  const rows = db.prepare(query).all(...params);
+  return NextResponse.json(rows);
 }
 
 export async function PATCH(req: NextRequest) {
@@ -25,16 +27,14 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const body = await req.json() as Partial<{ symbol: string; rating: string; cmp: number; targetPrice: number }>;
-  const meta = await readMetadata();
-  const idx = meta.findIndex((m) => m.id === id);
-  if (idx === -1) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const allowed = ["symbol", "rating", "cmp", "targetPrice"] as const;
+  const sets = (Object.keys(body) as string[]).filter(k => (allowed as readonly string[]).includes(k));
+  if (sets.length === 0) return NextResponse.json({ error: "no valid fields" }, { status: 400 });
 
-  meta[idx] = { ...meta[idx], ...body };
+  const db = await getDb();
+  const sql = `UPDATE reports SET ${sets.map(k => `${k} = ?`).join(", ")} WHERE id = ?`;
+  db.prepare(sql).run(...sets.map(k => body[k as keyof typeof body] as string | number), id);
 
-  const { promises: fs } = await import("fs");
-  const path = await import("path");
-  const dataPath = path.join(process.cwd(), "data", "reports", "metadata.json");
-  await fs.writeFile(dataPath, JSON.stringify(meta, null, 2));
-
-  return NextResponse.json(meta[idx]);
+  const updated = db.prepare("SELECT * FROM reports WHERE id = ?").get(id);
+  return NextResponse.json(updated ?? { error: "not found" });
 }
