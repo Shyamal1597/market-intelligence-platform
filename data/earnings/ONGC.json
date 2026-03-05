@@ -1,0 +1,38 @@
+{
+  "symbol": "ONGC",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 170812,
+      "ebit": 0,
+      "netIncome": 6448,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 32003,
+      "ebit": 0,
+      "netIncome": 9804,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 33031,
+      "ebit": 0,
+      "netIncome": 10785,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 167423,
+      "ebit": 0,
+      "netIncome": 8372,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:57.192Z"
+}

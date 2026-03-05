@@ -1,0 +1,38 @@
+{
+  "symbol": "INFY",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 40925,
+      "ebit": 0,
+      "netIncome": 7033,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 42279,
+      "ebit": 0,
+      "netIncome": 6921,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 44490,
+      "ebit": 0,
+      "netIncome": 7364,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 45479,
+      "ebit": 0,
+      "netIncome": 6654,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:57.071Z"
+}

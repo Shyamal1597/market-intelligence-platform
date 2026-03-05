@@ -1,0 +1,38 @@
+{
+  "symbol": "ITC",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 18765,
+      "ebit": 0,
+      "netIncome": 19727,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 19750,
+      "ebit": 0,
+      "netIncome": 5244,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 19502,
+      "ebit": 0,
+      "netIncome": 5180,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 20047,
+      "ebit": 0,
+      "netIncome": 5089,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:57.426Z"
+}

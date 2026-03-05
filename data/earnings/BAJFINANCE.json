@@ -1,0 +1,38 @@
+{
+  "symbol": "BAJFINANCE",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 10894,
+      "ebit": 0,
+      "netIncome": 3940,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 12610,
+      "ebit": 0,
+      "netIncome": 4700,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 13170,
+      "ebit": 0,
+      "netIncome": 4875,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 12605,
+      "ebit": 0,
+      "netIncome": 3978,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:57.346Z"
+}

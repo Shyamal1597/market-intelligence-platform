@@ -1,0 +1,38 @@
+{
+  "symbol": "JSWSTEEL",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 32471,
+      "ebit": 0,
+      "netIncome": 1503,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 31613,
+      "ebit": 0,
+      "netIncome": 2184,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 32859,
+      "ebit": 0,
+      "netIncome": 1623,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 45991,
+      "ebit": 0,
+      "netIncome": 2139,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:58.093Z"
+}

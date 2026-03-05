@@ -1,15 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
-
-// pdfjs-dist (used by pdf-parse) references DOMMatrix which doesn't exist in Node.js.
-// Stub it before any pdf-parse require() call.
-if (typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix === "undefined") {
-  (globalThis as { DOMMatrix?: unknown }).DOMMatrix = class DOMMatrix {};
-}
-
-// pdf-parse is required lazily inside indexReports() to avoid DOMMatrix errors
-// during Next.js build-time module evaluation
+// unpdf handles Node.js/edge environments correctly — no DOMMatrix dependency
 
 // ── Types (re-exported from client-safe module) ───────────────────────────────
 export type { ReportMeta, Chunk } from "./reportTypes";
@@ -155,10 +147,9 @@ export async function indexReports(
 
       try {
         const buffer = await fs.readFile(filePath);
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require("pdf-parse");
-        const parsed = await pdfParse(buffer);
-        const text: string = parsed.text ?? "";
+        const { extractText } = await import("unpdf");
+        const { text: extractedPages } = await extractText(new Uint8Array(buffer), { mergePages: true });
+        const text: string = Array.isArray(extractedPages) ? extractedPages.join("\n") : (extractedPages ?? "");
 
         if (!text || text.length < 100) {
           skipped++;

@@ -1,0 +1,38 @@
+{
+  "symbol": "BAJAJ-AUTO",
+  "quarters": [
+    {
+      "quarterLabel": "Q4 FY25",
+      "endDate": "2025-03-31",
+      "totalRevenue": 12148,
+      "ebit": 0,
+      "netIncome": 2049,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q1 FY26",
+      "endDate": "2025-06-30",
+      "totalRevenue": 13133,
+      "ebit": 0,
+      "netIncome": 2096,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q2 FY26",
+      "endDate": "2025-09-30",
+      "totalRevenue": 14922,
+      "ebit": 0,
+      "netIncome": 2480,
+      "basicEps": null
+    },
+    {
+      "quarterLabel": "Q3 FY26",
+      "endDate": "2025-12-31",
+      "totalRevenue": 15220,
+      "ebit": 0,
+      "netIncome": 2503,
+      "basicEps": null
+    }
+  ],
+  "fetchedAt": "2026-03-04T09:57:57.993Z"
+}
