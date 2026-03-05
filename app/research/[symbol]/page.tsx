@@ -7,7 +7,7 @@ import { ShareholdingPanel } from "@/components/research/ShareholdingPanel";
 import { ThesisEditor } from "@/components/research/ThesisEditor";
 import { CompanyNewsPanel } from "@/components/research/CompanyNewsPanel";
 import { CompanyFilingsPanel } from "@/components/research/CompanyFilingsPanel";
-import { AnalystNotesPanel } from "@/components/research/AnalystNotesPanel";
+import { CompanyReportsPanel } from "@/components/research/CompanyReportsPanel";
 import type { WatchlistEntry } from "@/lib/watchlist";
 
 interface Props {
@@ -78,7 +78,7 @@ export default function ResearchPage({ params }: Props) {
           <QuarterlyResultsPanel entry={entry} />
           <CompanyNewsPanel companyName={entry.name} symbol={sym} />
           <CompanyFilingsPanel symbol={sym} />
-          <AnalystNotesPanel symbol={sym} />
+          <CompanyReportsPanel symbol={sym} />
         </div>
 
         {/* Right column */}
