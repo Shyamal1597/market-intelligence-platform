@@ -2,6 +2,12 @@ import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
 
+// pdfjs-dist (used by pdf-parse) references DOMMatrix which doesn't exist in Node.js.
+// Stub it before any pdf-parse require() call.
+if (typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix === "undefined") {
+  (globalThis as { DOMMatrix?: unknown }).DOMMatrix = class DOMMatrix {};
+}
+
 // pdf-parse is required lazily inside indexReports() to avoid DOMMatrix errors
 // during Next.js build-time module evaluation
 
