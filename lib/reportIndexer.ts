@@ -2,31 +2,12 @@ import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
 
-// pdf-parse types — import with require to avoid ESM issues in Next.js
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+// pdf-parse is required lazily inside indexReports() to avoid DOMMatrix errors
+// during Next.js build-time module evaluation
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export interface ReportMeta {
-  id: string;
-  analyst: string;
-  company: string;
-  symbol: string;
-  reportType: "IC" | "RU" | "CU" | "Technical" | "Other";
-  date: string;          // ISO: "2025-08-01"
-  rating: string;
-  cmp: number;
-  targetPrice: number;
-  filePath: string;      // absolute path
-}
-
-export interface Chunk {
-  id: string;
-  reportId: string;
-  text: string;
-  pageNum: number;
-}
+// ── Types (re-exported from client-safe module) ───────────────────────────────
+export type { ReportMeta, Chunk } from "./reportTypes";
+import type { ReportMeta, Chunk } from "./reportTypes";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -168,6 +149,8 @@ export async function indexReports(
 
       try {
         const buffer = await fs.readFile(filePath);
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require("pdf-parse");
         const parsed = await pdfParse(buffer);
         const text: string = parsed.text ?? "";
 
@@ -227,8 +210,5 @@ export async function readChunks(): Promise<Chunk[]> {
   }
 }
 
-// ── Path encoding (used by frontend to safely request PDFs) ──────────────────
-
-export function encodePdfPath(filePath: string): string {
-  return Buffer.from(filePath, "utf-8").toString("base64url");
-}
+// encodePdfPath lives in lib/reportTypes.ts (client-safe)
+export { encodePdfPath } from "./reportTypes";

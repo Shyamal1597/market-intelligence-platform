@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Send, Bot } from "lucide-react";
-import type { ReportMeta } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
 
 interface Message {
   role: "user" | "assistant";

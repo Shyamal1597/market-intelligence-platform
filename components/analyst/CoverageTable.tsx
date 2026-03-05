@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { ReportMeta } from "@/lib/reportIndexer";
-import { encodePdfPath } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
+import { encodePdfPath } from "@/lib/reportTypes";
 import { FileText, ChevronUp, ChevronDown } from "lucide-react";
 
 interface Props {

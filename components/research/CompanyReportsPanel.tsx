@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { FileText, ExternalLink } from "lucide-react";
-import type { ReportMeta } from "@/lib/reportIndexer";
-import { encodePdfPath } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
+import { encodePdfPath } from "@/lib/reportTypes";
 import Link from "next/link";
 
 interface Props {

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { FileText, RefreshCw } from "lucide-react";
-import type { ReportMeta } from "@/lib/reportIndexer";
-import { encodePdfPath } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
+import { encodePdfPath } from "@/lib/reportTypes";
 
 interface Props {
   onFilterChange: (symbol: string, analyst: string) => void;

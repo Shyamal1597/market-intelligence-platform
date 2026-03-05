@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReportMeta } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
 
 interface Props {
   analyst: string;
