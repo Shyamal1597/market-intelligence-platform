@@ -51,7 +51,7 @@ parser.on("pdfParser_dataReady", async (data) => {
   try {
     const text = (data.Pages ?? [])
       .flatMap((page) => page.Texts ?? [])
-      .map((t) => decodeURIComponent(t.R?.map((r) => r.T ?? "").join("") ?? ""))
+      .map((t) => { try { return decodeURIComponent(t.R?.map((r) => r.T ?? "").join("") ?? ""); } catch { return t.R?.map((r) => r.T ?? "").join("") ?? ""; } })
       .join(" ");
     await fs.writeFile(tmpFile, JSON.stringify({ ok: true, text }));
     process.stdout.write(tmpFile + "\n");
