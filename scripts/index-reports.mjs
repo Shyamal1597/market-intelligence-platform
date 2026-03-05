@@ -110,7 +110,7 @@ function extractPDF(filePath) {
 
 // ── DB setup ─────────────────────────────────────────────────────────────────
 
-function initDb() {
+async function initDb() {
   await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
@@ -143,7 +143,7 @@ function initDb() {
 
 async function main() {
   await fs.mkdir(path.join(PROJECT_ROOT, "data"), { recursive: true });
-  const db = initDb();
+  const db = await initDb();
 
   // Wipe existing data (full re-index)
   db.exec("DELETE FROM chunks; DELETE FROM reports;");
