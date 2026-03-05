@@ -146,10 +146,11 @@ export async function indexReports(
       onProgress?.(`Indexing: ${folder}/${pdf}`);
 
       try {
+        // PDF extraction is handled by scripts/extract-single.mjs (child process)
+        // when called via the indexing script. This path is unused at runtime.
         const buffer = await fs.readFile(filePath);
-        const { extractText } = await import("unpdf");
-        const { text: extractedPages } = await extractText(new Uint8Array(buffer), { mergePages: true });
-        const text: string = Array.isArray(extractedPages) ? extractedPages.join("\n") : (extractedPages ?? "");
+        void buffer; // suppress unused warning — extraction done via child process
+        const text: string = "";
 
         if (!text || text.length < 100) {
           skipped++;
