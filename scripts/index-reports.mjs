@@ -82,11 +82,17 @@ function extractPDF(filePath) {
     execFile(
       process.execPath,
       [EXTRACTOR, filePath],
-      { maxBuffer: 50 * 1024 * 1024, timeout: 60000 }, // 50MB buffer, 60s timeout
-      (err, stdout) => {
-        if (err && !stdout) { resolve({ ok: false, error: err.message }); return; }
-        try { resolve(JSON.parse(stdout)); }
-        catch { resolve({ ok: false, error: "bad JSON from extractor" }); }
+      { maxBuffer: 1024 * 1024, timeout: 60000 }, // stdout is just a tmp file path
+      async (err, stdout) => {
+        const tmpPath = stdout?.trim();
+        if (!tmpPath) { resolve({ ok: false, error: err?.message ?? "no output" }); return; }
+        try {
+          const json = await fs.readFile(tmpPath, "utf-8");
+          await fs.unlink(tmpPath).catch(() => {}); // clean up temp file
+          resolve(JSON.parse(json));
+        } catch (e) {
+          resolve({ ok: false, error: `temp file read failed: ${e.message}` });
+        }
       }
     );
   });
