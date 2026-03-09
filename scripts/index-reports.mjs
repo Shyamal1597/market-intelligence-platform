@@ -71,11 +71,12 @@ function extractMeta(text) {
 function chunkText(text, reportId) {
   const chunks = [];
   let start = 0, pageNum = 1;
+  const step = CHUNK_SIZE - CHUNK_OVERLAP; // always advance by this
   while (start < text.length) {
     const end = Math.min(start + CHUNK_SIZE, text.length);
     const slice = text.slice(start, end).trim();
     if (slice.length > 50) chunks.push({ id: crypto.randomUUID(), reportId, text: slice, pageNum });
-    start = end - CHUNK_OVERLAP;
+    start += step;
     pageNum++;
   }
   return chunks;
@@ -86,22 +87,14 @@ function extractPDF(filePath) {
     execFile(
       process.execPath,
       [EXTRACTOR, filePath],
-      { maxBuffer: 4 * 1024 * 1024, timeout: 90000 },
-      async (err, stdout) => {
-        // stdout has warnings + one temp-file path as the LAST line
-        const lines = (stdout ?? "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        const tmpPath = lines[lines.length - 1];
-
-        if (!tmpPath || !tmpPath.endsWith(".json")) {
-          resolve({ ok: false, error: err?.message ?? "no temp file path in output" });
-          return;
-        }
+      { maxBuffer: 32 * 1024 * 1024, timeout: 120000 },
+      (err, stdout) => {
+        // extractor writes exactly one JSON line to stdout
+        const line = (stdout ?? "").trim().split(/\r?\n/).pop() ?? "";
         try {
-          const json = await fs.readFile(tmpPath, "utf-8");
-          await fs.unlink(tmpPath).catch(() => {});
-          resolve(JSON.parse(json));
-        } catch (e) {
-          resolve({ ok: false, error: `temp read failed: ${e.message}` });
+          resolve(JSON.parse(line));
+        } catch {
+          resolve({ ok: false, error: err?.message ?? `bad output: ${line.slice(0, 120)}` });
         }
       }
     );
@@ -194,12 +187,11 @@ async function main() {
       const fn = parseFilename(pdf, folder);
       const meta = extractMeta(result.text);
       const chunks = chunkText(result.text, id);
-
       insertReport.run({ id, symbol: "", ...fn, ...meta, filePath });
       insertBatch(chunks);
 
       indexed++;
-      console.log(`OK  (${result.text.length} chars → ${chunks.length} chunks)`);
+      console.log(`OK  (${result.text.length} chars → ${chunks.length} chunks) [${result.method ?? "?"}]`);
     }
   }
 
