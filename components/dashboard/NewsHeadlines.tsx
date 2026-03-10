@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 interface NewsItem {
   id: string;
@@ -60,16 +61,51 @@ function getSourceAbbrev(source: string): string {
   return SOURCE_ABBREV[source] ?? source.substring(0, 4).toUpperCase();
 }
 
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
 export function NewsHeadlines() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const cancelledRef = useRef(false);
+
+  async function loadAndRefresh(showSpinner: boolean) {
+    if (cancelledRef.current) return;
+
+    // 1. Show currently stored news immediately (fast)
+    if (showSpinner) setLoading(true);
+    try {
+      const d = await fetch("/api/market-news?limit=12").then((r) => r.json());
+      if (!cancelledRef.current) setNews(d.news ?? []);
+    } catch { /* silent */ }
+    if (showSpinner && !cancelledRef.current) setLoading(false);
+
+    // 2. Pull fresh RSS data in background (slow — can take 10-30s)
+    if (!cancelledRef.current) setRefreshing(true);
+    try {
+      await fetch("/api/fetch-market-news");
+      if (!cancelledRef.current) {
+        // 3. Re-read with freshly fetched data
+        const d = await fetch("/api/market-news?limit=12").then((r) => r.json());
+        if (!cancelledRef.current) {
+          setNews(d.news ?? []);
+          setLastRefreshed(new Date());
+        }
+      }
+    } catch { /* silent — stale data still showing */ }
+    if (!cancelledRef.current) setRefreshing(false);
+  }
 
   useEffect(() => {
-    fetch("/api/market-news?limit=12")
-      .then((r) => r.json())
-      .then((d) => setNews(d.news ?? []))
-      .catch(() => { })
-      .finally(() => setLoading(false));
+    cancelledRef.current = false;
+    loadAndRefresh(true);
+    const interval = setInterval(() => loadAndRefresh(false), REFRESH_INTERVAL_MS);
+    return () => {
+      cancelledRef.current = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -83,6 +119,14 @@ export function NewsHeadlines() {
           Market Headlines
         </span>
         <div className="flex-1 h-px bg-border-strong" />
+        {refreshing && (
+          <RefreshCw className="w-3 h-3 text-muted animate-spin shrink-0" />
+        )}
+        {!loading && lastRefreshed && !refreshing && (
+          <span className="font-mono text-[10px] text-muted whitespace-nowrap">
+            updated {lastRefreshed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
         {!loading && (
           <span className="font-mono text-[10px] text-muted">
             {news.length} items

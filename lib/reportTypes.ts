@@ -6,7 +6,7 @@ export interface ReportMeta {
   analyst: string;
   company: string;
   symbol: string;
-  reportType: "IC" | "RU" | "CU" | "Technical" | "Other";
+  reportType: "IC" | "RU" | "CU" | "AU" | "Technical" | "Visit Note" | "Other";
   date: string;          // ISO: "2025-08-01"
   rating: string;
   cmp: number;
@@ -22,6 +22,7 @@ export interface Chunk {
 }
 
 // Path encoding for the PDF file-server API — pure, no Node.js deps
+// Uses standard btoa() + URL-safe substitution (works in browser and Node 18+)
 export function encodePdfPath(filePath: string): string {
-  return Buffer.from(filePath, "utf-8").toString("base64url");
+  return btoa(filePath).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }

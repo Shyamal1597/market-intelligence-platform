@@ -19,6 +19,60 @@ const SYMBOLS: Record<string, string> = {
   "INR=X": "USD/INR",
 };
 
+// ── Global market index symbols ───────────────────────────────────────────────
+export const GLOBAL_SYMBOLS: Record<string, { label: string; region: string }> = {
+  // Others
+  "^TNX":       { label: "US 10yr",         region: "Others" },
+  "^INBY10":    { label: "GIND 10YR",       region: "Others" },
+  "DX-Y.NYB":   { label: "$ Index",         region: "Others" },
+  "^VIX":       { label: "US VIX",          region: "Others" },
+  "^BDI":       { label: "Baltic Dry",      region: "Others" },
+  "CL=F":       { label: "Nymex (USD/bbl)", region: "Others" },
+  "BZ=F":       { label: "Brent (USD/bbl)", region: "Others" },
+  // US
+  "^DJI":       { label: "DJIA",            region: "US" },
+  "^IXIC":      { label: "NASDAQ COMP",     region: "US" },
+  "^GSPC":      { label: "S&P 500",         region: "US" },
+  // Latin America
+  "^BVSP":      { label: "BOVESPA",         region: "Latin America" },
+  "^MXX":       { label: "BOLSA",           region: "Latin America" },
+  // Europe
+  "^FTSE":      { label: "FTSE",            region: "Europe" },
+  "^FCHI":      { label: "CAC",             region: "Europe" },
+  "^GDAXI":     { label: "DAX",             region: "Europe" },
+  // Asia Pacific
+  "^AXJO":      { label: "AUSTRALIA",       region: "Asia Pacific" },
+  "^HSI":       { label: "HANGSENG",        region: "Asia Pacific" },
+  "^JKSE":      { label: "JAKARTA",         region: "Asia Pacific" },
+  "^KLSE":      { label: "MALAYSIA/KLSE",   region: "Asia Pacific" },
+  "^N225":      { label: "NIKKEI",          region: "Asia Pacific" },
+  "^KS11":      { label: "SEOUL",           region: "Asia Pacific" },
+  "000001.SS":  { label: "SHANGHAI",        region: "Asia Pacific" },
+  "^STI":       { label: "STRAITS",         region: "Asia Pacific" },
+  "^TWII":      { label: "TAIWAN",          region: "Asia Pacific" },
+  "^SET.BK":    { label: "THAILAND",        region: "Asia Pacific" },
+  // India
+  "^NSEI":      { label: "NIFTY",           region: "India" },
+  "^BSESN":     { label: "SENSEX",          region: "India" },
+};
+
+export const REGION_ORDER = ["Others", "US", "Latin America", "Europe", "Asia Pacific", "India"];
+
+export async function fetchGlobalQuotes(): Promise<(QuoteData & { region: string })[]> {
+  const results = await Promise.allSettled(
+    Object.keys(GLOBAL_SYMBOLS).map(fetchQuote)
+  );
+  return results
+    .filter((r): r is PromiseFulfilledResult<QuoteData | null> => r.status === "fulfilled")
+    .map((r) => r.value)
+    .filter((v): v is QuoteData => v !== null)
+    .map((q) => ({
+      ...q,
+      label: GLOBAL_SYMBOLS[q.symbol]?.label ?? q.label,
+      region: GLOBAL_SYMBOLS[q.symbol]?.region ?? "Other",
+    }));
+}
+
 const SECTOR_SYMBOLS: Record<string, string> = {
   "^CNXAUTO":    "Auto",
   "^CNXIT":      "IT",

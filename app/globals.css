@@ -13,8 +13,8 @@
   --color-teal: #00E5FF;
   --color-danger: #FF1E56;
   --color-primary: #F8FAFC;
-  --color-muted: #8B9BB4;
-  /* cooler, bluish grey for subspace */
+  --color-muted: #B0C4DC;
+  /* cooler, bluish grey for subspace — ~6:1 contrast on dark surface */
 
   /* ── Fonts ───────────────────────────────────────── */
   --font-display: 'Space Grotesk', system-ui, sans-serif;
@@ -108,6 +108,20 @@ html[data-theme="light"] body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(245, 130, 13, 0.35);
+}
+
+/* ── Readability: minimum font sizes ──────────────── */
+/* The terminal aesthetic uses many hardcoded tiny sizes.
+   These overrides enforce a readable floor without touching each component. */
+.text-\[9px\]  { font-size: 11px !important; }
+.text-\[10px\] { font-size: 12px !important; }
+.text-\[11px\] { font-size: 13px !important; }
+.text-\[8px\]  { font-size: 10.5px !important; }
+
+/* Body baseline — ensure DM Sans renders at a comfortable reading size */
+body {
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 /* ── Utilities ─────────────────────────────────────── */

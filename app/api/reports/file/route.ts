@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
 
   let filePath: string;
   try {
-    filePath = Buffer.from(encodedPath, "base64url").toString("utf-8");
+    // Decode URL-safe base64 (btoa + URL-safe substitution)
+    const b64 = encodedPath.replace(/-/g, "+").replace(/_/g, "/");
+    filePath = Buffer.from(b64, "base64").toString("utf-8");
   } catch {
     return NextResponse.json({ error: "invalid path encoding" }, { status: 400 });
   }

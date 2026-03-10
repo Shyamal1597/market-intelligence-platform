@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ReportMeta } from "@/lib/reportIndexer";
+import type { ReportMeta } from "@/lib/reportTypes";
 import { AnalystScorecard } from "@/components/analyst/AnalystScorecard";
 import { CoverageTable } from "@/components/analyst/CoverageTable";
 
@@ -22,7 +22,9 @@ export default function AnalystPage() {
         symbols.map(async (sym) => {
           try {
             const data = await fetch(`/api/quote/${sym}`).then((r) => r.json());
-            if (data?.regularMarketPrice) prices[sym] = data.regularMarketPrice;
+            // Use previousClose — stable closing price, not live tick
+            const px = data?.previousClose ?? data?.price;
+            if (px && px > 0) prices[sym] = px;
           } catch {
             // ignore
           }
@@ -57,8 +59,7 @@ export default function AnalystPage() {
       <div className="mb-5">
         <h1 className="text-2xl font-display text-primary">Analyst Performance</h1>
         <p className="text-xs font-mono text-muted mt-1">
-          {reports.length} reports across {analysts.length} analysts · live upside calculated from
-          current market price
+          {reports.length} reports across {analysts.length} analysts · upside calculated from prev close
         </p>
       </div>
 

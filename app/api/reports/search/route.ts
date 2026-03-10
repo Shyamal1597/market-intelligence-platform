@@ -5,6 +5,63 @@ export const dynamic = "force-dynamic";
 
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 
+// Strip common English stop words so FTS5 implicit AND doesn't kill recall
+const STOP_WORDS = new Set([
+  "a","an","the","is","are","was","were","be","been","being",
+  "have","has","had","do","does","did","will","would","should","could","may","might",
+  "what","which","who","whom","where","when","why","how",
+  "i","me","my","we","our","you","your","he","his","she","her","it","its","they","their",
+  "this","that","these","those","of","in","to","for","on","at","from","by","with",
+  "and","or","but","not","as","so","if","about","up","out","all","any","some","no",
+]);
+
+function toFtsQuery(raw: string): string {
+  const keywords = raw
+    .replace(/['"*^?()]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length >= 2 && !STOP_WORDS.has(w.toLowerCase()));
+  if (keywords.length === 0) return raw.replace(/['"*^?()]/g, " ").trim();
+  // OR mode + prefix wildcard (*) for partial matching (e.g. "manufactur*" → "manufacturing")
+  return keywords.map(k => `${k}*`).join(" OR ");
+}
+
+/**
+ * Scan query text for company name or NSE symbol mentions.
+ * Returns { symbol, company } if found, or null.
+ * Companies sorted longest-first so "HDFC Bank" matches before "HDFC".
+ */
+function detectCompanyInQuery(
+  query: string,
+  db: ReturnType<typeof import("better-sqlite3")>
+): { symbol: string; company: string } | null {
+  const rows = (db as any)
+    .prepare(
+      "SELECT DISTINCT company, symbol FROM reports WHERE symbol != '' ORDER BY LENGTH(company) DESC"
+    )
+    .all() as { company: string; symbol: string }[];
+
+  const queryLower = query.toLowerCase();
+
+  // 1. Check company names (longest first to avoid partial shadowing)
+  for (const row of rows) {
+    const cLower = row.company.toLowerCase();
+    if (cLower.length >= 3 && queryLower.includes(cLower)) {
+      return { symbol: row.symbol, company: row.company };
+    }
+  }
+
+  // 2. Check for all-caps NSE symbol token in query (e.g. "INFY", "PAYTM")
+  const symbolTokens = query.match(/\b[A-Z]{2,12}\b/g) ?? [];
+  const symbolSet = new Map(rows.map(r => [r.symbol, r.company]));
+  for (const tok of symbolTokens) {
+    if (symbolSet.has(tok)) {
+      return { symbol: tok, company: symbolSet.get(tok)! };
+    }
+  }
+
+  return null;
+}
+
 function makeSSE(encoder: TextEncoder, payload: unknown): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
 }
@@ -27,6 +84,13 @@ export async function POST(req: NextRequest) {
       try {
         const db = await getDb();
 
+        // Auto-detect company/symbol from query when not explicitly provided
+        let effectiveSymbol = symbol;
+        if (!effectiveSymbol && !analyst) {
+          const detected = detectCompanyInQuery(query, db as any);
+          if (detected) effectiveSymbol = detected.symbol;
+        }
+
         // ── SQLite FTS5 search (built-in BM25 ranking) ────────────────────────
         let ftsQuery = `
           SELECT c.text, c.reportId, c.pageNum
@@ -35,17 +99,17 @@ export async function POST(req: NextRequest) {
         `;
         const params: (string | number)[] = [];
 
-        if (symbol || analyst) {
+        if (effectiveSymbol || analyst) {
           ftsQuery += `
             JOIN reports r ON c.reportId = r.id
             WHERE chunks_fts MATCH ?
           `;
-          params.push(query.replace(/['"*^]/g, " ").trim()); // sanitize FTS5 query
-          if (symbol)  { ftsQuery += " AND r.symbol = ?";            params.push(symbol.toUpperCase()); }
-          if (analyst) { ftsQuery += " AND LOWER(r.analyst) LIKE ?"; params.push(`%${analyst.toLowerCase()}%`); }
+          params.push(toFtsQuery(query));
+          if (effectiveSymbol) { ftsQuery += " AND r.symbol = ?";            params.push(effectiveSymbol.toUpperCase()); }
+          if (analyst)         { ftsQuery += " AND LOWER(r.analyst) LIKE ?"; params.push(`%${analyst.toLowerCase()}%`); }
         } else {
           ftsQuery += " WHERE chunks_fts MATCH ?";
-          params.push(query.replace(/['"*^]/g, " ").trim());
+          params.push(toFtsQuery(query));
         }
 
         ftsQuery += " ORDER BY rank LIMIT ?";
