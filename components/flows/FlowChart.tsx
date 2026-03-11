@@ -104,17 +104,63 @@ export function FlowChart({ entries }: FlowChartProps) {  // nifty overlay remov
     }));
   }, [entries]);
 
-  const monthTicks = useMemo(() => {
+  // Adaptive ticks: daily labels when < 45 days of data, weekly when < 6 months, monthly otherwise
+  const { ticks: xTicks, tickFormat } = useMemo(() => {
+    if (chartData.length === 0) return { ticks: [], tickFormat: "month" as const };
+
+    const spanDays =
+      (new Date(chartData[chartData.length - 1].date).getTime() -
+        new Date(chartData[0].date).getTime()) /
+      86_400_000;
+
+    if (spanDays <= 45) {
+      // Show every data point
+      return {
+        ticks: chartData.map((d) => d.date),
+        tickFormat: "day" as const,
+      };
+    }
+
+    if (spanDays <= 180) {
+      // Weekly — first date of each ISO week
+      const seen = new Set<string>();
+      return {
+        ticks: chartData
+          .filter((d) => {
+            const dt = new Date(d.date);
+            const week = `${dt.getFullYear()}-W${Math.ceil(dt.getDate() / 7)}`;
+            if (seen.has(week)) return false;
+            seen.add(week);
+            return true;
+          })
+          .map((d) => d.date),
+        tickFormat: "week" as const,
+      };
+    }
+
+    // Monthly
     const seen = new Set<string>();
-    return chartData
-      .filter((d) => {
-        const month = d.date.slice(0, 7);
-        if (seen.has(month)) return false;
-        seen.add(month);
-        return true;
-      })
-      .map((d) => d.date);
+    return {
+      ticks: chartData
+        .filter((d) => {
+          const month = d.date.slice(0, 7);
+          if (seen.has(month)) return false;
+          seen.add(month);
+          return true;
+        })
+        .map((d) => d.date),
+      tickFormat: "month" as const,
+    };
   }, [chartData]);
+
+  function formatXTick(v: string): string {
+    const dt = new Date(v);
+    if (tickFormat === "day")
+      return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    if (tickFormat === "week")
+      return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    return dt.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+  }
 
   const showFii = entity === "fii" || entity === "both";
   const showDii = entity === "dii" || entity === "both";
@@ -172,10 +218,8 @@ export function FlowChart({ entries }: FlowChartProps) {  // nifty overlay remov
         <ComposedChart data={chartData} margin={{ top: 8, right: 60, left: 8, bottom: 0 }}>
           <XAxis
             dataKey="date"
-            ticks={monthTicks}
-            tickFormatter={(v: string) =>
-              new Date(v).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })
-            }
+            ticks={xTicks}
+            tickFormatter={formatXTick}
             tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
             axisLine={{ stroke: "#1E2235" }}
             tickLine={false}
