@@ -2,24 +2,24 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, RefreshCw, FileText } from "lucide-react";
+import { Search, FileText } from "lucide-react";
 import {
   LineChart,
   Line,
+  ComposedChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 import { clsx } from "clsx";
 import { CoverageRow } from "./CoverageRow";
-import { EarningsChart } from "./EarningsChart";
 import { FinancialsPanel } from "./FinancialsPanel";
 import type { CoverageEntry } from "@/app/api/coverage/route";
 import type { FinancialsResponse } from "@/app/api/coverage/[symbol]/financials/route";
-import type { EarningsData } from "@/lib/earnings";
-import type { WatchlistEntry } from "@/lib/watchlist";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -549,6 +549,312 @@ function FinancialsTab({
   );
 }
 
+// ── Earnings Tab (PDF-sourced) ────────────────────────────────────────────────
+
+const TICK = { fill: "#7A8099", fontSize: 11, fontFamily: "JetBrains Mono" } as const;
+const TT_STYLE = {
+  background: "#13151E",
+  border: "1px solid #1E2235",
+  fontFamily: "JetBrains Mono",
+  fontSize: 11,
+  borderRadius: 8,
+} as const;
+
+function fmtCr(v: number): string {
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+  return v.toLocaleString("en-IN");
+}
+
+function EarningsTab({
+  symbol,
+  financialsMap,
+  onLoad,
+}: {
+  symbol: string;
+  financialsMap: Record<string, FinancialsResponse | null | "loading">;
+  onLoad: (symbol: string) => void;
+}) {
+  useEffect(() => {
+    if (!(symbol in financialsMap)) {
+      onLoad(symbol);
+    }
+  }, [symbol, financialsMap, onLoad]);
+
+  const data = financialsMap[symbol];
+
+  if (!data || data === "loading") {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted text-xs font-mono animate-pulse">
+          {data === "loading" ? "Parsing earnings from PDF…" : "Preparing…"}
+        </p>
+      </div>
+    );
+  }
+
+  const quarters = data.quarterly;
+
+  if (quarters.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted text-xs font-mono">
+          No quarterly earnings data found in PDF
+        </p>
+      </div>
+    );
+  }
+
+  const chartData = quarters.map((q) => ({
+    quarter: q.quarter,
+    revenue: q.revenues,
+    ebitda: q.ebitda,
+    ebitdaPct: q.ebitdaPct,
+    pat: q.netProfit,
+    patPct:
+      q.revenues && q.netProfit
+        ? +((q.netProfit / q.revenues) * 100).toFixed(1)
+        : null,
+  }));
+
+  return (
+    <div className="h-full flex flex-col gap-3 overflow-y-auto pr-1">
+      {/* Two charts side by side */}
+      <div className="grid grid-cols-2 gap-3 shrink-0" style={{ height: 180 }}>
+        {/* Revenue + EBITDA% */}
+        <div>
+          <p className="text-[9px] font-mono text-muted uppercase tracking-wider mb-1.5">
+            Revenue{" "}
+            <span className="text-teal normal-case">+ EBITDA%</span>
+          </p>
+          <ResponsiveContainer width="100%" height={158}>
+            <ComposedChart
+              data={chartData}
+              margin={{ top: 4, right: 36, bottom: 0, left: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#1E2235"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="quarter"
+                tick={TICK}
+                axisLine={{ stroke: "#1E2235" }}
+                tickLine={false}
+              />
+              <YAxis
+                yAxisId="bar"
+                tick={TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={fmtCr}
+                width={36}
+              />
+              <YAxis
+                yAxisId="line"
+                orientation="right"
+                tick={TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                width={32}
+              />
+              <Tooltip
+                contentStyle={TT_STYLE}
+                formatter={(value: number | undefined, name: string | undefined) => [
+                  name === "ebitdaPct"
+                    ? `${value?.toFixed(1) ?? "—"}%`
+                    : `₹${value?.toLocaleString("en-IN") ?? "—"} Cr`,
+                  name === "ebitdaPct" ? "EBITDA%" : "Revenue",
+                ]}
+              />
+              <Bar
+                yAxisId="bar"
+                dataKey="revenue"
+                fill="#F5820D"
+                opacity={0.8}
+                radius={[3, 3, 0, 0]}
+              />
+              <Line
+                yAxisId="line"
+                type="monotone"
+                dataKey="ebitdaPct"
+                stroke="#00C9A7"
+                dot={{ fill: "#00C9A7", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                strokeWidth={2}
+                connectNulls={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* PAT + PAT margin */}
+        <div>
+          <p className="text-[9px] font-mono text-muted uppercase tracking-wider mb-1.5">
+            PAT{" "}
+            <span className="text-amber normal-case">+ PAT%</span>
+          </p>
+          <ResponsiveContainer width="100%" height={158}>
+            <ComposedChart
+              data={chartData}
+              margin={{ top: 4, right: 36, bottom: 0, left: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#1E2235"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="quarter"
+                tick={TICK}
+                axisLine={{ stroke: "#1E2235" }}
+                tickLine={false}
+              />
+              <YAxis
+                yAxisId="bar"
+                tick={TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={fmtCr}
+                width={36}
+              />
+              <YAxis
+                yAxisId="line"
+                orientation="right"
+                tick={TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                width={32}
+              />
+              <ReferenceLine
+                yAxisId="line"
+                y={0}
+                stroke="#2A2E45"
+                strokeDasharray="4 4"
+              />
+              <Tooltip
+                contentStyle={TT_STYLE}
+                formatter={(value: number | undefined, name: string | undefined) => [
+                  name === "patPct"
+                    ? `${value?.toFixed(1) ?? "—"}%`
+                    : `₹${value?.toLocaleString("en-IN") ?? "—"} Cr`,
+                  name === "patPct" ? "PAT%" : "PAT",
+                ]}
+              />
+              <Bar
+                yAxisId="bar"
+                dataKey="pat"
+                fill="#7A8099"
+                opacity={0.75}
+                radius={[3, 3, 0, 0]}
+              />
+              <Line
+                yAxisId="line"
+                type="monotone"
+                dataKey="patPct"
+                stroke="#F5820D"
+                dot={{ fill: "#F5820D", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                strokeWidth={2}
+                connectNulls={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Quarterly table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px] font-mono border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-2 py-1.5 text-muted font-normal">
+                Quarter
+              </th>
+              <th className="text-right px-2 py-1.5 text-muted font-normal">
+                Revenue
+              </th>
+              <th className="text-right px-2 py-1.5 text-muted font-normal">
+                EBITDA
+              </th>
+              <th className="text-right px-2 py-1.5 text-muted font-normal">
+                EBITDA%
+              </th>
+              <th className="text-right px-2 py-1.5 text-muted font-normal">
+                PAT
+              </th>
+              <th className="text-right px-2 py-1.5 text-muted font-normal">
+                PAT%
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {quarters.map((q) => {
+              const patPct =
+                q.revenues && q.netProfit
+                  ? (q.netProfit / q.revenues) * 100
+                  : null;
+              return (
+                <tr
+                  key={q.quarter}
+                  className="border-b border-border/40 hover:bg-white/[0.02] transition-colors"
+                >
+                  <td className="px-2 py-1.5 text-amber font-semibold">
+                    {q.quarter}
+                  </td>
+                  <td className="px-2 py-1.5 text-right text-primary">
+                    {q.revenues != null
+                      ? q.revenues.toLocaleString("en-IN")
+                      : "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-right text-primary">
+                    {q.ebitda != null
+                      ? q.ebitda.toLocaleString("en-IN")
+                      : "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-right text-teal">
+                    {q.ebitdaPct != null ? `${q.ebitdaPct.toFixed(1)}%` : "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-right text-primary">
+                    {q.netProfit != null
+                      ? q.netProfit.toLocaleString("en-IN")
+                      : "—"}
+                  </td>
+                  <td
+                    className="px-2 py-1.5 text-right"
+                    style={{
+                      color:
+                        patPct != null
+                          ? patPct >= 0
+                            ? "#00C9A7"
+                            : "#E84040"
+                          : "#7A8099",
+                    }}
+                  >
+                    {patPct != null ? `${patPct.toFixed(1)}%` : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-[10px] font-mono text-muted shrink-0">
+        Source: {data.reportType} ·{" "}
+        {new Date(data.date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}{" "}
+        · {quarters.length} quarters
+      </p>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function CoverageIntelligence() {
@@ -560,9 +866,6 @@ export function CoverageIntelligence() {
   const [search, setSearch] = useState("");
   const [filterAnalyst, setFilterAnalyst] = useState(ALL);
   const [filterRating, setFilterRating] = useState(ALL);
-  const [earningsMap, setEarningsMap] = useState<
-    Record<string, EarningsData | null | "loading">
-  >({});
   const [financialsMap, setFinancialsMap] = useState<
     Record<string, FinancialsResponse | null | "loading">
   >({});
@@ -581,21 +884,6 @@ export function CoverageIntelligence() {
         setLoading(false);
       });
   }, []);
-
-  // Lazy-load earnings when tab is active
-  useEffect(() => {
-    if (activeTab !== "earnings" || !selected) return;
-    if (selected in earningsMap) return;
-    setEarningsMap((prev) => ({ ...prev, [selected]: "loading" }));
-    fetch(`/api/earnings/${selected}`)
-      .then((r) => (r.ok ? (r.json() as Promise<EarningsData>) : null))
-      .then((data) =>
-        setEarningsMap((prev) => ({ ...prev, [selected]: data }))
-      )
-      .catch(() =>
-        setEarningsMap((prev) => ({ ...prev, [selected]: null }))
-      );
-  }, [activeTab, selected, earningsMap]);
 
   // Load financials (lazy — only when tab is active)
   const loadFinancials = useCallback((symbol: string) => {
@@ -645,22 +933,6 @@ export function CoverageIntelligence() {
   });
 
   const selectedEntry = coverage.find((c) => c.symbol === selected) ?? null;
-
-  // Build a WatchlistEntry-shaped object for EarningsChart
-  const stockForChart = selectedEntry
-    ? ({
-        symbol: selectedEntry.symbol,
-        name: selectedEntry.company,
-        sector: "",
-        rating: selectedEntry.latestRating,
-        targetPrice: selectedEntry.latestTarget || null,
-        analyst: selectedEntry.analysts[0] ?? "",
-        bseCode: "",
-        yahooTicker: `${selectedEntry.symbol}.NS`,
-        marketCapBucket: "largecap",
-        addedAt: selectedEntry.latestDate,
-      } as WatchlistEntry)
-    : null;
 
   // ── Loading skeleton ───────────────────────────────────────────────────────
 
@@ -854,57 +1126,11 @@ export function CoverageIntelligence() {
                 )}
 
                 {activeTab === "earnings" && (
-                  <>
-                    {earningsMap[selectedEntry.symbol] === "loading" ? (
-                      <div className="h-full flex items-center justify-center">
-                        <p className="text-muted font-mono text-sm animate-pulse">
-                          Loading {selectedEntry.symbol} earnings…
-                        </p>
-                      </div>
-                    ) : earningsMap[selectedEntry.symbol] &&
-                      earningsMap[selectedEntry.symbol] !== "loading" ? (
-                      stockForChart && (
-                        <EarningsChart
-                          stock={stockForChart}
-                          earnings={
-                            earningsMap[selectedEntry.symbol] as EarningsData
-                          }
-                          onRefresh={() => {
-                            setEarningsMap((prev) => {
-                              const n = { ...prev };
-                              delete n[selectedEntry.symbol];
-                              return n;
-                            });
-                            setActiveTab("earnings");
-                          }}
-                        />
-                      )
-                    ) : earningsMap[selectedEntry.symbol] === null ? (
-                      <div className="h-full flex items-center justify-center">
-                        <p className="text-muted font-mono text-sm">
-                          No Yahoo Finance earnings data for{" "}
-                          {selectedEntry.symbol}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <p className="text-muted font-mono text-sm mb-3">
-                            Earnings data not loaded yet
-                          </p>
-                          <button
-                            onClick={() =>
-                              setActiveTab("earnings")
-                            }
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-amber border border-amber/30 rounded hover:bg-amber/10 transition-colors mx-auto"
-                          >
-                            <RefreshCw className="w-3 h-3" />
-                            Load earnings
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <EarningsTab
+                    symbol={selectedEntry.symbol}
+                    financialsMap={financialsMap}
+                    onLoad={loadFinancials}
+                  />
                 )}
 
                 {activeTab === "financials" && (
