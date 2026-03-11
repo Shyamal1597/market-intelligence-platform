@@ -1,6 +1,6 @@
 "use client";
 
-import { EarningsSplitView } from "@/components/results/EarningsSplitView";
+import { CoverageIntelligence } from "@/components/results/CoverageIntelligence";
 
 export default function ResultsPage() {
   return (
@@ -10,10 +10,10 @@ export default function ResultsPage() {
           Earnings Intelligence
         </h1>
         <p className="text-muted text-sm font-sans mt-1">
-          Coverage universe · quarterly P&amp;L · YoY analysis
+          Sunidhi coverage universe · report history · target price walk · quarterly P&amp;L
         </p>
       </div>
-      <EarningsSplitView />
+      <CoverageIntelligence />
     </div>
   );
 }
