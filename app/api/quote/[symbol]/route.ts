@@ -5,13 +5,26 @@ export const dynamic = "force-dynamic";
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+/**
+ * Maps common shorthand / legacy NSE codes used internally in report metadata
+ * to their correct Yahoo Finance ticker roots (without the .NS suffix).
+ *
+ * Add entries here whenever an analyst enters a non-standard symbol in a report.
+ */
+const SYMBOL_ALIASES: Record<string, string> = {
+  // Kirloskar Brothers — correct NSE ticker is KIRLOSBROS, not KBL
+  KBL: "KIRLOSBROS",
+};
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
     const { symbol } = await params;
-    const ticker = symbol.includes(".") ? symbol : `${symbol}.NS`;
+    // Resolve any known alias first, then append .NS for plain NSE codes
+    const resolved = SYMBOL_ALIASES[symbol.toUpperCase()] ?? symbol;
+    const ticker = resolved.includes(".") ? resolved : `${resolved}.NS`;
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=5m&range=1d`;
     const res = await fetch(url, {
       headers: { "User-Agent": USER_AGENT },
