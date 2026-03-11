@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { FlowSnapshotCard } from "@/components/flows/FlowSnapshotCard";
 import { FlowChart } from "@/components/flows/FlowChart";
 import { FlowSummaryStrip } from "@/components/flows/FlowSummaryStrip";
-import type { FiiDiiEntry, FlowsSnapshot, NiftyDayClose } from "@/lib/nse-flows";
+import type { FiiDiiEntry, FlowsSnapshot } from "@/lib/nse-flows";
 
 interface FlowsData {
   entries: FiiDiiEntry[];
   snapshot: FlowsSnapshot | null;
-  nifty: NiftyDayClose[];
+  nifty: unknown[];
   fetchedAt: string;
 }
 
@@ -68,8 +68,8 @@ export default function FlowsPage() {
 
       {loading ? (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(2)].map((_, i) => (
               <div
                 key={i}
                 className="animate-pulse h-32 bg-surface rounded-xl border border-[#1E2235]"
@@ -81,8 +81,8 @@ export default function FlowsPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Row 1: Snapshot cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Row 1: Equity snapshot cards only — debt data unavailable */}
+          <div className="grid grid-cols-2 gap-3">
             <FlowSnapshotCard
               label="FII Equity"
               buy={snap?.fiiEquityBuy ?? 0}
@@ -95,24 +95,12 @@ export default function FlowsPage() {
               sell={snap?.diiEquitySell ?? 0}
               net={snap?.diiEquityNet ?? 0}
             />
-            <FlowSnapshotCard
-              label="FII Debt"
-              buy={snap?.fiiDebtBuy ?? 0}
-              sell={snap?.fiiDebtSell ?? 0}
-              net={snap?.fiiDebtNet ?? 0}
-            />
-            <FlowSnapshotCard
-              label="DII Debt"
-              buy={snap?.diiDebtBuy ?? 0}
-              sell={snap?.diiDebtSell ?? 0}
-              net={snap?.diiDebtNet ?? 0}
-            />
           </div>
 
           {/* Row 2: Chart */}
           {data && data.entries.length > 0 ? (
             <div className="border border-[#1E2235] rounded-xl bg-surface p-5">
-              <FlowChart entries={data.entries} nifty={data.nifty} />
+              <FlowChart entries={data.entries} />
             </div>
           ) : (
             <div className="border border-[#1E2235] rounded-xl bg-surface p-8 text-center text-muted font-mono text-sm">

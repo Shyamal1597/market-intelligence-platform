@@ -11,15 +11,14 @@ import {
   ResponsiveContainer,
   Cell,
   ReferenceLine,
+  Label,
 } from "recharts";
-import type { FiiDiiEntry, NiftyDayClose } from "@/lib/nse-flows";
+import type { FiiDiiEntry } from "@/lib/nse-flows";
 
-type Segment = "equity" | "debt";
 type Entity = "fii" | "dii" | "both";
 
 interface FlowChartProps {
   entries: FiiDiiEntry[];
-  nifty: NiftyDayClose[];
 }
 
 function ToggleBtn({
@@ -61,57 +60,49 @@ function CustomTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
+
+  // Format date nicely
+  const dateStr = label
+    ? new Date(label).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : label;
+
   return (
-    <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-3 text-xs font-mono shadow-xl">
-      <p className="text-muted mb-2">{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="leading-5">
-          {p.name}:{" "}
-          {p.value !== null && p.value !== undefined
-            ? `₹${Math.round(p.value).toLocaleString("en-IN")} Cr`
-            : "—"}
-        </p>
-      ))}
+    <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-3 text-xs font-mono shadow-xl min-w-[180px]">
+      <p className="text-primary mb-2 font-semibold">{dateStr}</p>
+      {payload.map((p) =>
+        p.value !== null && p.value !== undefined ? (
+          <div key={p.name} className="flex justify-between gap-4 leading-5">
+            <span style={{ color: p.color }}>{p.name}</span>
+            <span style={{ color: p.color }}>
+              {p.value >= 0 ? "+" : ""}₹{Math.round(p.value).toLocaleString("en-IN")} Cr
+            </span>
+          </div>
+        ) : null
+      )}
     </div>
   );
 }
 
-export function FlowChart({ entries, nifty }: FlowChartProps) {
-  const [segment, setSegment] = useState<Segment>("equity");
+function crLabel(v: number): string {
+  if (Math.abs(v) >= 10000) return `${(v / 1000).toFixed(0)}k`;
+  if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
+  return String(Math.round(v));
+}
+
+export function FlowChart({ entries }: FlowChartProps) {  // nifty overlay removed — scaled overlay was misleading
   const [entity, setEntity] = useState<Entity>("fii");
 
-  const niftyNormalised = useMemo(() => {
-    if (!nifty.length || !entries.length) return new Map<string, number>();
-    const maxNet = Math.max(...entries.map((e) => Math.abs(e.fiiEquityNet)), 1);
-    const maxNifty = Math.max(...nifty.map((n) => n.close), 1);
-    const scale = maxNet / maxNifty;
-    const m = new Map<string, number>();
-    nifty.forEach((n) => m.set(n.date, n.close * scale));
-    return m;
-  }, [entries, nifty]);
-
   const chartData = useMemo(() => {
-    return entries.map((e) => {
-      const fiiNet = segment === "equity" ? e.fiiEquityNet : e.fiiDebtNet;
-      const diiNet = segment === "equity" ? e.diiEquityNet : e.diiDebtNet;
-      const cumulFii = segment === "equity" ? e.cumulativeFiiEquityNet : null;
-      const cumulDii = segment === "equity" ? e.cumulativeDiiEquityNet : null;
-      const rollingFii = segment === "equity" ? e.rollingAvg20FiiEquity : null;
-      const rollingDii = segment === "equity" ? e.rollingAvg20DiiEquity : null;
-      const niftyVal = entity !== "both" ? (niftyNormalised.get(e.date) ?? null) : null;
-
-      return {
-        date: e.date,
-        fiiNet,
-        diiNet,
-        cumulFii: entity === "fii" || entity === "both" ? cumulFii : null,
-        cumulDii: entity === "dii" || entity === "both" ? cumulDii : null,
-        rollingFii: entity === "fii" || entity === "both" ? rollingFii : null,
-        rollingDii: entity === "dii" || entity === "both" ? rollingDii : null,
-        nifty: niftyVal,
-      };
-    });
-  }, [entries, segment, entity, niftyNormalised]);
+    return entries.map((e) => ({
+      date: e.date,
+      fiiNet:    e.fiiEquityNet,
+      diiNet:    e.diiEquityNet,
+      cumulFii:  e.cumulativeFiiEquityNet  ?? null,
+      cumulDii:  e.cumulativeDiiEquityNet  ?? null,
+      rollingFii: e.rollingAvg20FiiEquity  ?? null,
+      rollingDii: e.rollingAvg20DiiEquity  ?? null,
+    }));
+  }, [entries]);
 
   const monthTicks = useMemo(() => {
     const seen = new Set<string>();
@@ -125,116 +116,119 @@ export function FlowChart({ entries, nifty }: FlowChartProps) {
       .map((d) => d.date);
   }, [chartData]);
 
+  const showFii = entity === "fii" || entity === "both";
+  const showDii = entity === "dii" || entity === "both";
+  const showLines = entity !== "both";
+
   return (
     <div>
-      {/* Toggle controls */}
-      <div className="flex items-center gap-4 mb-5 flex-wrap">
-        <div className="flex gap-1.5">
-          <ToggleBtn
-            label="EQUITY"
-            active={segment === "equity"}
-            onClick={() => setSegment("equity")}
-          />
-          <ToggleBtn
-            label="DEBT"
-            active={segment === "debt"}
-            onClick={() => setSegment("debt")}
-          />
+      {/* Controls */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <p className="text-xs font-mono text-muted uppercase tracking-widest mb-1">
+            Equity Flows · Daily net + {showLines ? "cumulative & 20D avg" : "FII vs DII"}
+          </p>
         </div>
-        <div className="w-px h-4 bg-[#1E2235]" />
         <div className="flex gap-1.5">
           <ToggleBtn label="FII" active={entity === "fii"} onClick={() => setEntity("fii")} />
           <ToggleBtn label="DII" active={entity === "dii"} onClick={() => setEntity("dii")} />
-          <ToggleBtn
-            label="FII vs DII"
-            active={entity === "both"}
-            onClick={() => setEntity("both")}
-          />
+          <ToggleBtn label="FII vs DII" active={entity === "both"} onClick={() => setEntity("both")} />
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mb-3 flex-wrap">
+      <div className="flex items-center gap-5 mb-4 flex-wrap">
+        {showFii && (
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+            <span className="w-3 h-2 rounded-sm bg-teal/80 inline-block" />
+            {entity === "both" ? "FII" : ""} Daily net (+)
+          </span>
+        )}
         <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-          <span className="w-3 h-2 rounded-sm bg-teal/70 inline-block" />
-          Daily net (positive)
+          <span className="w-3 h-2 rounded-sm bg-danger/80 inline-block" />
+          Daily net (−)
         </span>
-        <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-          <span className="w-3 h-2 rounded-sm bg-danger/70 inline-block" />
-          Daily net (negative)
-        </span>
-        {entity !== "both" && (
+        {showDii && entity === "both" && (
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+            <span className="w-3 h-2 rounded-sm bg-teal/40 inline-block" />
+            DII Daily net (+)
+          </span>
+        )}
+        {showLines && (
           <>
             <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-              <span className="w-4 h-px bg-amber inline-block" style={{ display: "inline-block", height: 2 }} />
-              Cumulative net
+              <span className="inline-block w-5" style={{ height: 2, background: "#F5820D" }} />
+              Cumulative (right axis)
             </span>
             <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-              <span
-                className="w-4 inline-block"
-                style={{ height: 1.5, background: "rgba(240,237,232,0.5)", display: "inline-block" }}
-              />
-              20D avg
-            </span>
-            <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-              <span
-                className="w-4 inline-block"
-                style={{ height: 1.5, background: "rgba(139,92,246,0.45)", display: "inline-block" }}
-              />
-              Nifty (scaled)
+              <span className="inline-block w-5" style={{ height: 1.5, background: "rgba(240,237,232,0.5)", borderTop: "1.5px dashed rgba(240,237,232,0.5)" }} />
+              20D moving avg
             </span>
           </>
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={360}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 52, left: 8, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={380}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 60, left: 8, bottom: 0 }}>
           <XAxis
             dataKey="date"
             ticks={monthTicks}
             tickFormatter={(v: string) =>
-              new Date(v).toLocaleDateString("en-IN", { month: "short" })
+              new Date(v).toLocaleDateString("en-IN", { month: "short", year: "2-digit" })
             }
             tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
             axisLine={{ stroke: "#1E2235" }}
             tickLine={false}
           />
-          {/* Left Y: daily bars + rolling avg */}
+
+          {/* Left Y: daily bars + 20D avg */}
           <YAxis
             yAxisId="left"
-            tickFormatter={(v: number) =>
-              Math.abs(v) >= 1000
-                ? `${(v / 1000).toFixed(0)}k`
-                : String(Math.round(v))
-            }
+            tickFormatter={crLabel}
             tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
             axisLine={false}
             tickLine={false}
-            width={40}
-          />
-          {/* Right Y: cumulative */}
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            tickFormatter={(v: number) =>
-              Math.abs(v) >= 1000
-                ? `${(v / 1000).toFixed(0)}k`
-                : String(Math.round(v))
-            }
-            tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
-            axisLine={false}
-            tickLine={false}
-            width={40}
-          />
+            width={48}
+          >
+            <Label
+              value="₹ Cr (daily)"
+              angle={-90}
+              position="insideLeft"
+              offset={14}
+              style={{ fontSize: 9, fill: "#4B5563", fontFamily: "JetBrains Mono, monospace" }}
+            />
+          </YAxis>
+
+          {/* Right Y: cumulative — only rendered when single entity selected */}
+          {showLines && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tickFormatter={crLabel}
+              tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#F5820D" }}
+              axisLine={false}
+              tickLine={false}
+              width={52}
+            >
+              <Label
+                value="Cumulative ₹ Cr"
+                angle={90}
+                position="insideRight"
+                offset={16}
+                style={{ fontSize: 9, fill: "#F5820D", fontFamily: "JetBrains Mono, monospace" }}
+              />
+            </YAxis>
+          )}
+
           <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine yAxisId="left" y={0} stroke="#1E2235" strokeWidth={1} />
+          <ReferenceLine yAxisId="left" y={0} stroke="#2A2F47" strokeWidth={1} />
 
           {/* FII daily bars */}
-          {(entity === "fii" || entity === "both") && (
+          {showFii && (
             <Bar
               yAxisId="left"
               dataKey="fiiNet"
-              name="FII Daily Net"
+              name={entity === "both" ? "FII Daily" : "Daily Net"}
               isAnimationActive={false}
               maxBarSize={entity === "both" ? 5 : 8}
             >
@@ -242,37 +236,37 @@ export function FlowChart({ entries, nifty }: FlowChartProps) {
                 <Cell
                   key={i}
                   fill={(d.fiiNet ?? 0) >= 0 ? "#00C9A7" : "#E84040"}
-                  opacity={entity === "both" ? 0.8 : 1}
+                  opacity={entity === "both" ? 0.9 : 1}
                 />
               ))}
             </Bar>
           )}
 
-          {/* DII daily bars */}
-          {(entity === "dii" || entity === "both") && (
+          {/* DII daily bars (only in both mode) */}
+          {showDii && entity === "both" && (
             <Bar
               yAxisId="left"
               dataKey="diiNet"
-              name="DII Daily Net"
+              name="DII Daily"
               isAnimationActive={false}
-              maxBarSize={entity === "both" ? 5 : 8}
+              maxBarSize={5}
             >
               {chartData.map((d, i) => (
                 <Cell
                   key={i}
                   fill={(d.diiNet ?? 0) >= 0 ? "#00C9A7" : "#E84040"}
-                  opacity={entity === "both" ? 0.45 : 1}
+                  opacity={0.45}
                 />
               ))}
             </Bar>
           )}
 
-          {/* Cumulative FII */}
-          {entity !== "both" && (
+          {/* Cumulative line — right axis */}
+          {showLines && (
             <Line
               yAxisId="right"
               dataKey={entity === "fii" ? "cumulFii" : "cumulDii"}
-              name="Cumulative Net"
+              name="Cumulative"
               stroke="#F5820D"
               strokeWidth={2}
               dot={false}
@@ -281,32 +275,18 @@ export function FlowChart({ entries, nifty }: FlowChartProps) {
             />
           )}
 
-          {/* 20-day rolling average */}
-          {entity !== "both" && (
+          {/* 20-day rolling average — left axis */}
+          {showLines && (
             <Line
               yAxisId="left"
               dataKey={entity === "fii" ? "rollingFii" : "rollingDii"}
               name="20D Avg"
-              stroke="rgba(240,237,232,0.5)"
+              stroke="rgba(240,237,232,0.55)"
               strokeWidth={1.5}
               dot={false}
               isAnimationActive={false}
               connectNulls
               strokeDasharray="4 2"
-            />
-          )}
-
-          {/* Nifty normalised overlay */}
-          {entity !== "both" && (
-            <Line
-              yAxisId="left"
-              dataKey="nifty"
-              name="Nifty (scaled)"
-              stroke="rgba(139,92,246,0.45)"
-              strokeWidth={1.5}
-              dot={false}
-              isAnimationActive={false}
-              connectNulls
             />
           )}
         </ComposedChart>
