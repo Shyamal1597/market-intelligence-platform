@@ -15,8 +15,9 @@ import {
 import { clsx } from "clsx";
 import { CoverageRow } from "./CoverageRow";
 import { EarningsChart } from "./EarningsChart";
+import { FinancialsPanel } from "./FinancialsPanel";
 import type { CoverageEntry } from "@/app/api/coverage/route";
-import type { InsightsData } from "@/app/api/coverage/[symbol]/route";
+import type { FinancialsResponse } from "@/app/api/coverage/[symbol]/financials/route";
 import type { EarningsData } from "@/lib/earnings";
 import type { WatchlistEntry } from "@/lib/watchlist";
 
@@ -24,7 +25,7 @@ import type { WatchlistEntry } from "@/lib/watchlist";
 
 const ALL = "ALL";
 
-type Tab = "overview" | "reports" | "earnings" | "insights";
+type Tab = "overview" | "reports" | "earnings" | "financials";
 
 const REPORT_TYPE_LABEL: Record<string, string> = {
   IC: "Initiation of Coverage",
@@ -494,82 +495,57 @@ function ReportsTab({ entry }: { entry: CoverageEntry }) {
   );
 }
 
-// ── Insights Tab ──────────────────────────────────────────────────────────────
+// ── Financials Tab ────────────────────────────────────────────────────────────
 
-function InsightsTab({
+function FinancialsTab({
   symbol,
-  insightsMap,
+  financialsMap,
   onLoad,
 }: {
   symbol: string;
-  insightsMap: Record<string, InsightsData | null | "loading">;
+  financialsMap: Record<string, FinancialsResponse | null | "loading">;
   onLoad: (symbol: string) => void;
 }) {
   useEffect(() => {
-    if (!(symbol in insightsMap)) {
+    if (!(symbol in financialsMap)) {
       onLoad(symbol);
     }
-  }, [symbol, insightsMap, onLoad]);
+  }, [symbol, financialsMap, onLoad]);
 
-  const data = insightsMap[symbol];
+  const data = financialsMap[symbol];
 
   if (!data || data === "loading") {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-muted text-xs font-mono animate-pulse">
-          {data === "loading" ? "Loading PDF insights…" : "Preparing…"}
+          {data === "loading" ? "Parsing financials from PDF…" : "Preparing…"}
         </p>
       </div>
     );
   }
 
-  if (!data.report) {
+  const isEmpty =
+    data.annual.length === 0 &&
+    data.quarterly.length === 0 &&
+    !data.ratios;
+
+  if (isEmpty) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-muted text-xs font-mono">No PDF data available</p>
+        <p className="text-muted text-xs font-mono">
+          No structured financial tables found in PDF
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto space-y-3 pr-1">
-      {/* Report header */}
-      <div className="border border-amber/20 bg-amber/[0.04] rounded-xl p-3">
-        <div className="flex items-center gap-2 mb-1">
-          <span
-            className={clsx(
-              "text-[9px] font-mono px-1.5 py-0.5 rounded border",
-              REPORT_TYPE_COLOR[data.report.reportType] ??
-                "text-muted border-border"
-            )}
-          >
-            {data.report.reportType}
-          </span>
-          <span className="text-[9px] font-mono text-muted">
-            {fmtDate(data.report.date)} · {data.report.analyst}
-          </span>
-        </div>
-        <p className="text-xs font-mono text-primary">{data.report.company}</p>
-        <p className="text-[9px] font-mono text-muted mt-0.5">
-          Showing text extracted from PDF · {data.chunks.length} segments
-        </p>
-      </div>
-
-      {/* Text chunks */}
-      {data.chunks.map((chunk, i) => (
-        <div
-          key={i}
-          className="border border-border rounded-lg p-3 bg-[#0C0E14]"
-        >
-          <p className="text-[9px] font-mono text-muted/50 mb-1.5">
-            segment {i + 1}
-          </p>
-          <pre className="text-[11px] font-mono text-primary/80 whitespace-pre-wrap leading-relaxed break-words">
-            {chunk.text}
-          </pre>
-        </div>
-      ))}
-    </div>
+    <FinancialsPanel
+      snapshot={data}
+      reportType={data.reportType}
+      date={data.date}
+      analyst={data.analyst}
+    />
   );
 }
 
@@ -587,8 +563,8 @@ export function CoverageIntelligence() {
   const [earningsMap, setEarningsMap] = useState<
     Record<string, EarningsData | null | "loading">
   >({});
-  const [insightsMap, setInsightsMap] = useState<
-    Record<string, InsightsData | null | "loading">
+  const [financialsMap, setFinancialsMap] = useState<
+    Record<string, FinancialsResponse | null | "loading">
   >({});
 
   // Load coverage universe
@@ -621,16 +597,16 @@ export function CoverageIntelligence() {
       );
   }, [activeTab, selected, earningsMap]);
 
-  // Load insights
-  const loadInsights = useCallback((symbol: string) => {
-    setInsightsMap((prev) => ({ ...prev, [symbol]: "loading" }));
-    fetch(`/api/coverage/${symbol}`)
-      .then((r) => (r.ok ? (r.json() as Promise<InsightsData>) : null))
+  // Load financials (lazy — only when tab is active)
+  const loadFinancials = useCallback((symbol: string) => {
+    setFinancialsMap((prev) => ({ ...prev, [symbol]: "loading" }));
+    fetch(`/api/coverage/${symbol}/financials`)
+      .then((r) => (r.ok ? (r.json() as Promise<FinancialsResponse>) : null))
       .then((data) =>
-        setInsightsMap((prev) => ({ ...prev, [symbol]: data }))
+        setFinancialsMap((prev) => ({ ...prev, [symbol]: data }))
       )
       .catch(() =>
-        setInsightsMap((prev) => ({ ...prev, [symbol]: null }))
+        setFinancialsMap((prev) => ({ ...prev, [symbol]: null }))
       );
   }, []);
 
@@ -849,7 +825,7 @@ export function CoverageIntelligence() {
                       label: `Reports (${selectedEntry.reportCount})`,
                     },
                     { id: "earnings", label: "Earnings" },
-                    { id: "insights", label: "PDF Insights" },
+                    { id: "financials", label: "Financials" },
                   ] as { id: Tab; label: string }[]
                 ).map((tab) => (
                   <button
@@ -931,11 +907,11 @@ export function CoverageIntelligence() {
                   </>
                 )}
 
-                {activeTab === "insights" && (
-                  <InsightsTab
+                {activeTab === "financials" && (
+                  <FinancialsTab
                     symbol={selectedEntry.symbol}
-                    insightsMap={insightsMap}
-                    onLoad={loadInsights}
+                    financialsMap={financialsMap}
+                    onLoad={loadFinancials}
                   />
                 )}
               </div>
