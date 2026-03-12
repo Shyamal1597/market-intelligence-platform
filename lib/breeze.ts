@@ -17,6 +17,7 @@
 
 import crypto from "crypto";
 import fs from "fs";
+import https from "https";
 import path from "path";
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -79,6 +80,38 @@ function sha256(input: string): string {
 }
 
 /**
+ * GET request with a JSON body — bypasses the Fetch API's GET-body restriction.
+ * Required because the Breeze /customerdetails endpoint expects GET + JSON body
+ * (same as the official JS SDK which uses axios, which allows GET body).
+ */
+function getWithBody(url: string, body: Record<string, string>): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify(body);
+    const parsed = new URL(url);
+    const options: https.RequestOptions = {
+      hostname: parsed.hostname,
+      port: 443,
+      path: parsed.pathname + parsed.search,
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(bodyStr),
+      },
+    };
+    const req = https.request(options, (res) => {
+      let raw = "";
+      res.on("data", (chunk: string) => { raw += chunk; });
+      res.on("end", () => {
+        try { resolve(JSON.parse(raw)); } catch { resolve(raw); }
+      });
+    });
+    req.on("error", reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+/**
  * Build headers for authenticated data API calls.
  * Checksum per JS SDK: sha256(timestamp + JSON.stringify(body) + API_SECRET)
  * X-SessionToken is the base64 session_token from customerdetails response.
@@ -111,16 +144,13 @@ export async function generateBreezeSession(
     return { success: false, error: "BREEZE_API_KEY / BREEZE_SECRET_KEY not set in .env.local" };
   }
   try {
-    // Per JS SDK: GET /customerdetails with only Content-Type header (no checksum).
-    // The SDK uses axios (which allows GET body); Node fetch doesn't.
-    // Send SessionToken + AppKey as query params instead.
-    const qs = new URLSearchParams({ SessionToken: apisession, AppKey: API_KEY });
-    const res = await fetch(`${BASE_V1}/customerdetails?${qs}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const data = (await res.json()) as {
+    // Per JS SDK: GET /customerdetails with JSON body {"SessionToken", "AppKey"}.
+    // No checksum required. Uses https.request to allow GET+body (axios does this;
+    // Node's native fetch rejects it per the Fetch spec).
+    const data = await getWithBody(`${BASE_V1}/customerdetails`, {
+      SessionToken: apisession,
+      AppKey: API_KEY,
+    }) as {
       Status?: number;
       Success?: { session_token?: string };
       Error?: string;
@@ -135,7 +165,7 @@ export async function generateBreezeSession(
 
     return {
       success: false,
-      error: data.Error ?? `Status ${data.Status ?? res.status}`,
+      error: data.Error ?? `Status ${data.Status}`,
     };
   } catch (err) {
     return { success: false, error: String(err) };
