@@ -3,12 +3,12 @@
  *
  * Auth flow:
  *  1. Direct user to getBreezeLoginUrl()
- *  2. ICICI redirects to /api/breeze/callback?session_token=XXX
+ *  2. ICICI POSTs to /api/breeze/callback?apisession=XXX
  *  3. Callback calls generateBreezeSession(token) to validate + persist
  *  4. Subsequent calls use the stored token via getBreezeSession()
  *
  * Checksum scheme (per Breeze SDK):
- *  - Session generation : sha256(API_SECRET + session_token)
+ *  - Session generation : sha256(timestamp + API_SECRET + session_token)
  *  - Data requests      : sha256(timestamp + pythonStr(params) + session_token)
  */
 
@@ -112,24 +112,27 @@ export async function generateBreezeSession(
     return { success: false, error: "BREEZE_API_KEY / BREEZE_SECRET_KEY not set in .env.local" };
   }
   try {
-    const checksum = sha256(API_SECRET + sessionToken);
     const ts = utcTimestamp();
+    // Per Breeze SDK: checksum = SHA256(timestamp + api_secret + session_token)
+    const checksum = sha256(ts + API_SECRET + sessionToken);
+    const body = { SessionToken: sessionToken, AppKey: API_KEY };
+
     const res = await fetch(`${BASE_V1}/customerdetails`, {
-      method: "GET",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Checksum": `token ${checksum}`,
         "X-Timestamp": ts,
         "X-AppKey": API_KEY,
-        "X-SessionToken": sessionToken,
       },
+      body: JSON.stringify(body),
     });
     const data = (await res.json()) as { Status?: number; Success?: unknown; Error?: string };
     if (data.Status === 200 || data.Success) {
       saveBreezeSession(sessionToken);
       return { success: true };
     }
-    return { success: false, error: data.Error ?? `HTTP ${res.status}` };
+    return { success: false, error: data.Error ?? `Status ${data.Status} HTTP ${res.status}` };
   } catch (err) {
     return { success: false, error: String(err) };
   }
