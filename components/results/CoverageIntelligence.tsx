@@ -82,34 +82,43 @@ function fmtDate(s: string): string {
 
 // ── Target Price Walk Chart ───────────────────────────────────────────────────
 
-interface TPPoint {
-  label: string;        // "Jan '25"
-  fullDate: string;     // ISO
-  targetPrice: number;
-  cmp: number;
-  rating: string;
-  analyst: string;
-  reportType: string;
+interface DailyCandle {
+  date: string;  // "YYYY-MM-DD"
+  close: number;
 }
 
-function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
-  const points: TPPoint[] = reports
+interface MergedPoint {
+  date: string;
+  targetPrice?: number;
+  cmp?: number;
+  close?: number;
+  rating?: string;
+  analyst?: string;
+  reportType?: string;
+}
+
+function TargetPriceWalk({
+  reports,
+  prices,
+}: {
+  reports: CoverageEntry["reports"];
+  prices?: DailyCandle[];
+}) {
+  const reportPoints = reports
     .filter((r) => r.targetPrice > 0 || r.cmp > 0)
     .reverse() // chronological
     .map((r) => ({
-      label: new Date(r.date).toLocaleDateString("en-IN", {
-        month: "short",
-        year: "2-digit",
-      }),
-      fullDate: r.date,
-      targetPrice: r.targetPrice || 0,
-      cmp: r.cmp || 0,
+      date: r.date,
+      targetPrice: r.targetPrice || undefined,
+      cmp: r.cmp || undefined,
       rating: r.rating,
       analyst: r.analyst,
       reportType: r.reportType,
     }));
 
-  if (points.length < 1) {
+  const hasPrices = prices && prices.length > 0;
+
+  if (reportPoints.length < 1 && !hasPrices) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-muted text-xs font-mono">No price target data available</p>
@@ -117,75 +126,93 @@ function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
     );
   }
 
-  // Custom dot colored by rating
-  const CustomDot = (props: {
-    cx?: number;
-    cy?: number;
-    payload?: TPPoint;
-    dataKey?: string;
+  // Merge daily price candles + sparse report points into one sorted array
+  const mergedMap = new Map<string, MergedPoint>();
+
+  if (hasPrices) {
+    prices!.forEach((p) => mergedMap.set(p.date, { date: p.date, close: p.close }));
+  }
+  reportPoints.forEach((r) => {
+    const existing = mergedMap.get(r.date) ?? { date: r.date };
+    mergedMap.set(r.date, { ...existing, ...r });
+  });
+
+  const merged = Array.from(mergedMap.values()).sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  // Quarterly tick dates to avoid x-axis clutter
+  const ticks: string[] = [];
+  let prevKey = -1;
+  merged.forEach((p) => {
+    const d = new Date(p.date);
+    const key = d.getFullYear() * 4 + Math.floor(d.getMonth() / 3);
+    if (key !== prevKey) { ticks.push(p.date); prevKey = key; }
+  });
+
+  const tickFmt = (date: string) =>
+    new Date(date).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+
+  // Custom dot — only rendered at report dates
+  const ReportDot = (props: {
+    cx?: number; cy?: number; payload?: MergedPoint; dataKey?: string;
   }) => {
     const { cx, cy, payload, dataKey } = props;
-    if (!cx || !cy || !payload) return null;
-    const color =
-      dataKey === "targetPrice" ? ratingDot(payload.rating) : "#7A8099";
+    if (!cx || !cy || !payload?.rating) return null;
+    const isTarget = dataKey === "targetPrice";
+    const color = isTarget ? ratingDot(payload.rating) : "#6B7280";
     return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={4}
-        fill={color}
-        stroke={dataKey === "targetPrice" ? color : "#7A8099"}
-        strokeWidth={2}
-        fillOpacity={dataKey === "targetPrice" ? 1 : 0.6}
-      />
+      <circle cx={cx} cy={cy} r={4} fill={color} stroke={color}
+        strokeWidth={2} fillOpacity={isTarget ? 1 : 0.5} />
     );
   };
 
   const CustomTooltip = ({
-    active,
-    payload,
-    label,
+    active, payload,
   }: {
     active?: boolean;
-    payload?: Array<{ name: string; value: number; payload: TPPoint }>;
-    label?: string;
+    payload?: Array<{ name: string; value: number; payload: MergedPoint }>;
   }) => {
     if (!active || !payload?.length) return null;
     const pt = payload[0].payload;
+    const closeEntry = payload.find((p) => p.name === "Market Price");
     return (
       <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-3 text-xs font-mono shadow-xl min-w-[180px]">
-        <p className="text-primary mb-1.5 font-semibold">{fmtDate(pt.fullDate)}</p>
-        <p className="text-muted mb-1">
-          {REPORT_TYPE_LABEL[pt.reportType] ?? pt.reportType} · {pt.analyst}
-        </p>
-        {pt.targetPrice > 0 && (
+        <p className="text-primary mb-1.5 font-semibold">{fmtDate(pt.date)}</p>
+        {closeEntry?.value != null && (
+          <div className="flex justify-between gap-4 leading-5">
+            <span style={{ color: "#3D7CAD" }}>Market price</span>
+            <span style={{ color: "#3D7CAD" }}>{fmt(closeEntry.value)}</span>
+          </div>
+        )}
+        {pt.reportType && (
+          <p className="text-muted mt-1 mb-0.5 text-[10px]">
+            {REPORT_TYPE_LABEL[pt.reportType] ?? pt.reportType} · {pt.analyst}
+          </p>
+        )}
+        {pt.targetPrice != null && (
           <div className="flex justify-between gap-4 leading-5">
             <span className="text-amber">Target</span>
             <span className="text-amber">{fmt(pt.targetPrice)}</span>
           </div>
         )}
-        {pt.cmp > 0 && (
+        {pt.cmp != null && (
           <div className="flex justify-between gap-4 leading-5">
             <span className="text-muted">CMP at issue</span>
             <span className="text-muted">{fmt(pt.cmp)}</span>
           </div>
         )}
-        {pt.targetPrice > 0 && pt.cmp > 0 && (
+        {pt.targetPrice != null && pt.cmp != null && (
           <div className="flex justify-between gap-4 leading-5 mt-1 pt-1 border-t border-border">
-            <span style={{ color: ratingDot(pt.rating) }}>Implied upside</span>
-            <span style={{ color: ratingDot(pt.rating) }}>
+            <span style={{ color: ratingDot(pt.rating ?? "") }}>Implied upside</span>
+            <span style={{ color: ratingDot(pt.rating ?? "") }}>
               {(((pt.targetPrice - pt.cmp) / pt.cmp) * 100).toFixed(1)}%
             </span>
           </div>
         )}
         {pt.rating && (
           <p className="mt-1.5">
-            <span
-              className={clsx(
-                "text-[9px] px-1.5 py-0.5 rounded border",
-                ratingBg(pt.rating)
-              )}
-            >
+            <span className={clsx("text-[9px] px-1.5 py-0.5 rounded border", ratingBg(pt.rating))}>
               {pt.rating}
             </span>
           </p>
@@ -196,17 +223,12 @@ function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart
-        data={points}
-        margin={{ top: 8, right: 24, bottom: 0, left: 8 }}
-      >
-        <CartesianGrid
-          strokeDasharray="3 3"
-          stroke="#1E2235"
-          vertical={false}
-        />
+      <LineChart data={merged} margin={{ top: 8, right: 24, bottom: 0, left: 8 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1E2235" vertical={false} />
         <XAxis
-          dataKey="label"
+          dataKey="date"
+          ticks={ticks}
+          tickFormatter={tickFmt}
           tick={{ fontSize: 10, fontFamily: "JetBrains Mono", fill: "#6B7280" }}
           axisLine={{ stroke: "#1E2235" }}
           tickLine={false}
@@ -219,6 +241,18 @@ function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
           width={72}
         />
         <Tooltip content={<CustomTooltip />} />
+        {/* Historical market price — steel blue, no dots */}
+        {hasPrices && (
+          <Line
+            dataKey="close"
+            name="Market Price"
+            stroke="#3D7CAD"
+            strokeWidth={1.5}
+            dot={false}
+            activeDot={{ r: 4, strokeWidth: 0, fill: "#3D7CAD" }}
+            connectNulls
+          />
+        )}
         {/* CMP at each issue date */}
         <Line
           dataKey="cmp"
@@ -226,17 +260,17 @@ function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
           stroke="#4B5563"
           strokeWidth={1.5}
           strokeDasharray="4 2"
-          dot={<CustomDot dataKey="cmp" />}
+          dot={<ReportDot dataKey="cmp" />}
           activeDot={false}
           connectNulls
         />
-        {/* Target price */}
+        {/* Price target — amber, rated dots */}
         <Line
           dataKey="targetPrice"
           name="Price Target"
           stroke="#F5820D"
           strokeWidth={2}
-          dot={<CustomDot dataKey="targetPrice" />}
+          dot={<ReportDot dataKey="targetPrice" />}
           activeDot={{ r: 6, strokeWidth: 0 }}
           connectNulls
         />
@@ -247,7 +281,17 @@ function TargetPriceWalk({ reports }: { reports: CoverageEntry["reports"] }) {
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 
-function OverviewTab({ entry }: { entry: CoverageEntry }) {
+function OverviewTab({
+  entry,
+  prices,
+  breezeLoggedIn,
+  breezeLoginUrl,
+}: {
+  entry: CoverageEntry;
+  prices?: DailyCandle[] | null;
+  breezeLoggedIn: boolean;
+  breezeLoginUrl: string;
+}) {
   const hasTPData = entry.reports.some((r) => r.targetPrice > 0 || r.cmp > 0);
   const upside =
     entry.latestTarget && entry.latestCmp
@@ -365,14 +409,35 @@ function OverviewTab({ entry }: { entry: CoverageEntry }) {
       {/* Target price walk chart */}
       {hasTPData && (
         <div className="flex-1 min-h-[200px]">
-          <p className="text-[9px] font-mono text-muted uppercase tracking-wider mb-2">
-            Price Target Walk{" "}
-            <span className="text-muted/50 normal-case">
-              (amber = target, dashed = CMP at issue)
-            </span>
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[9px] font-mono text-muted uppercase tracking-wider">
+              Price Target Walk{" "}
+              <span className="text-muted/50 normal-case">
+                (amber = target, dashed = CMP at issue
+                {prices && prices.length > 0 ? ", blue = market price" : ""})
+              </span>
+            </p>
+            {!breezeLoggedIn && (
+              <a
+                href={breezeLoginUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] font-mono text-muted/50 hover:text-amber transition-colors"
+              >
+                Connect Breeze for price history ↗
+              </a>
+            )}
+            {breezeLoggedIn && prices === null && (
+              <span className="text-[9px] font-mono text-danger/70">
+                Price data unavailable
+              </span>
+            )}
+          </div>
           <div className="h-[200px]">
-            <TargetPriceWalk reports={entry.reports} />
+            <TargetPriceWalk
+              reports={entry.reports}
+              prices={prices ?? undefined}
+            />
           </div>
         </div>
       )}
@@ -869,6 +934,11 @@ export function CoverageIntelligence() {
   const [financialsMap, setFinancialsMap] = useState<
     Record<string, FinancialsResponse | null | "loading">
   >({});
+  const [breezeLoggedIn, setBreezeLoggedIn] = useState(false);
+  const [breezeLoginUrl, setBreezeLoginUrl] = useState("");
+  const [priceMap, setPriceMap] = useState<
+    Record<string, DailyCandle[] | null | "loading">
+  >({});
 
   // Load coverage universe
   useEffect(() => {
@@ -884,6 +954,33 @@ export function CoverageIntelligence() {
         setLoading(false);
       });
   }, []);
+
+  // Check Breeze session on mount
+  useEffect(() => {
+    fetch("/api/breeze/auth")
+      .then((r) => r.json() as Promise<{ loggedIn: boolean; loginUrl: string }>)
+      .then((d) => { setBreezeLoggedIn(d.loggedIn); setBreezeLoginUrl(d.loginUrl); })
+      .catch(() => {});
+  }, []);
+
+  // Lazy-load historical prices when overview is active + Breeze connected
+  useEffect(() => {
+    if (activeTab !== "overview" || !selected || !breezeLoggedIn) return;
+    if (selected in priceMap) return;
+    const entry = coverage.find((c) => c.symbol === selected);
+    if (!entry) return;
+    setPriceMap((prev) => ({ ...prev, [selected]: "loading" }));
+    const from = entry.firstDate.split("T")[0];
+    const to = new Date().toISOString().split("T")[0];
+    fetch(`/api/breeze/historical/${selected}?from=${from}&to=${to}`)
+      .then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ candles: DailyCandle[] }>)
+          : Promise.reject(r.status)
+      )
+      .then((d) => setPriceMap((prev) => ({ ...prev, [selected]: d.candles })))
+      .catch(() => setPriceMap((prev) => ({ ...prev, [selected]: null })));
+  }, [activeTab, selected, breezeLoggedIn, priceMap, coverage]);
 
   // Load financials (lazy — only when tab is active)
   const loadFinancials = useCallback((symbol: string) => {
@@ -1118,7 +1215,16 @@ export function CoverageIntelligence() {
               {/* Tab content */}
               <div className="flex-1 min-h-0">
                 {activeTab === "overview" && (
-                  <OverviewTab entry={selectedEntry} />
+                  <OverviewTab
+                    entry={selectedEntry}
+                    prices={
+                      priceMap[selectedEntry.symbol] === "loading"
+                        ? undefined
+                        : (priceMap[selectedEntry.symbol] as DailyCandle[] | null | undefined)
+                    }
+                    breezeLoggedIn={breezeLoggedIn}
+                    breezeLoginUrl={breezeLoginUrl}
+                  />
                 )}
 
                 {activeTab === "reports" && (

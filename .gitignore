@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Claude Code
 .claude/
+
+# Breeze API session + price cache (sensitive / auto-generated)
+data/breeze-session.json
+data/breeze-cache/
