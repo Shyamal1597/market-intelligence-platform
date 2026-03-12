@@ -1,9 +1,10 @@
 /**
- * GET /api/breeze/callback?session_token=XXX
+ * POST /api/breeze/callback?apisession=XXX
+ * GET  /api/breeze/callback?apisession=XXX  (fallback)
  *
- * ICICI Direct redirects here after user logs in via the Breeze login URL.
- * We validate the token against the customerdetails endpoint, persist it,
- * then redirect the user back to the coverage page.
+ * ICICI Direct POSTs here after user logs in via the Breeze login URL.
+ * The session token arrives as the `apisession` query parameter.
+ * We validate the token, persist it, then redirect the user back to coverage.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,12 +12,12 @@ import { generateBreezeSession } from "@/lib/breeze";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("session_token");
+async function handleCallback(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("apisession");
 
   if (!token) {
     return new NextResponse(
-      html("Breeze Auth Failed", "No session_token in redirect URL.", false),
+      html("Breeze Auth Failed", "No apisession in redirect URL.", false),
       { status: 400, headers: { "Content-Type": "text/html" } }
     );
   }
@@ -34,6 +35,16 @@ export async function GET(req: NextRequest) {
   return NextResponse.redirect(
     new URL("/coverage?breeze=connected", req.nextUrl.origin)
   );
+}
+
+// ICICI Direct POSTs to the callback URL
+export async function POST(req: NextRequest) {
+  return handleCallback(req);
+}
+
+// Also support GET for manual testing / re-auth flows
+export async function GET(req: NextRequest) {
+  return handleCallback(req);
 }
 
 function html(title: string, message: string, ok: boolean): string {
