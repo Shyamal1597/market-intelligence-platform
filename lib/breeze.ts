@@ -111,12 +111,13 @@ export async function generateBreezeSession(
     return { success: false, error: "BREEZE_API_KEY / BREEZE_SECRET_KEY not set in .env.local" };
   }
   try {
-    // Per JS SDK: GET /customerdetails with only Content-Type header (no checksum)
-    // Body: {"SessionToken": apisession, "AppKey": api_key}
-    const res = await fetch(`${BASE_V1}/customerdetails`, {
+    // Per JS SDK: GET /customerdetails with only Content-Type header (no checksum).
+    // The SDK uses axios (which allows GET body); Node fetch doesn't.
+    // Send SessionToken + AppKey as query params instead.
+    const qs = new URLSearchParams({ SessionToken: apisession, AppKey: API_KEY });
+    const res = await fetch(`${BASE_V1}/customerdetails?${qs}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ SessionToken: apisession, AppKey: API_KEY }),
     });
 
     const data = (await res.json()) as {
