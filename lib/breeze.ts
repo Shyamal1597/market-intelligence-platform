@@ -253,7 +253,7 @@ export async function getHistoricalData(
 
   // Body dict — matches exactly what JS SDK sends (no product_type in checksum body)
   const body: Record<string, string> = {
-    interval: "1day",
+    interval: "day",
     from_date: `${fromDate}T07:00:00.000Z`,
     to_date: `${toDate}T07:00:00.000Z`,
     stock_code: stockCode,
