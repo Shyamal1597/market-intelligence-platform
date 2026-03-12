@@ -4,12 +4,15 @@
  * Auth flow:
  *  1. Direct user to getBreezeLoginUrl()
  *  2. ICICI POSTs to /api/breeze/callback?apisession=XXX
- *  3. Callback calls generateBreezeSession(token) to validate + persist
- *  4. Subsequent calls use the stored token via getBreezeSession()
+ *  3. Callback calls generateBreezeSession(apisession) → GET /customerdetails
+ *     Response Success.session_token (base64) is stored as the API session
+ *  4. Data calls use the stored base64 session token via X-SessionToken
  *
- * Checksum scheme (per Breeze SDK):
- *  - Session generation : sha256(timestamp + API_SECRET + session_token)
- *  - Data requests      : sha256(timestamp + pythonStr(params) + session_token)
+ * Checksum scheme (per official JS SDK):
+ *  - Session generation : no checksum — only Content-Type header
+ *  - Data requests      : sha256(timestamp + JSON.stringify(body) + API_SECRET)
+ *
+ * Reference: https://github.com/Idirect-Tech/Breeze-JS-SDK
  */
 
 import crypto from "crypto";
@@ -22,7 +25,8 @@ const API_KEY = process.env.BREEZE_API_KEY ?? "";
 const API_SECRET = process.env.BREEZE_SECRET_KEY ?? "";
 
 const BASE_V1 = "https://api.icicidirect.com/breezeapi/api/v1";
-const BASE_V2 = "https://api.icicidirect.com/breezeapi/api/v2";
+// V2 is on a different subdomain
+const BASE_V2 = "https://breezeapi.icicidirect.com/api/v2";
 
 const SESSION_FILE = path.join(process.cwd(), "data", "breeze-session.json");
 const CACHE_DIR = path.join(process.cwd(), "data", "breeze-cache");
@@ -70,32 +74,27 @@ function utcTimestamp(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, ".000Z");
 }
 
-/**
- * Replicate Python's str(dict) format that the Breeze SDK uses for checksums.
- * Python: str({'key': 'val'}) → "{'key': 'val'}"
- */
-function pythonStr(params: Record<string, string>): string {
-  const pairs = Object.entries(params)
-    .map(([k, v]) => `'${k}': '${v}'`)
-    .join(", ");
-  return `{${pairs}}`;
-}
-
 function sha256(input: string): string {
   return crypto.createHash("sha256").update(input, "utf-8").digest("hex");
 }
 
+/**
+ * Build headers for authenticated data API calls.
+ * Checksum per JS SDK: sha256(timestamp + JSON.stringify(body) + API_SECRET)
+ * X-SessionToken is the base64 session_token from customerdetails response.
+ */
 function dataHeaders(
-  sessionToken: string,
+  apiSession: string,
   timestamp: string,
-  paramsStr: string
+  body: Record<string, string>
 ): Record<string, string> {
+  const checksum = sha256(timestamp + JSON.stringify(body) + API_SECRET);
   return {
     "Content-Type": "application/json",
-    "X-Checksum": `token ${sha256(timestamp + paramsStr + sessionToken)}`,
+    "X-Checksum": `token ${checksum}`,
     "X-Timestamp": timestamp,
     "X-AppKey": API_KEY,
-    "X-SessionToken": sessionToken,
+    "X-SessionToken": apiSession,
   };
 }
 
@@ -106,33 +105,37 @@ export function getBreezeLoginUrl(): string {
 }
 
 export async function generateBreezeSession(
-  sessionToken: string
+  apisession: string  // the ?apisession= token from ICICI callback
 ): Promise<{ success: boolean; error?: string }> {
   if (!API_KEY || !API_SECRET) {
     return { success: false, error: "BREEZE_API_KEY / BREEZE_SECRET_KEY not set in .env.local" };
   }
   try {
-    const ts = utcTimestamp();
-    // Per Breeze SDK: checksum = SHA256(timestamp + api_secret + session_token)
-    const checksum = sha256(ts + API_SECRET + sessionToken);
-    const body = { SessionToken: sessionToken, AppKey: API_KEY };
-
+    // Per JS SDK: GET /customerdetails with only Content-Type header (no checksum)
+    // Body: {"SessionToken": apisession, "AppKey": api_key}
     const res = await fetch(`${BASE_V1}/customerdetails`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Checksum": `token ${checksum}`,
-        "X-Timestamp": ts,
-        "X-AppKey": API_KEY,
-      },
-      body: JSON.stringify(body),
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ SessionToken: apisession, AppKey: API_KEY }),
     });
-    const data = (await res.json()) as { Status?: number; Success?: unknown; Error?: string };
-    if (data.Status === 200 || data.Success) {
-      saveBreezeSession(sessionToken);
+
+    const data = (await res.json()) as {
+      Status?: number;
+      Success?: { session_token?: string };
+      Error?: string;
+    };
+
+    if (data.Status === 200 && data.Success?.session_token) {
+      // Success.session_token is a base64-encoded "userId:sessionKey" string.
+      // This is what must be sent as X-SessionToken in subsequent data calls.
+      saveBreezeSession(data.Success.session_token);
       return { success: true };
     }
-    return { success: false, error: data.Error ?? `Status ${data.Status} HTTP ${res.status}` };
+
+    return {
+      success: false,
+      error: data.Error ?? `Status ${data.Status ?? res.status}`,
+    };
   } catch (err) {
     return { success: false, error: String(err) };
   }
@@ -189,8 +192,8 @@ function today(): string {
 function isCacheFresh(cached: CacheFile): boolean {
   const age = Date.now() - new Date(cached.fetchedAt).getTime();
   const ageHours = age / (1000 * 60 * 60);
-  // If toDate is before today → historical cache never expires
-  // If toDate is today       → refresh after 4 hours (market data changes intraday)
+  // Historical dates (before today) cache forever
+  // Today's data refreshes after 4 hours
   if (cached.toDate < today()) return true;
   return ageHours < 4;
 }
@@ -199,7 +202,7 @@ export async function getHistoricalData(
   symbol: string,
   fromDate: string, // "YYYY-MM-DD"
   toDate: string,   // "YYYY-MM-DD"
-  sessionToken: string
+  apiSession: string // base64 session_token from customerdetails
 ): Promise<DailyCandle[] | { error: string }> {
   // Check cache
   const cached = loadCache(symbol);
@@ -214,23 +217,23 @@ export async function getHistoricalData(
 
   const stockCode = SYMBOL_MAP[symbol.toUpperCase()] ?? symbol.toUpperCase();
 
-  const params: Record<string, string> = {
+  // Body dict — matches exactly what JS SDK sends (no product_type in checksum body)
+  const body: Record<string, string> = {
     interval: "1day",
     from_date: `${fromDate}T07:00:00.000Z`,
     to_date: `${toDate}T07:00:00.000Z`,
     stock_code: stockCode,
     exchange_code: "NSE",
-    product_type: "cash",
   };
 
   const ts = utcTimestamp();
-  const paramsStr = pythonStr(params);
-  const url = `${BASE_V2}/historicalcharts?${new URLSearchParams(params)}`;
+  // Checksum uses JSON.stringify(body) per JS SDK
+  const url = `${BASE_V2}/historicalcharts?${new URLSearchParams(body)}`;
 
   try {
     const res = await fetch(url, {
       method: "GET",
-      headers: dataHeaders(sessionToken, ts, paramsStr),
+      headers: dataHeaders(apiSession, ts, body),
     });
 
     const data = (await res.json()) as {
@@ -247,7 +250,7 @@ export async function getHistoricalData(
     };
 
     if (!data.Success || !Array.isArray(data.Success)) {
-      return { error: data.Error ?? "Empty response from Breeze API" };
+      return { error: data.Error ?? `Empty response (Status ${data.Status})` };
     }
 
     const candles: DailyCandle[] = data.Success.map((item) => ({
