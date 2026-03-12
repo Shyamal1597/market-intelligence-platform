@@ -26,6 +26,8 @@ const API_KEY = process.env.BREEZE_API_KEY ?? "";
 const API_SECRET = process.env.BREEZE_SECRET_KEY ?? "";
 
 const BASE_V1 = "https://api.icicidirect.com/breezeapi/api/v1";
+// V2 is on a different subdomain — used for historical charts (interval="day")
+const BASE_V2 = "https://breezeapi.icicidirect.com/api/v2";
 
 const SESSION_FILE = path.join(process.cwd(), "data", "breeze-session.json");
 const CACHE_DIR = path.join(process.cwd(), "data", "breeze-cache");
@@ -261,7 +263,8 @@ export async function getHistoricalData(
   };
 
   const ts = utcTimestamp();
-  // V1 endpoint; params sent as GET body (matching JS SDK axios behaviour).
+  // V2 endpoint (breezeapi subdomain); params sent as GET body.
+  // V2 validates interval values: "minute","5minute","30minute","day"
   // Checksum: sha256(timestamp + JSON.stringify(body) + API_SECRET)
   const headers = dataHeaders(apiSession, ts, body);
   // Remove Content-Type from dataHeaders — getWithBody adds it with Content-Length
@@ -269,7 +272,7 @@ export async function getHistoricalData(
 
   try {
     const data = await getWithBody(
-      `${BASE_V1}/historicalcharts`,
+      `${BASE_V2}/historicalcharts`,
       body,
       authHeaders
     ) as {
