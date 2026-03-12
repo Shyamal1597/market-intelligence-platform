@@ -251,13 +251,13 @@ export async function getHistoricalData(
 
   const stockCode = SYMBOL_MAP[symbol.toUpperCase()] ?? symbol.toUpperCase();
 
-  // Body dict — matches exactly what JS SDK sends (no product_type in checksum body)
   const body: Record<string, string> = {
     interval: "day",
     from_date: `${fromDate}T07:00:00.000Z`,
     to_date: `${toDate}T07:00:00.000Z`,
     stock_code: stockCode,
     exchange_code: "NSE",
+    product_type: "cash",
   };
 
   const ts = utcTimestamp();
@@ -285,7 +285,9 @@ export async function getHistoricalData(
       Status?: number;
     };
 
+    // DEBUG — remove after diagnosing
     if (!data.Success || !Array.isArray(data.Success)) {
+      console.error("[Breeze] historicalcharts raw error:", JSON.stringify(data));
       return { error: data.Error ?? `Empty response (Status ${data.Status})` };
     }
 
