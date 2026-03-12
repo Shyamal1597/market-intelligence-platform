@@ -26,8 +26,6 @@ const API_KEY = process.env.BREEZE_API_KEY ?? "";
 const API_SECRET = process.env.BREEZE_SECRET_KEY ?? "";
 
 const BASE_V1 = "https://api.icicidirect.com/breezeapi/api/v1";
-// V2 is on a different subdomain
-const BASE_V2 = "https://breezeapi.icicidirect.com/api/v2";
 
 const SESSION_FILE = path.join(process.cwd(), "data", "breeze-session.json");
 const CACHE_DIR = path.join(process.cwd(), "data", "breeze-cache");
@@ -84,7 +82,11 @@ function sha256(input: string): string {
  * Required because the Breeze /customerdetails endpoint expects GET + JSON body
  * (same as the official JS SDK which uses axios, which allows GET body).
  */
-function getWithBody(url: string, body: Record<string, string>): Promise<unknown> {
+function getWithBody(
+  url: string,
+  body: Record<string, string>,
+  extraHeaders: Record<string, string> = {}
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const bodyStr = JSON.stringify(body);
     const parsed = new URL(url);
@@ -96,6 +98,7 @@ function getWithBody(url: string, body: Record<string, string>): Promise<unknown
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(bodyStr),
+        ...extraHeaders,
       },
     };
     const req = https.request(options, (res) => {
@@ -258,16 +261,18 @@ export async function getHistoricalData(
   };
 
   const ts = utcTimestamp();
-  // Checksum uses JSON.stringify(body) per JS SDK
-  const url = `${BASE_V2}/historicalcharts?${new URLSearchParams(body)}`;
+  // V1 endpoint; params sent as GET body (matching JS SDK axios behaviour).
+  // Checksum: sha256(timestamp + JSON.stringify(body) + API_SECRET)
+  const headers = dataHeaders(apiSession, ts, body);
+  // Remove Content-Type from dataHeaders — getWithBody adds it with Content-Length
+  const { "Content-Type": _ct, ...authHeaders } = headers;
 
   try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: dataHeaders(apiSession, ts, body),
-    });
-
-    const data = (await res.json()) as {
+    const data = await getWithBody(
+      `${BASE_V1}/historicalcharts`,
+      body,
+      authHeaders
+    ) as {
       Success?: Array<{
         datetime: string;
         open: number;
