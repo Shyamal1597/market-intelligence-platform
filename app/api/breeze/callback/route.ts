@@ -31,9 +31,9 @@ async function handleCallback(req: NextRequest) {
     );
   }
 
-  // Redirect back to the coverage page with success flag
+  // Redirect back to the results/coverage page with success flag
   return NextResponse.redirect(
-    new URL("/coverage?breeze=connected", req.nextUrl.origin)
+    new URL("/results?breeze=connected", req.nextUrl.origin)
   );
 }
 
@@ -56,7 +56,7 @@ function html(title: string, message: string, ok: boolean): string {
     <p style="font-size:2rem;margin-bottom:1rem">${ok ? "✓" : "✗"}</p>
     <h2 style="color:${color};margin-bottom:.5rem">${title}</h2>
     <p style="color:#7A8099;font-size:.85rem">${message}</p>
-    <p style="margin-top:1.5rem"><a href="/coverage" style="color:#F5820D">← Back to Coverage</a></p>
+    <p style="margin-top:1.5rem"><a href="/results" style="color:#F5820D">← Back to Results</a></p>
   </div>
 </body>
 </html>`;
