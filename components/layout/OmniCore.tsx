@@ -14,6 +14,7 @@ import {
   BarChart2,
   BookMarked,
   Sigma,
+  Layers,
   Settings
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/flows", label: "Flows", icon: Activity },
   { href: "/results", label: "Results", icon: BarChart2 },
   { href: "/derivatives", label: "Derivatives", icon: Sigma },
+  { href: "/deals", label: "Bulk & Block Deals", icon: Layers },
   { href: "/links", label: "Quick Links", icon: BookMarked },
 ];
 
