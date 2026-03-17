@@ -208,11 +208,16 @@ export default function DealsPage() {
               [...Array(8)].map((_, i) => <SkeletonRow key={i} />)
             ) : deals.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-12 text-center text-muted text-xs font-mono"
-                >
-                  No bulk or block deals recorded for this date.
+                <td colSpan={8} className="px-4 py-12 text-center text-xs font-mono">
+                  {date !== new Date().toISOString().split("T")[0] ? (
+                    <span className="text-muted">
+                      NSE historical deal data requires a browser session — only today&apos;s live data is available.
+                      <br />
+                      <span className="text-amber/60">Switch back to today to see active deals.</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted">No bulk or block deals recorded today.</span>
+                  )}
                 </td>
               </tr>
             ) : (
