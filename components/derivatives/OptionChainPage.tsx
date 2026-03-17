@@ -26,6 +26,7 @@ export function OptionChainPage() {
   const [countdown, setCountdown] = useState(30);
   const [columns, setColumns] = useColumnConfig();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadingRef = useRef(false);
 
   const fetchExpiriesFn = useCallback(async (sym: string) => {
     const res = await fetch(`/api/option-chain/expiries?symbol=${sym}`);
@@ -34,6 +35,8 @@ export function OptionChainPage() {
   }, []);
 
   const fetchChain = useCallback(async (sym: string, expiry: string) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -46,19 +49,31 @@ export function OptionChainPage() {
       setCountdown(30);
     } catch (e) {
       setError(String(e));
+      setData(null);
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
   useEffect(() => {
-    fetchExpiriesFn(symbol).then((exp) => {
-      setExpiries(exp);
-      if (exp.length > 0) {
-        setSelectedExpiry(exp[0]);
-        fetchChain(symbol, exp[0]);
-      }
-    });
+    setLoading(true);
+    setError(null);
+    fetchExpiriesFn(symbol)
+      .then((exp) => {
+        setExpiries(exp);
+        if (exp.length > 0) {
+          setSelectedExpiry(exp[0]);
+          return fetchChain(symbol, exp[0]);
+        } else {
+          setLoading(false);
+          setError("No option chain available for this symbol");
+        }
+      })
+      .catch((e) => {
+        setError(String(e));
+        setLoading(false);
+      });
   }, [symbol, fetchExpiriesFn, fetchChain]);
 
   useEffect(() => {
