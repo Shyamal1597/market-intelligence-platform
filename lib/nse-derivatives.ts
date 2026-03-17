@@ -101,9 +101,12 @@ const INDICES = new Set(["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYN
 
 export async function fetchDerivatives(symbol: string, expiry?: string): Promise<DerivativesData> {
   const sym = symbol.toUpperCase();
-  const cacheKey = `${sym}:${expiry ?? "nearest"}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+
+  // Fast path: if explicit expiry given, check cache first
+  if (expiry) {
+    const cached = cache.get(`${sym}:${expiry}`);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  }
 
   const cookie = await getNseSession();
 
@@ -116,6 +119,11 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
   const expiryDates: string[] = info.expiryDates ?? [];
   if (expiryDates.length === 0) throw new Error("NSE_SESSION_REQUIRED");
   const selectedExpiry = expiry ?? expiryDates[0];
+
+  // Always use resolved expiry as cache key
+  const cacheKey = `${sym}:${selectedExpiry}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
   const chainType = INDICES.has(sym) ? "Indices" : "Equity";
   const url = `${NSE_BASE}/api/option-chain-v3?type=${chainType}&symbol=${sym}&expiry=${encodeURIComponent(selectedExpiry)}`;
@@ -133,7 +141,7 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
       const ce = d.CE as Record<string, number> | undefined;
       const pe = d.PE as Record<string, number> | undefined;
       return {
-        strikePrice: d.strikePrice as number,
+        strikePrice: Number(d.strikePrice),
         expiryDate: selectedExpiry,
         ceOI: ce?.openInterest ?? null, ceOIChg: ce?.changeinOpenInterest ?? null,
         ceVol: ce?.totalTradedVolume ?? null, ceIV: ce?.impliedVolatility ?? null,
@@ -150,9 +158,9 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
     .sort((a, b) => a.strikePrice - b.strikePrice);
 
   const filtered = json.filtered ?? {};
-  const totCeOI: number = filtered.CE?.totOI ?? 1;
+  const totCeOI: number = filtered.CE?.totOI ?? 0;
   const totPeOI: number = filtered.PE?.totOI ?? 0;
-  const pcr = totPeOI / totCeOI;
+  const pcr = totCeOI > 0 ? totPeOI / totCeOI : 0;
   const maxPain = computeMaxPain(chain);
   const atmStrike = chain.length > 0 ? findAtmStrike(chain, spot) : 0;
   const atmRow = chain.find((r) => r.strikePrice === atmStrike);
