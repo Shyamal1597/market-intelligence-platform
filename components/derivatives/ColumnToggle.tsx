@@ -4,15 +4,21 @@ import { useState, useEffect } from "react";
 import { Settings2 } from "lucide-react";
 
 export interface ColumnConfig {
+  // Greeks (NSE doesn't supply; kept for future B-S computation)
   delta: boolean; gamma: boolean; theta: boolean; vega: boolean; rho: boolean;
-  ltp: boolean; ask: boolean; bid: boolean;
+  // Price
+  ltp: boolean; chng: boolean; bid: boolean; ask: boolean;
+  bidQty: boolean; askQty: boolean;
+  // Market data
   oi: boolean; oiChange: boolean; iv: boolean;
 }
 
 export const DEFAULT_COLUMNS: ColumnConfig = {
-  delta: true, gamma: true, theta: true, vega: false, rho: false,
-  ltp: true, ask: true, bid: true,
-  oi: false, oiChange: false, iv: true,
+  // Greeks off by default (NSE doesn't return them)
+  delta: false, gamma: false, theta: false, vega: false, rho: false,
+  ltp: true, chng: true, bid: true, ask: true,
+  bidQty: false, askQty: false,
+  oi: true, oiChange: true, iv: true,
 };
 
 const STORAGE_KEY = "nebula:options:columns";
@@ -39,6 +45,25 @@ interface Props { config: ColumnConfig; onChange: (c: ColumnConfig) => void; }
 
 const GROUPS = [
   {
+    label: "Market",
+    cols: [
+      { key: "oi" as const, label: "OI" },
+      { key: "oiChange" as const, label: "OI Chg" },
+      { key: "iv" as const, label: "IV%" },
+    ],
+  },
+  {
+    label: "Price",
+    cols: [
+      { key: "ltp" as const, label: "LTP" },
+      { key: "chng" as const, label: "Chng" },
+      { key: "bid" as const, label: "Bid" },
+      { key: "ask" as const, label: "Ask" },
+      { key: "bidQty" as const, label: "Bid Qty" },
+      { key: "askQty" as const, label: "Ask Qty" },
+    ],
+  },
+  {
     label: "Greeks",
     cols: [
       { key: "delta" as const, label: "Delta" },
@@ -46,22 +71,6 @@ const GROUPS = [
       { key: "theta" as const, label: "Theta" },
       { key: "vega" as const, label: "Vega" },
       { key: "rho" as const, label: "Rho" },
-    ],
-  },
-  {
-    label: "Price",
-    cols: [
-      { key: "ltp" as const, label: "LTP" },
-      { key: "ask" as const, label: "Ask" },
-      { key: "bid" as const, label: "Bid" },
-      { key: "iv" as const, label: "IV%" },
-    ],
-  },
-  {
-    label: "OI & Volume",
-    cols: [
-      { key: "oi" as const, label: "OI" },
-      { key: "oiChange" as const, label: "OI Chg" },
     ],
   },
 ] as const;

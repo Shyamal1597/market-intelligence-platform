@@ -39,12 +39,16 @@ export interface OptionRow {
   expiryDate: string;
   // Calls
   ceOI: number | null; ceOIChg: number | null; ceVol: number | null;
-  ceIV: number | null; ceLTP: number | null; ceAsk: number | null; ceBid: number | null;
+  ceIV: number | null; ceLTP: number | null; ceChng: number | null;
+  ceAsk: number | null; ceBid: number | null;
+  ceAskQty: number | null; ceBidQty: number | null;
   ceDelta: number | null; ceGamma: number | null; ceTheta: number | null;
   ceVega: number | null; ceRho: number | null;
   // Puts
   peOI: number | null; peOIChg: number | null; peVol: number | null;
-  peIV: number | null; peLTP: number | null; peAsk: number | null; peBid: number | null;
+  peIV: number | null; peLTP: number | null; peChng: number | null;
+  peAsk: number | null; peBid: number | null;
+  peAskQty: number | null; peBidQty: number | null;
   peDelta: number | null; peGamma: number | null; peTheta: number | null;
   peVega: number | null; peRho: number | null;
 }
@@ -145,12 +149,19 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
         expiryDate: selectedExpiry,
         ceOI: ce?.openInterest ?? null, ceOIChg: ce?.changeinOpenInterest ?? null,
         ceVol: ce?.totalTradedVolume ?? null, ceIV: ce?.impliedVolatility ?? null,
-        ceLTP: ce?.lastPrice ?? null, ceAsk: ce?.askPrice ?? null, ceBid: ce?.bidPrice ?? null,
+        ceLTP: ce?.lastPrice ?? null, ceChng: ce?.change ?? null,
+        ceAsk: ce?.askPrice ?? null,
+        // NSE uses lowercase 'bidprice' (inconsistent with askPrice)
+        ceBid: (ce as Record<string, number> | undefined)?.bidprice ?? null,
+        ceAskQty: ce?.askQty ?? null, ceBidQty: ce?.bidQty ?? null,
         ceDelta: ce?.delta ?? null, ceGamma: ce?.gamma ?? null, ceTheta: ce?.theta ?? null,
         ceVega: ce?.vega ?? null, ceRho: ce?.rho ?? null,
         peOI: pe?.openInterest ?? null, peOIChg: pe?.changeinOpenInterest ?? null,
         peVol: pe?.totalTradedVolume ?? null, peIV: pe?.impliedVolatility ?? null,
-        peLTP: pe?.lastPrice ?? null, peAsk: pe?.askPrice ?? null, peBid: pe?.bidPrice ?? null,
+        peLTP: pe?.lastPrice ?? null, peChng: pe?.change ?? null,
+        peAsk: pe?.askPrice ?? null,
+        peBid: (pe as Record<string, number> | undefined)?.bidprice ?? null,
+        peAskQty: pe?.askQty ?? null, peBidQty: pe?.bidQty ?? null,
         peDelta: pe?.delta ?? null, peGamma: pe?.gamma ?? null, peTheta: pe?.theta ?? null,
         peVega: pe?.vega ?? null, peRho: pe?.rho ?? null,
       };
