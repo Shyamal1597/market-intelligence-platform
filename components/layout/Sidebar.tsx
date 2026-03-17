@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Activity,
   BarChart2,
+  Sigma,
   ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/calendar", icon: CalendarDays, label: "Earnings" },
   { href: "/sectors", icon: LayoutGrid, label: "Sectors" },
   { href: "/flows", icon: Activity, label: "Flows" },
+  { href: "/derivatives", icon: Sigma, label: "Derivatives" },
   { href: "/results", icon: BarChart2, label: "Results" },
   { href: "/links", icon: BookMarked, label: "Quick Links" },
 ];
