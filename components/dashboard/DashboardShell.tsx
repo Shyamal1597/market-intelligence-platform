@@ -42,14 +42,15 @@ export interface WidgetConfig {
   width: WidgetWidth;
 }
 
-const STORAGE_KEY = "dashboard_layout_v2";
+const STORAGE_KEY = "dashboard_layout_v3";
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "metrics", label: "Market Metrics",  visible: true, size: "normal", width: "full" },
-  { id: "news",    label: "Market News",     visible: true, size: "normal", width: "full" },
-  { id: "filings", label: "BSE Filings",     visible: true, size: "normal", width: "full" },
-  { id: "sectors", label: "Sector Leaders",  visible: true, size: "normal", width: "full" },
-  { id: "preview", label: "Quick Access",    visible: true, size: "normal", width: "full" },
+  { id: "metrics",     label: "Market Metrics",      visible: true, size: "normal", width: "full" },
+  { id: "smartmoney",  label: "Smart Money Signals",  visible: true, size: "normal", width: "full" },
+  { id: "news",        label: "Market News",          visible: true, size: "normal", width: "full" },
+  { id: "filings",     label: "BSE Filings",          visible: true, size: "normal", width: "full" },
+  { id: "sectors",     label: "Sector Leaders",       visible: true, size: "normal", width: "full" },
+  { id: "preview",     label: "Quick Access",         visible: true, size: "normal", width: "full" },
 ];
 
 function loadLayout(): WidgetConfig[] {
