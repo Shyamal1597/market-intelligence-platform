@@ -21,7 +21,8 @@ function parseScorecard(narrative: string): { label: string; signal: string; fac
   const rows: { label: string; signal: string; fact: string }[] = [];
   let inTable = false;
   for (const line of narrative.split("\n")) {
-    if (line.includes("| Stream") || line.includes("| FII/DII") || line.includes("|---")) {
+    // Detect header row (contains "Stream" or "---|") and separator rows
+    if (line.includes("| Stream") || /\|[-\s]+\|/.test(line)) {
       inTable = true; continue;
     }
     if (inTable && line.startsWith("|")) {
@@ -140,18 +141,22 @@ function ScorecardTable({ rows }: { rows: { label: string; signal: string; fact:
       <thead>
         <tr className="border-b border-border text-muted uppercase tracking-widest">
           <th className="text-left font-normal py-1.5 pr-3 w-28">Stream</th>
-          <th className="text-center font-normal py-1.5 w-6">Sig</th>
+          <th className="text-center font-normal py-1.5 w-5">Sig</th>
           <th className="text-left font-normal py-1.5 pl-2">Key Fact</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
-          <tr key={r.label} className="border-b border-border/40">
-            <td className="py-1.5 pr-3 text-muted whitespace-nowrap">{r.label}</td>
-            <td className="py-1.5 text-center">{r.signal}</td>
-            <td className="py-1.5 pl-2 text-primary/80 truncate max-w-[300px]">{r.fact}</td>
-          </tr>
-        ))}
+        {rows.map(r => {
+          // LLM outputs "🟢 Bullish" — keep only the leading emoji/symbol
+          const sigEmoji = r.signal.match(/^(🟢|🔴|⚪|—)/)?.[0] ?? r.signal.charAt(0);
+          return (
+            <tr key={r.label} className="border-b border-border/40">
+              <td className="py-1.5 pr-3 text-muted whitespace-nowrap">{r.label}</td>
+              <td className="py-1.5 text-center text-base leading-none">{sigEmoji}</td>
+              <td className="py-1.5 pl-2 text-primary/80 truncate max-w-[300px]">{r.fact}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
