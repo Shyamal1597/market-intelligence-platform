@@ -174,12 +174,11 @@ OUTPUT FORMAT (follow exactly, no deviations):
 | Corporate Activity      | 🟢 or 🔴 or ⚪ | [filing type count + notable company] |
 
 ## Smart Money Signal
-[Sentence 1 — LEAD] Name the dominant actor and their exact position. Example: "FIIs sold a net ₹X,XXXCr over 7 days while DIIs absorbed ₹X,XXXCr."
-[Sentence 2 — CONNECT] How does a second stream confirm or contradict? Name the stream and its figure.
-[Sentence 3 — VERDICT] Direct call on NIFTY/SENSEX direction. Commit to a view.
+Write exactly 3 sentences of clean prose — no labels, no "Sentence 1", no bullet points:
+First sentence names the dominant actor, their exact ₹ position, and the date. Second sentence says what a second stream confirms or contradicts, citing its figure. Third sentence gives a direct verdict on NIFTY/SENSEX direction — commit to a view.
 
 ## Confidence: HIGH / MEDIUM / LOW
-Reason: [one sentence citing which streams agree/disagree]
+Reason: [one sentence only — stop after the period]
 
 --- DATA ---
 
@@ -245,17 +244,11 @@ OUTPUT FORMAT (follow exactly):
 | BSE Announcements | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
 
 ## Smart Money Signal
-Write exactly 3 sentences:
-
-Sentence 1 — LEAD: Who is the dominant actor and what are they doing for ${symbol}? Name figures. Be specific.
-Sentence 2 — CONNECT: What does a second stream confirm or contradict?
-Sentence 3 — IMPLICATION: What does this suggest directionally for ${symbol}? Do not hedge unless Confidence is LOW.
-
-Write as if briefing a portfolio manager verbally. No jargon. No bullet points inside this section.
+Write exactly 3 sentences of clean prose — no labels, no "Sentence 1", no bullet points:
+First sentence names who is acting on ${symbol} and what they did, with a specific ₹ figure or share count. Second sentence says what a second stream confirms or contradicts. Third sentence gives a direct directional call on ${symbol} — do not hedge unless Confidence is LOW.
 
 ## Confidence: HIGH / MEDIUM / LOW
-[HIGH = 3+ streams agree | MEDIUM = 2 streams agree or thin data | LOW = streams conflict or data sparse]
-Reason: [one sentence]
+Reason: [one sentence only — stop after the period]
 
 --- MARKET DATA ---
 

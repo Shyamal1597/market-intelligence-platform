@@ -41,10 +41,13 @@ function extractNarrative(text: string): string {
 }
 
 function extractConfidence(text: string): { level: string; reason: string } {
-  const match = text.match(/## Confidence:\s*(HIGH|MEDIUM|LOW)\n?([\s\S]*?)$/i);
-  if (!match) return { level: "", reason: "" };
-  const reason = match[2].replace(/^Reason:\s*/i, "").trim();
-  return { level: match[1], reason };
+  const levelMatch = text.match(/## Confidence:\s*(HIGH|MEDIUM|LOW)/i);
+  const reasonMatch = text.match(/Reason:\s*([^\n]+)/i);
+  if (!levelMatch) return { level: "", reason: "" };
+  return {
+    level: levelMatch[1],
+    reason: reasonMatch ? reasonMatch[1].trim() : "",
+  };
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
