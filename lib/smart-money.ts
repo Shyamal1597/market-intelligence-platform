@@ -170,7 +170,7 @@ OUTPUT FORMAT (follow exactly, no deviations):
 |-------------------------|--------|----------|
 | FII/DII Flows           | 🟢 or 🔴 or ⚪ | [specific figure + date] |
 | Institutional Deal Flow | 🟢 or 🔴 or ⚪ | [specific figure] |
-| Market News Sentiment   | 🟢 or 🔴 or ⚪ | [dominant theme from headlines with source] |
+| Market News Sentiment   | 🟢 or 🔴 or ⚪ | [2-3 dominant themes from the headlines: cite headline titles and sources. Format: "Theme 1 (Source); Theme 2 (Source); Theme 3 (Source)"] |
 | Corporate Activity      | 🟢 or 🔴 or ⚪ | [filing type count + notable company] |
 
 ## Smart Money Signal

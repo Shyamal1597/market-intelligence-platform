@@ -153,7 +153,7 @@ function ScorecardTable({ rows }: { rows: { label: string; signal: string; fact:
             <tr key={r.label} className="border-b border-border/40">
               <td className="py-1.5 pr-3 text-muted whitespace-nowrap">{r.label}</td>
               <td className="py-1.5 text-center text-base leading-none">{sigEmoji}</td>
-              <td className="py-1.5 pl-2 text-primary/80 truncate max-w-[300px]">{r.fact}</td>
+              <td className="py-1.5 pl-2 text-primary/80 break-words">{r.fact}</td>
             </tr>
           );
         })}
