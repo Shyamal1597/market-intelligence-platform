@@ -171,6 +171,20 @@ export async function GET(
 
   const isMarket = upper === "MARKET";
   const rawData = isMarket ? await buildMarketData() : await buildSymbolData(upper);
+
+  // For symbol mode: refuse to generate if no symbol-specific data exists.
+  // FII/DII is market-wide — it cannot produce valid stock-specific insights.
+  if (!isMarket) {
+    const sd = rawData as SymbolStreamData;
+    const hasData = sd.insiders.length > 0 || sd.bulkBlockDeals.length > 0 || sd.announcements.length > 0;
+    if (!hasData) {
+      return new Response(
+        JSON.stringify({ noData: true, symbol: upper }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const prompt = isMarket
     ? buildMarketPrompt(rawData as MarketStreamData)
     : buildSymbolPrompt(rawData as SymbolStreamData);

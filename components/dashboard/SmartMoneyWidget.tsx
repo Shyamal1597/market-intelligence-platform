@@ -13,6 +13,7 @@ interface SignalState {
   generatedAt: string;
   streaming: boolean;
   error: string;
+  noData?: boolean;     // true when no symbol-specific streams have data
 }
 
 // ── Parsing helpers ────────────────────────────────────────────────────────────
@@ -215,29 +216,37 @@ function SignalCard({
         </div>
       </div>
 
+      {/* No data — symbol not found in any stream */}
+      {state.noData && (
+        <div className="flex items-center gap-2 text-muted text-xs font-mono py-3">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          No actionable data found for <span className="text-primary">{state.symbol}</span> — no insider disclosures, bulk/block deals, or filings in NSE/BSE feeds.
+        </div>
+      )}
+
       {/* Raw scorecard — renders immediately */}
-      {state.rawData && !scorecardRows.length && (
+      {!state.noData && state.rawData && !scorecardRows.length && (
         state.rawData.mode === "market"
           ? <RawMarketScorecard data={state.rawData as MarketStreamData} />
           : <RawSymbolScorecard data={state.rawData as SymbolStreamData} />
       )}
 
       {/* LLM scorecard — replaces raw once Ollama has the table */}
-      {scorecardRows.length > 0 && <ScorecardTable rows={scorecardRows} />}
+      {!state.noData && scorecardRows.length > 0 && <ScorecardTable rows={scorecardRows} />}
 
       {/* Narrative */}
-      {state.streaming && !narrativeText && (
+      {!state.noData && state.streaming && !narrativeText && (
         <div className="flex items-center gap-2 text-muted text-xs font-mono py-2">
           <span className="animate-pulse text-amber">●</span> Generating insight…
         </div>
       )}
-      {narrativeText && (
+      {!state.noData && narrativeText && (
         <p className="text-primary text-[11px] font-mono leading-relaxed">
           {narrativeText}
           {state.streaming && <span className="animate-pulse text-amber">▋</span>}
         </p>
       )}
-      {confidence.reason && !state.streaming && (
+      {!state.noData && confidence.reason && !state.streaming && (
         <p className="text-muted text-[10px] font-mono mt-2 italic">{confidence.reason}</p>
       )}
 
@@ -292,9 +301,20 @@ export function SmartMoneyWidget() {
       const res = await fetch(`/api/smart-money/${key}`, { signal: ctrl.signal });
       const contentType = res.headers.get("content-type") ?? "";
 
-      // Cached — plain JSON
+      // Plain JSON responses: cached signal or no-data
       if (contentType.includes("application/json")) {
-        const json = await res.json() as { cached: boolean; signal: CachedSignal };
+        const json = await res.json() as { cached: boolean; signal: CachedSignal; noData?: boolean };
+
+        // No symbol-specific data found — block hallucination
+        if (json.noData) {
+          setSignals(prev => ({
+            ...prev,
+            [key]: { ...prev[key], streaming: false, noData: true },
+          }));
+          return;
+        }
+
+        // Cached signal
         if (json.cached && json.signal) {
           setSignals(prev => ({
             ...prev,
