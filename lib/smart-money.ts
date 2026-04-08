@@ -119,70 +119,80 @@ export function getRecentNews(limit = 10): NewsHeadline[] {
 export function buildMarketPrompt(data: MarketStreamData): string {
   const { fiiDii, newsHeadlines, keyFilings, dealFlow } = data;
 
+  // FII trend: show net flow per day + 7-day cumulative
+  const fiiCumulative = fiiDii.reduce((s, d) => s + d.fiiEquityNet, 0);
+  const diiCumulative = fiiDii.reduce((s, d) => s + d.diiEquityNet, 0);
   const fiiBlock = fiiDii.length
     ? fiiDii.map(d =>
-        `${d.date}: FII net ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII net ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
-      ).join("\n")
+        `${d.date}: FII ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
+      ).join("\n") +
+      `\n7-day cumulative: FII ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr | DII ${diiCumulative >= 0 ? "+" : ""}${diiCumulative.toFixed(0)}Cr`
     : "No FII/DII data";
 
+  // News: all headlines for sentiment synthesis
   const newsBlock = newsHeadlines.length
-    ? newsHeadlines.map(n => `[${n.source}] ${n.title}`).join("\n")
-    : "No market news";
+    ? newsHeadlines.map((n, i) => `${i + 1}. [${n.source}] ${n.title}`).join("\n")
+    : "No market news available";
 
-  const filingsBlock = keyFilings.length
-    ? keyFilings.map(f => `${f.date} | ${f.company}: ${f.title}`).join("\n")
+  // Filings: group by type for meaningful signal
+  const filingsByType = keyFilings.reduce<Record<string, string[]>>((acc, f) => {
+    const type = f.title || "General";
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(f.company);
+    return acc;
+  }, {});
+  const filingsBlock = Object.keys(filingsByType).length
+    ? Object.entries(filingsByType)
+        .map(([type, companies]) => `${type} (${companies.length}): ${companies.slice(0, 4).join(", ")}${companies.length > 4 ? "…" : ""}`)
+        .join("\n")
     : "No recent filings";
 
   const dealBlock = dealFlow.totalDeals > 0
-    ? `${dealFlow.totalDeals} institutional deals today | Buy: ₹${dealFlow.totalBuyCr.toFixed(0)}Cr | Sell: ₹${dealFlow.totalSellCr.toFixed(0)}Cr | Net: ${dealFlow.netCr >= 0 ? "+" : ""}${dealFlow.netCr.toFixed(0)}Cr`
+    ? `${dealFlow.totalDeals} deals today | Institutional Buy: ₹${dealFlow.totalBuyCr.toFixed(0)}Cr | Sell: ₹${dealFlow.totalSellCr.toFixed(0)}Cr | Net: ${dealFlow.netCr >= 0 ? "+" : ""}${dealFlow.netCr.toFixed(0)}Cr`
     : "No bulk/block deal data for today";
 
-  return `You are a senior equity analyst at Sunidhi Capital, an Indian research firm.
+  return `You are a senior equity analyst at Sunidhi Capital, an Indian research firm. Today's date: ${new Date().toISOString().split("T")[0]}.
 
-Synthesise the market intelligence below into a Smart Money Signal for the BROADER INDIAN MARKET (NIFTY 50 / SENSEX).
+Your job: synthesise the four data streams below into a Smart Money Signal for NIFTY 50 / SENSEX. Be direct and specific — a fund manager needs to act on this.
 
-RULES:
-- Only use the data provided. Never invent figures, names, or events.
-- If a stream has no data, mark it "—" and exclude it from the verdict.
-- Be specific: cite rupee figures, reference dates, name sources from the data.
-- Convergence across streams = stronger signal. Flag divergence explicitly.
-- Focus on the directional implication for NIFTY/SENSEX, not individual stocks.
+CRITICAL RULES:
+1. Use ONLY the data provided. Do not invent figures.
+2. For FII/DII: interpret the trend (sustained selling = bearish, DII absorption = support).
+3. For News: read ALL ${newsHeadlines.length} headlines and judge the overall market tone. You MUST output Bullish/Bearish/Neutral — never "—" when headlines exist. Pick the dominant theme.
+4. For Deal Flow: net positive = institutions buying = bullish signal.
+5. For Filings: Board Meetings/Financial Results = high activity. Interpret volume and type.
+6. Be specific: cite ₹ figures, dates, company names, sources from the data.
 
-OUTPUT FORMAT (follow exactly):
+OUTPUT FORMAT (follow exactly, no deviations):
 
 ## Stream Scorecard
-| Stream                  | Signal   | Key Fact |
-|-------------------------|----------|----------|
-| FII/DII Flows           | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
-| Institutional Deal Flow | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
-| Market News Sentiment   | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
-| BSE Filing Activity     | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
+| Stream                  | Signal | Key Fact |
+|-------------------------|--------|----------|
+| FII/DII Flows           | 🟢 or 🔴 or ⚪ | [specific figure + date] |
+| Institutional Deal Flow | 🟢 or 🔴 or ⚪ | [specific figure] |
+| Market News Sentiment   | 🟢 or 🔴 or ⚪ | [dominant theme from headlines with source] |
+| Corporate Activity      | 🟢 or 🔴 or ⚪ | [filing type count + notable company] |
 
 ## Smart Money Signal
-Write exactly 3 sentences:
-
-Sentence 1 — LEAD: What is the dominant institutional move? Name the actor, cite the figure, give the date.
-Sentence 2 — CONNECT: What does a second stream confirm or contradict? Be plain about divergence.
-Sentence 3 — IMPLICATION: What does this combination suggest for NIFTY/SENSEX direction? Do not hedge unless Confidence is LOW.
-
-Write as if briefing a fund manager verbally. No jargon. No bullet points.
+[Sentence 1 — LEAD] Name the dominant actor and their exact position. Example: "FIIs sold a net ₹X,XXXCr over 7 days while DIIs absorbed ₹X,XXXCr."
+[Sentence 2 — CONNECT] How does a second stream confirm or contradict? Name the stream and its figure.
+[Sentence 3 — VERDICT] Direct call on NIFTY/SENSEX direction. Commit to a view.
 
 ## Confidence: HIGH / MEDIUM / LOW
-[HIGH = 3+ streams agree | MEDIUM = 2 streams agree | LOW = streams conflict or data sparse]
-Reason: [one sentence]
+Reason: [one sentence citing which streams agree/disagree]
 
---- MARKET DATA ---
+--- DATA ---
 
-FII/DII EQUITY FLOWS (last 7 days):
+FII/DII EQUITY FLOWS (${fiiDii.length} days):
 ${fiiBlock}
 
-INSTITUTIONAL BULK/BLOCK DEAL FLOW (today):
+INSTITUTIONAL BULK/BLOCK DEAL FLOW:
 ${dealBlock}
 
-MARKET NEWS HEADLINES (most recent first):
+MARKET NEWS HEADLINES (${newsHeadlines.length} items — synthesise the overall sentiment):
 ${newsBlock}
 
-KEY BSE/NSE FILINGS (recent):
+CORPORATE FILINGS ACTIVITY:
 ${filingsBlock}
 
 --- END ---`;

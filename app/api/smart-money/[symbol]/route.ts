@@ -20,14 +20,14 @@ export const dynamic = "force-dynamic";
 
 async function buildMarketData(): Promise<MarketStreamData> {
   const fiiDii = getRecentFiiDii(7);
-  const newsHeadlines = getRecentNews(10);
+  const newsHeadlines = getRecentNews(15);
 
   // Key filings: live RSS, top 10
   const keyFilings = await fetchNSEFilings(10)
     .then(filings => filings.slice(0, 10).map(f => ({
       date: f.submittedAt ?? "",
       company: f.company ?? f.scripCode ?? "",
-      title: f.description ?? f.filingType ?? "",
+      title: f.filingType ?? "",   // description = company name (RSS limitation); use filing type
     })))
     .catch(() => []);
 
