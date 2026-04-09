@@ -6,7 +6,11 @@ import type { InsiderDisclosure } from "@/app/api/insider/[symbol]/route";
 
 export interface FiiDiiDay {
   date: string;
+  fiiEquityBuy: number;
+  fiiEquitySell: number;
   fiiEquityNet: number;
+  diiEquityBuy: number;
+  diiEquitySell: number;
   diiEquityNet: number;
 }
 
@@ -124,7 +128,7 @@ export function buildMarketPrompt(data: MarketStreamData): string {
   const diiCumulative = fiiDii.reduce((s, d) => s + d.diiEquityNet, 0);
   const fiiBlock = fiiDii.length
     ? fiiDii.map(d =>
-        `${d.date}: FII ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
+        `${d.date}: FII bought ₹${d.fiiEquityBuy.toFixed(0)}Cr / sold ₹${d.fiiEquitySell.toFixed(0)}Cr → net ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII bought ₹${d.diiEquityBuy.toFixed(0)}Cr / sold ₹${d.diiEquitySell.toFixed(0)}Cr → net ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
       ).join("\n") +
       `\n7-day cumulative: FII ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr | DII ${diiCumulative >= 0 ? "+" : ""}${diiCumulative.toFixed(0)}Cr`
     : "No FII/DII data";
@@ -212,7 +216,7 @@ export function buildSymbolPrompt(data: SymbolStreamData): string {
 
   const fiiBlock = fiiDii.length
     ? fiiDii.map(d =>
-        `${d.date}: FII net ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII net ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
+        `${d.date}: FII bought ₹${d.fiiEquityBuy.toFixed(0)}Cr / sold ₹${d.fiiEquitySell.toFixed(0)}Cr → net ${d.fiiEquityNet >= 0 ? "+" : ""}${d.fiiEquityNet.toFixed(0)}Cr | DII bought ₹${d.diiEquityBuy.toFixed(0)}Cr / sold ₹${d.diiEquitySell.toFixed(0)}Cr → net ${d.diiEquityNet >= 0 ? "+" : ""}${d.diiEquityNet.toFixed(0)}Cr`
       ).join("\n")
     : "No FII/DII data";
 
