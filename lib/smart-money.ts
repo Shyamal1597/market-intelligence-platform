@@ -18,6 +18,7 @@ export interface NewsHeadline {
   title: string;
   source: string;
   pubDate: string;
+  content?: string;   // article snippet, ~200 chars, may be empty
 }
 
 /** Market-wide overview (NIFTY/SENSEX/broader) */
@@ -107,12 +108,15 @@ export function getRecentFiiDii(days = 7): FiiDiiDay[] {
 export function getRecentNews(limit = 10): NewsHeadline[] {
   try {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
-    const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string }[] };
-    return data.news.slice(0, limit).map(n => ({
-      title: n.title,
-      source: n.source ?? "Unknown",
-      pubDate: n.pubDate,
-    }));
+    const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string; content?: string }[] };
+    return data.news
+      .slice(0, limit)
+      .map(n => ({
+        title: n.title,
+        source: n.source ?? "Unknown",
+        pubDate: n.pubDate,
+        content: n.content && n.content.length > 20 ? n.content.slice(0, 220) : undefined,
+      }));
   } catch {
     return [];
   }
@@ -133,9 +137,13 @@ export function buildMarketPrompt(data: MarketStreamData): string {
       `\n7-day cumulative: FII ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr | DII ${diiCumulative >= 0 ? "+" : ""}${diiCumulative.toFixed(0)}Cr`
     : "No FII/DII data";
 
-  // News: all headlines for sentiment synthesis
+  // News: top 5 with content snippets for richer sentiment synthesis
   const newsBlock = newsHeadlines.length
-    ? newsHeadlines.map((n, i) => `${i + 1}. [${n.source}] ${n.title}`).join("\n")
+    ? newsHeadlines.slice(0, 5).map((n, i) => {
+        const snippet = n.content ? ` — ${n.content}` : "";
+        return `${i + 1}. [${n.source}] ${n.title}${snippet}`;
+      }).join("\n") +
+      (newsHeadlines.length > 5 ? `\n(+${newsHeadlines.length - 5} more headlines)` : "")
     : "No market news available";
 
   // Filings: group by type for meaningful signal
