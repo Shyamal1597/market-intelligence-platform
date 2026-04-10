@@ -51,6 +51,15 @@ function extractConfidence(text: string): { level: string; reason: string } {
   };
 }
 
+/** Extract { label → { signal, fact } } map from parsed scorecard rows */
+function scorecardFactMap(rows: { label: string; signal: string; fact: string }[]): Record<string, { signal: string; fact: string }> {
+  const map: Record<string, { signal: string; fact: string }> = {};
+  for (const r of rows) {
+    map[r.label.trim().toLowerCase()] = { signal: r.signal, fact: r.fact };
+  }
+  return map;
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function ConfidenceBadge({ level }: { level: string }) {
@@ -66,103 +75,316 @@ function ConfidenceBadge({ level }: { level: string }) {
   );
 }
 
-function RawMarketScorecard({ data }: { data: MarketStreamData }) {
-  const latestFii = data.fiiDii.at(-1);
-  const rows = [
-    {
-      label: "FII/DII Flows",
-      signal: latestFii ? (latestFii.fiiEquityNet >= 0 ? "🟢" : "🔴") : "—",
-      fact: latestFii
-        ? `FII ${latestFii.fiiEquityNet >= 0 ? "+" : ""}${latestFii.fiiEquityNet.toFixed(0)}Cr | DII ${latestFii.diiEquityNet >= 0 ? "+" : ""}${latestFii.diiEquityNet.toFixed(0)}Cr (${latestFii.date})`
-        : "No data",
-    },
-    {
-      label: "Deal Flow",
-      signal: data.dealFlow.totalDeals > 0 ? (data.dealFlow.netCr >= 0 ? "🟢" : "🔴") : "—",
-      fact: data.dealFlow.totalDeals > 0
-        ? `${data.dealFlow.totalDeals} deals | Net ${data.dealFlow.netCr >= 0 ? "+" : ""}${data.dealFlow.netCr.toFixed(0)}Cr`
-        : "No institutional deals today",
-    },
-    {
-      label: "News",
-      signal: data.newsHeadlines.length > 0 ? "⚪" : "—",
-      fact: data.newsHeadlines.length > 0
-        ? `${data.newsHeadlines.length} headlines — ${data.newsHeadlines[0]?.title?.slice(0, 50)}…`
-        : "No headlines",
-    },
-    {
-      label: "Filings",
-      signal: data.keyFilings.length > 0 ? "⚪" : "—",
-      fact: data.keyFilings.length > 0
-        ? `${data.keyFilings.length} filings — ${data.keyFilings[0]?.company}: ${data.keyFilings[0]?.title?.slice(0, 40)}…`
-        : "No recent filings",
-    },
-  ];
-  return <ScorecardTable rows={rows} />;
-}
-
-function RawSymbolScorecard({ data }: { data: SymbolStreamData }) {
-  const latestFii = data.fiiDii.at(-1);
-  const firstInsider = data.insiders[0];
-  const rows = [
-    {
-      label: "Insiders",
-      signal: firstInsider
-        ? (firstInsider.transactionType === "Buy" ? "🟢" : firstInsider.transactionType === "Sell" ? "🔴" : "⚪")
-        : "—",
-      fact: firstInsider
-        ? `${firstInsider.name} ${firstInsider.transactionType} ${firstInsider.sharesTransacted.toLocaleString()} shares`
-        : "No disclosures (90d)",
-    },
-    {
-      label: "Bulk/Block",
-      signal: data.bulkBlockDeals.length > 0 ? "⚪" : "—",
-      fact: data.bulkBlockDeals.length > 0
-        ? `${data.bulkBlockDeals.length} deal(s) — ₹${data.bulkBlockDeals.reduce((s, d) => s + d.valueCr, 0).toFixed(1)}Cr today`
-        : "No deals today",
-    },
-    {
-      label: "FII/DII",
-      signal: latestFii ? (latestFii.fiiEquityNet >= 0 ? "🟢" : "🔴") : "—",
-      fact: latestFii
-        ? `FII ${latestFii.fiiEquityNet >= 0 ? "+" : ""}${latestFii.fiiEquityNet.toFixed(0)}Cr (market-wide, ${latestFii.date})`
-        : "No data",
-    },
-    {
-      label: "Filings",
-      signal: data.announcements.length > 0 ? "⚪" : "—",
-      fact: data.announcements.length > 0
-        ? `${data.announcements.length} recent — ${data.announcements[0]?.title?.slice(0, 45)}…`
-        : "No announcements",
-    },
-  ];
-  return <ScorecardTable rows={rows} />;
-}
-
-function ScorecardTable({ rows }: { rows: { label: string; signal: string; fact: string }[] }) {
+function StreamHeader({
+  label,
+  signal,
+  llmSignal,
+}: {
+  label: string;
+  signal: string;
+  llmSignal?: string;
+}) {
+  const sigEmoji = signal.match(/^(🟢|🔴|⚪|—)/)?.[0] ?? signal;
+  const badgeCls: Record<string, string> = {
+    Bullish: "text-teal border-teal/30 bg-teal/10",
+    Bearish: "text-danger border-danger/30 bg-danger/10",
+    Neutral: "text-muted border-border bg-surface",
+  };
+  const badge = llmSignal?.match(/Bullish|Bearish|Neutral/i)?.[0];
   return (
-    <table className="w-full text-[10px] font-mono mb-3">
-      <thead>
-        <tr className="border-b border-border text-muted uppercase tracking-widest">
-          <th className="text-left font-normal py-1.5 pr-3 w-28">Stream</th>
-          <th className="text-center font-normal py-1.5 w-5">Sig</th>
-          <th className="text-left font-normal py-1.5 pl-2">Key Fact</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(r => {
-          // LLM outputs "🟢 Bullish" — keep only the leading emoji/symbol
-          const sigEmoji = r.signal.match(/^(🟢|🔴|⚪|—)/)?.[0] ?? r.signal.charAt(0);
-          return (
-            <tr key={r.label} className="border-b border-border/40">
-              <td className="py-1.5 pr-3 text-muted whitespace-nowrap">{r.label}</td>
-              <td className="py-1.5 text-center text-base leading-none">{sigEmoji}</td>
-              <td className="py-1.5 pl-2 text-primary/80 break-words">{r.fact}</td>
+    <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-base leading-none">{sigEmoji}</span>
+        <span className="text-[10px] font-mono font-semibold text-muted uppercase tracking-widest">{label}</span>
+      </div>
+      {badge && (
+        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${badgeCls[badge] ?? "text-muted border-border"}`}>
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function StreamFact({ fact, streaming }: { fact?: string; streaming: boolean }) {
+  if (!fact && !streaming) return null;
+  return (
+    <div className="mt-1.5 pt-1.5 border-t border-border/30 text-[10px] font-mono text-primary/70 leading-relaxed min-h-[1.2rem]">
+      {fact
+        ? <span>▸ {fact}</span>
+        : <span className="text-muted animate-pulse">▸ …</span>
+      }
+    </div>
+  );
+}
+
+function FiiDiiSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: MarketStreamData | SymbolStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const fiiDii = data.fiiDii;
+  const latest = fiiDii.at(-1);
+  const rawSignal = latest ? (latest.fiiEquityNet >= 0 ? "🟢" : "🔴") : "—";
+  const cumFii = fiiDii.reduce((s, d) => s + d.fiiEquityNet, 0);
+  const cumDii = fiiDii.reduce((s, d) => s + d.diiEquityNet, 0);
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="FII / DII Flows" signal={rawSignal} llmSignal={llmRawSignal} />
+      <table className="w-full text-[10px] font-mono">
+        <thead>
+          <tr className="text-muted">
+            <th className="text-left font-normal pb-1 pr-2 w-20">Date</th>
+            <th className="text-right font-normal pb-1 pr-2">FII Net</th>
+            <th className="text-right font-normal pb-1">DII Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fiiDii.slice(-7).map(d => (
+            <tr key={d.date}>
+              <td className="pr-2 py-0.5 text-muted">{d.date.slice(5)}</td>
+              <td className={`text-right pr-2 py-0.5 ${d.fiiEquityNet >= 0 ? "text-teal" : "text-danger"}`}>
+                {d.fiiEquityNet >= 0 ? "+" : ""}{d.fiiEquityNet.toFixed(0)}Cr
+              </td>
+              <td className={`text-right py-0.5 ${d.diiEquityNet >= 0 ? "text-teal" : "text-danger"}`}>
+                {d.diiEquityNet >= 0 ? "+" : ""}{d.diiEquityNet.toFixed(0)}Cr
+              </td>
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          ))}
+          {fiiDii.length > 1 && (
+            <tr className="border-t border-border/40 font-semibold text-primary/80">
+              <td className="pr-2 py-0.5">7d total</td>
+              <td className={`text-right pr-2 py-0.5 ${cumFii >= 0 ? "text-teal" : "text-danger"}`}>
+                {cumFii >= 0 ? "+" : ""}{(cumFii / 100).toFixed(1)}kCr
+              </td>
+              <td className={`text-right py-0.5 ${cumDii >= 0 ? "text-teal" : "text-danger"}`}>
+                {cumDii >= 0 ? "+" : ""}{(cumDii / 100).toFixed(1)}kCr
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function DealFlowSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: MarketStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const { dealFlow } = data;
+  const rawSignal = dealFlow.totalDeals > 0 ? (dealFlow.netCr >= 0 ? "🟢" : "🔴") : "—";
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="Institutional Deal Flow" signal={rawSignal} llmSignal={llmRawSignal} />
+      {dealFlow.totalDeals === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No bulk/block deals today</p>
+      ) : (
+        <>
+          <div className="flex gap-4 text-[10px] font-mono mb-1.5">
+            <span className="text-muted">{dealFlow.totalDeals} deals</span>
+            <span className="text-teal">Buy ₹{dealFlow.totalBuyCr.toFixed(0)}Cr</span>
+            <span className="text-danger">Sell ₹{dealFlow.totalSellCr.toFixed(0)}Cr</span>
+            <span className={`font-semibold ${dealFlow.netCr >= 0 ? "text-teal" : "text-danger"}`}>
+              Net {dealFlow.netCr >= 0 ? "+" : ""}{dealFlow.netCr.toFixed(0)}Cr
+            </span>
+          </div>
+          {dealFlow.topDeals?.slice(0, 5).map((d, i) => (
+            <div key={i} className="flex items-center gap-2 text-[10px] font-mono py-0.5">
+              <span className={`px-1 py-px rounded text-[9px] font-bold ${d.side === "BUY" ? "bg-teal/10 text-teal" : "bg-danger/10 text-danger"}`}>
+                {d.side}
+              </span>
+              <span className="text-primary/70 truncate flex-1">{d.institution || "—"}</span>
+              <span className="text-muted shrink-0">{d.symbol}</span>
+              <span className="text-primary/80 shrink-0">₹{d.valueCr.toFixed(1)}Cr</span>
+            </div>
+          ))}
+        </>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function NewsSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: MarketStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const rawSignal = data.newsHeadlines.length > 0 ? "⚪" : "—";
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="Market News Sentiment" signal={rawSignal} llmSignal={llmRawSignal} />
+      {data.newsHeadlines.length === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No headlines</p>
+      ) : (
+        <div className="space-y-1.5">
+          {data.newsHeadlines.slice(0, 5).map((n, i) => (
+            <div key={i} className="text-[10px] font-mono">
+              <div className="flex items-start gap-1.5">
+                <span className="text-amber/70 shrink-0 text-[9px] mt-px">[{n.source}]</span>
+                <span className="text-primary/80 leading-snug">{n.title}</span>
+              </div>
+              {n.content && (
+                <p className="text-muted ml-0 mt-0.5 leading-snug text-[9px] line-clamp-2">{n.content}</p>
+              )}
+            </div>
+          ))}
+          {data.newsHeadlines.length > 5 && (
+            <p className="text-muted text-[9px] font-mono">+{data.newsHeadlines.length - 5} more headlines</p>
+          )}
+        </div>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function FilingsSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: MarketStreamData | SymbolStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const filings = data.mode === "market"
+    ? (data as MarketStreamData).keyFilings
+    : (data as SymbolStreamData).announcements.map(a => ({ date: a.date, company: "", title: a.title }));
+  const rawSignal = filings.length > 0 ? "⚪" : "—";
+
+  return (
+    <div className="mb-2">
+      <StreamHeader label="Corporate Filings" signal={rawSignal} llmSignal={llmRawSignal} />
+      {filings.length === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No recent filings</p>
+      ) : (
+        <div className="space-y-1">
+          {filings.slice(0, 6).map((f, i) => (
+            <div key={i} className="flex items-start gap-2 text-[10px] font-mono">
+              <span className="text-muted shrink-0">{f.date ? f.date.slice(0, 10) : "—"}</span>
+              {f.company && <span className="text-amber/80 shrink-0 max-w-[80px] truncate">{f.company}</span>}
+              <span className="text-primary/70 leading-snug">{f.title || "Filing"}</span>
+            </div>
+          ))}
+          {filings.length > 6 && (
+            <p className="text-muted text-[9px] font-mono">+{filings.length - 6} more filings</p>
+          )}
+        </div>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function InsiderSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: SymbolStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const { insiders } = data;
+  const first = insiders[0];
+  const rawSignal = first
+    ? (first.transactionType === "Buy" ? "🟢" : first.transactionType === "Sell" ? "🔴" : "⚪")
+    : "—";
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="Insider Activity" signal={rawSignal} llmSignal={llmRawSignal} />
+      {insiders.length === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No disclosures in last 90 days</p>
+      ) : (
+        <div className="space-y-1">
+          {insiders.slice(0, 5).map((ins, i) => (
+            <div key={i} className="text-[10px] font-mono">
+              <div className="flex items-center gap-2">
+                <span className="text-muted shrink-0">{ins.date}</span>
+                <span className={`px-1 py-px rounded text-[9px] font-bold shrink-0 ${ins.transactionType === "Buy" ? "bg-teal/10 text-teal" : ins.transactionType === "Sell" ? "bg-danger/10 text-danger" : "bg-border text-muted"}`}>
+                  {ins.transactionType}
+                </span>
+                <span className="text-primary/80 truncate">{ins.name}</span>
+              </div>
+              <div className="text-muted ml-0 text-[9px]">
+                {ins.sharesTransacted.toLocaleString()} shares · {ins.beforePct.toFixed(2)}% → {ins.afterPct.toFixed(2)}% · {ins.category}
+              </div>
+            </div>
+          ))}
+          {insiders.length > 5 && (
+            <p className="text-muted text-[9px] font-mono">+{insiders.length - 5} more disclosures</p>
+          )}
+        </div>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function BulkBlockSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: SymbolStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const { bulkBlockDeals } = data;
+  const rawSignal = bulkBlockDeals.length > 0 ? "⚪" : "—";
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="Bulk / Block Deals" signal={rawSignal} llmSignal={llmRawSignal} />
+      {bulkBlockDeals.length === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No deals today</p>
+      ) : (
+        <div className="space-y-1">
+          {bulkBlockDeals.map((d, i) => (
+            <div key={i} className="flex items-center gap-2 text-[10px] font-mono">
+              <span className={`px-1 py-px rounded text-[9px] font-bold ${d.side === "BUY" ? "bg-teal/10 text-teal" : "bg-danger/10 text-danger"}`}>
+                {d.side}
+              </span>
+              <span className="text-primary/70 truncate flex-1">{d.client}</span>
+              <span className="text-primary/80 shrink-0">₹{d.valueCr.toFixed(1)}Cr</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
   );
 }
 
@@ -177,8 +399,16 @@ function SignalCard({
 }) {
   const confidence = extractConfidence(state.narrative);
   const narrativeText = extractNarrative(state.narrative);
-  const scorecardRows = parseScorecard(state.narrative);
   const isMarket = state.symbol === "MARKET";
+
+  const scorecardRows = parseScorecard(state.narrative);
+  const factMap = scorecardFactMap(scorecardRows);
+
+  function getLlmEntry(key: string) {
+    const entry = Object.entries(factMap).find(([k]) => k.includes(key));
+    if (!entry) return undefined;
+    return { signal: entry[1].signal, fact: entry[1].fact };
+  }
 
   return (
     <div className="glass-panel rounded-xl p-4 mb-3">
@@ -224,15 +454,67 @@ function SignalCard({
         </div>
       )}
 
-      {/* Raw scorecard — renders immediately */}
-      {!state.noData && state.rawData && !scorecardRows.length && (
-        state.rawData.mode === "market"
-          ? <RawMarketScorecard data={state.rawData as MarketStreamData} />
-          : <RawSymbolScorecard data={state.rawData as SymbolStreamData} />
+      {/* Stream sections */}
+      {!state.noData && state.rawData && (
+        <div>
+          <FiiDiiSection
+            data={state.rawData}
+            llmFact={getLlmEntry("fii")?.fact}
+            llmRawSignal={getLlmEntry("fii")?.signal}
+            streaming={state.streaming}
+          />
+          {state.rawData.mode === "market" && (
+            <>
+              <DealFlowSection
+                data={state.rawData as MarketStreamData}
+                llmFact={getLlmEntry("deal")?.fact}
+                llmRawSignal={getLlmEntry("deal")?.signal}
+                streaming={state.streaming}
+              />
+              <NewsSection
+                data={state.rawData as MarketStreamData}
+                llmFact={getLlmEntry("news")?.fact}
+                llmRawSignal={getLlmEntry("news")?.signal}
+                streaming={state.streaming}
+              />
+              <FilingsSection
+                data={state.rawData}
+                llmFact={getLlmEntry("corporate")?.fact ?? getLlmEntry("filing")?.fact}
+                llmRawSignal={getLlmEntry("corporate")?.signal ?? getLlmEntry("filing")?.signal}
+                streaming={state.streaming}
+              />
+            </>
+          )}
+          {state.rawData.mode === "symbol" && (
+            <>
+              <InsiderSection
+                data={state.rawData as SymbolStreamData}
+                llmFact={getLlmEntry("insider")?.fact}
+                llmRawSignal={getLlmEntry("insider")?.signal}
+                streaming={state.streaming}
+              />
+              <BulkBlockSection
+                data={state.rawData as SymbolStreamData}
+                llmFact={getLlmEntry("bulk")?.fact}
+                llmRawSignal={getLlmEntry("bulk")?.signal}
+                streaming={state.streaming}
+              />
+              <FiiDiiSection
+                data={state.rawData}
+                llmFact={getLlmEntry("fii")?.fact}
+                llmRawSignal={getLlmEntry("fii")?.signal}
+                streaming={state.streaming}
+              />
+              <FilingsSection
+                data={state.rawData}
+                llmFact={getLlmEntry("bse")?.fact ?? getLlmEntry("announce")?.fact ?? getLlmEntry("filing")?.fact}
+                llmRawSignal={getLlmEntry("bse")?.signal ?? getLlmEntry("announce")?.signal}
+                streaming={state.streaming}
+              />
+            </>
+          )}
+        </div>
       )}
-
-      {/* LLM scorecard — replaces raw once Ollama has the table */}
-      {!state.noData && scorecardRows.length > 0 && <ScorecardTable rows={scorecardRows} />}
 
       {/* Narrative */}
       {!state.noData && state.streaming && !narrativeText && (
