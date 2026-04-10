@@ -372,7 +372,7 @@ function BulkBlockSection({
         <p className="text-muted text-[10px] font-mono">No deals today</p>
       ) : (
         <div className="space-y-1">
-          {bulkBlockDeals.map((d, i) => (
+          {bulkBlockDeals.slice(0, 10).map((d, i) => (
             <div key={i} className="flex items-center gap-2 text-[10px] font-mono">
               <span className={`px-1 py-px rounded text-[9px] font-bold ${d.side === "BUY" ? "bg-teal/10 text-teal" : "bg-danger/10 text-danger"}`}>
                 {d.side}
@@ -381,6 +381,9 @@ function BulkBlockSection({
               <span className="text-primary/80 shrink-0">₹{d.valueCr.toFixed(1)}Cr</span>
             </div>
           ))}
+          {bulkBlockDeals.length > 10 && (
+            <p className="text-muted text-[9px] font-mono">+{bulkBlockDeals.length - 10} more deals</p>
+          )}
         </div>
       )}
       <StreamFact fact={llmFact} streaming={streaming} />
@@ -508,7 +511,7 @@ function SignalCard({
               <FilingsSection
                 data={state.rawData}
                 llmFact={getLlmEntry("bse")?.fact ?? getLlmEntry("announce")?.fact ?? getLlmEntry("filing")?.fact}
-                llmRawSignal={getLlmEntry("bse")?.signal ?? getLlmEntry("announce")?.signal}
+                llmRawSignal={getLlmEntry("bse")?.signal ?? getLlmEntry("announce")?.signal ?? getLlmEntry("filing")?.signal}
                 streaming={state.streaming}
               />
             </>
