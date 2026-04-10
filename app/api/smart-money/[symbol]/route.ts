@@ -40,9 +40,15 @@ async function buildMarketData(): Promise<MarketStreamData> {
         if (d.side === "BUY") totalBuyCr += d.valueCr;
         else if (d.side === "SELL") totalSellCr += d.valueCr;
       }
-      return { totalDeals, totalBuyCr, totalSellCr, netCr: totalBuyCr - totalSellCr };
+      const topDeals = deals.slice(0, 10).map(d => ({
+        institution: d.client,
+        side: d.side,
+        symbol: d.symbol,
+        valueCr: d.valueCr,
+      }));
+      return { totalDeals, totalBuyCr, totalSellCr, netCr: totalBuyCr - totalSellCr, topDeals };
     })
-    .catch(() => ({ totalDeals: 0, totalBuyCr: 0, totalSellCr: 0, netCr: 0 }));
+    .catch(() => ({ totalDeals: 0, totalBuyCr: 0, totalSellCr: 0, netCr: 0, topDeals: [] }));
 
   return { mode: "market", fiiDii, newsHeadlines, keyFilings, dealFlow };
 }

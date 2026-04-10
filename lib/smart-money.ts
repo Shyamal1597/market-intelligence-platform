@@ -32,6 +32,7 @@ export interface MarketStreamData {
     totalBuyCr: number;
     totalSellCr: number;
     netCr: number;
+    topDeals: { institution: string; side: string; symbol: string; valueCr: number }[];
   };
 }
 
@@ -160,7 +161,14 @@ export function buildMarketPrompt(data: MarketStreamData): string {
     : "No recent filings";
 
   const dealBlock = dealFlow.totalDeals > 0
-    ? `${dealFlow.totalDeals} deals today | Institutional Buy: ₹${dealFlow.totalBuyCr.toFixed(0)}Cr | Sell: ₹${dealFlow.totalSellCr.toFixed(0)}Cr | Net: ${dealFlow.netCr >= 0 ? "+" : ""}${dealFlow.netCr.toFixed(0)}Cr`
+    ? [
+        `${dealFlow.totalDeals} deals today | Institutional Buy: ₹${dealFlow.totalBuyCr.toFixed(0)}Cr | Sell: ₹${dealFlow.totalSellCr.toFixed(0)}Cr | Net: ${dealFlow.netCr >= 0 ? "+" : ""}${dealFlow.netCr.toFixed(0)}Cr`,
+        ...(dealFlow.topDeals?.length
+          ? ["Top deals:", ...dealFlow.topDeals.slice(0, 8).map(d =>
+              `  [${d.institution || "Unknown"}] ${d.side} ${d.symbol} ₹${d.valueCr.toFixed(1)}Cr`
+            )]
+          : [])
+      ].join("\n")
     : "No bulk/block deal data for today";
 
   return `You are a senior equity analyst at Sunidhi Capital, an Indian research firm. Today's date: ${new Date().toISOString().split("T")[0]}.
