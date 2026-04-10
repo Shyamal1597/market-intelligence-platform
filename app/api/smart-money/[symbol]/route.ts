@@ -107,7 +107,7 @@ function streamOllama(
       model: "llama3.1:8b",
       prompt,
       stream: true,
-      options: { temperature: 0.3 },
+      options: { temperature: 0.45 },
     }),
   }).then(async ollamaRes => {
     if (!ollamaRes.ok || !ollamaRes.body) {
