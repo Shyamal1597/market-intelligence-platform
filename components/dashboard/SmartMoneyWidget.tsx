@@ -60,6 +60,25 @@ function scorecardFactMap(rows: { label: string; signal: string; fact: string }[
   return map;
 }
 
+/**
+ * Parse the ## Stream Insights block emitted by the new prompt format.
+ * Returns a map of lowercased label → insight sentence.
+ * e.g. "fii/dii flows" → "DII absorbed ₹8,593Cr net on Apr 8..."
+ */
+function parseStreamInsights(text: string): Record<string, string> {
+  const map: Record<string, string> = {};
+  const block = text.match(/## Stream Insights\n([\s\S]*?)(?=##|$)/);
+  if (!block) return map;
+  for (const line of block[1].split("\n")) {
+    const colon = line.indexOf(":");
+    if (colon < 1) continue;
+    const label = line.slice(0, colon).trim().toLowerCase();
+    const insight = line.slice(colon + 1).trim();
+    if (label && insight) map[label] = insight;
+  }
+  return map;
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function ConfidenceBadge({ level }: { level: string }) {
@@ -406,11 +425,16 @@ function SignalCard({
 
   const scorecardRows = parseScorecard(state.narrative);
   const factMap = scorecardFactMap(scorecardRows);
+  const insightMap = parseStreamInsights(state.narrative);
 
   function getLlmEntry(key: string) {
-    const entry = Object.entries(factMap).find(([k]) => k.includes(key));
-    if (!entry) return undefined;
-    return { signal: entry[1].signal, fact: entry[1].fact };
+    // Check stream insights first (richer per-stream sentences), fallback to scorecard key fact
+    const insightEntry = Object.entries(insightMap).find(([k]) => k.includes(key));
+    const scorecardEntry = Object.entries(factMap).find(([k]) => k.includes(key));
+    const fact = insightEntry?.[1] ?? scorecardEntry?.[1]?.fact;
+    const signal = scorecardEntry?.[1]?.signal;
+    if (!fact && !signal) return undefined;
+    return { signal: signal ?? "", fact: fact ?? "" };
   }
 
   return (

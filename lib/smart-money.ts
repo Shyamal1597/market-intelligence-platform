@@ -193,9 +193,16 @@ OUTPUT FORMAT (follow exactly, no deviations):
 | Market News Sentiment   | 🟢 or 🔴 or ⚪ | [2-3 dominant themes from the headlines: cite headline titles and sources. Format: "Theme 1 (Source); Theme 2 (Source); Theme 3 (Source)"] |
 | Corporate Activity      | 🟢 or 🔴 or ⚪ | [filing type count + notable company] |
 
+## Stream Insights
+Write one sentence per stream — concise, specific, data-backed. Use the exact labels below. No preamble, no numbering.
+
+FII/DII Flows: [one sentence citing exact ₹ buy/sell figures and trend direction]
+Institutional Deal Flow: [one sentence naming the largest institution, their action, and net signal]
+Market News Sentiment: [one sentence naming dominant theme and 1-2 sources]
+Corporate Activity: [one sentence on filing type dominance and what it signals]
+
 ## Smart Money Signal
-Write exactly 3 sentences of clean prose — no labels, no "Sentence 1", no bullet points:
-First sentence names the dominant actor, their exact ₹ position, and the date. Second sentence says what a second stream confirms or contradicts, citing its figure. Third sentence gives a direct verdict on NIFTY/SENSEX direction — commit to a view.
+One sentence only — a direct verdict on NIFTY/SENSEX direction with the strongest data point. No hedging unless Confidence is LOW.
 
 ## Confidence: HIGH / MEDIUM / LOW
 Reason: [one sentence only — stop after the period]
@@ -263,9 +270,16 @@ OUTPUT FORMAT (follow exactly):
 | FII/DII Flows     | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [macro context] |
 | BSE Announcements | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [one fact with figure] |
 
+## Stream Insights
+Write one sentence per stream that has data — cite specific figures, names, dates. Use the exact labels below. Skip streams marked "—".
+
+Insider Activity: [one sentence: who, what transaction, how many shares, % change]
+Bulk/Block Deals: [one sentence: largest deal, institution name, ₹ value, buy/sell]
+FII/DII Flows: [one sentence: macro context, net direction this week]
+BSE Announcements: [one sentence: most significant announcement type and company]
+
 ## Smart Money Signal
-Write exactly 3 sentences of clean prose — no labels, no "Sentence 1", no bullet points:
-First sentence names who is acting on ${symbol} and what they did, with a specific ₹ figure or share count. Second sentence says what a second stream confirms or contradicts. Third sentence gives a direct directional call on ${symbol} — do not hedge unless Confidence is LOW.
+One sentence only — a direct directional call on ${symbol} with the strongest convergent data point. Do not hedge unless Confidence is LOW.
 
 ## Confidence: HIGH / MEDIUM / LOW
 Reason: [one sentence only — stop after the period]
