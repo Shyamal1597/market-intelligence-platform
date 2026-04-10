@@ -40,6 +40,7 @@ async function buildMarketData(): Promise<MarketStreamData> {
         if (d.side === "BUY") totalBuyCr += d.valueCr;
         else if (d.side === "SELL") totalSellCr += d.valueCr;
       }
+      // fetchDeals() returns pre-sorted by valueCr desc — slice gives top 10 by value
       const topDeals = deals.slice(0, 10).map(d => ({
         institution: d.client,
         side: d.side,
