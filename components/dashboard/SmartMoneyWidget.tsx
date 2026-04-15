@@ -840,18 +840,19 @@ export function SmartMoneyWidget() {
           {showDropdown && dropdownResults.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute left-0 right-0 top-full mt-1 bg-[#13151E] border border-border rounded-lg shadow-xl z-50 overflow-hidden"
+              className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[#1E2235] shadow-2xl overflow-hidden"
+              style={{ background: "#13151E", maxHeight: "14rem", overflowY: "auto" }}
             >
               {dropdownResults.map((sym, i) => (
                 <button
                   key={sym}
                   type="button"
                   onMouseDown={e => { e.preventDefault(); selectSymbol(sym); }}
-                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                    i === dropdownIdx
-                      ? "bg-amber/10 text-amber"
-                      : "text-primary/80 hover:bg-border/30 hover:text-primary"
-                  }`}
+                  style={{
+                    background: i === dropdownIdx ? "rgba(245,130,13,0.1)" : "transparent",
+                    color: i === dropdownIdx ? "#F5820D" : "#F0EDE8cc",
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors hover:bg-white/5"
                 >
                   {sym}
                 </button>
