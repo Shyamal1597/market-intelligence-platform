@@ -5,7 +5,7 @@ import {
   getCached,
   setCached,
   getRecentFiiDii,
-  getRecentNews,
+  getMarketNews,
   getStockNews,
   type MarketStreamData,
   type SymbolStreamData,
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 async function buildMarketData(): Promise<MarketStreamData> {
   const fiiDii = getRecentFiiDii(7);
-  const newsHeadlines = getRecentNews(15);
+  const newsHeadlines = getMarketNews(15);
 
   // Key filings: live RSS, top 10
   const keyFilings = await fetchNSEFilings(10)

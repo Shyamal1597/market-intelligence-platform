@@ -156,6 +156,60 @@ export function getStockNews(symbol: string, limit = 8): NewsHeadline[] {
   }
 }
 
+// Keywords that identify macro / broader-market news relevant to NIFTY/SENSEX analysis.
+// Articles must contain at least one term from this list (checked in title + content).
+const MARKET_NEWS_KEYWORDS = [
+  // Indices
+  "NIFTY","SENSEX","BSE 500","NSE 500","DALAL STREET","D-STREET","BENCHMARK",
+  // Institutional flows
+  "FII","DII","FPI","FOREIGN INSTITUTIONAL","DOMESTIC INSTITUTIONAL",
+  "FOREIGN PORTFOLIO","NET BUYER","NET SELLER","INSTITUTIONAL BUYING","INSTITUTIONAL SELLING",
+  // Macro / RBI / Policy
+  "RBI","REPO RATE","REVERSE REPO","INFLATION","CPI","WPI","GDP","FISCAL DEFICIT",
+  "MONETARY POLICY","MPC","RATE CUT","RATE HIKE","INTEREST RATE","LIQUIDITY",
+  "FEDERAL RESERVE","FED RATE","US FED","FOMC","JEROME POWELL",
+  // Bonds / Debt
+  "BOND YIELD","G-SEC","GSEC","GILT","GOVERNMENT BOND","10-YEAR YIELD",
+  "DEBT MARKET","BOND MARKET","TREASURY","T-BILL",
+  // Commodities
+  "CRUDE OIL","BRENT","WTI","CRUDE PRICE","OIL PRICE",
+  "GOLD PRICE","SILVER PRICE","COMMODITY","BASE METAL","COPPER PRICE",
+  // Currency / Forex
+  "RUPEE","USD/INR","INR/USD","FOREX","DOLLAR INDEX","DXY","CURRENCY MARKET",
+  // Global markets
+  "DOW JONES","NASDAQ","S&P 500","S&P500","SHANGHAI","HANG SENG","NIKKEI",
+  "GLOBAL MARKET","WORLD MARKET","EMERGING MARKET","ASIAN MARKET",
+  // Broad market sentiment
+  "STOCK MARKET","EQUITY MARKET","CAPITAL MARKET","MARKET RALLY","MARKET CRASH",
+  "BEAR MARKET","BULL MARKET","MARKET SENTIMENT","MARKET MOOD","RISK-OFF","RISK-ON",
+  "FOREIGN INFLOW","FOREIGN OUTFLOW","CAPITAL FLOW","MARKET FALL","MARKET RISE",
+  // IPO market broadly (not individual IPOs)
+  "IPO MARKET","PRIMARY MARKET","SME IPO MARKET",
+];
+
+/**
+ * Returns macro/market-relevant news only — filters out company-specific articles.
+ * Used exclusively for the MARKET-mode Smart Money Signal.
+ */
+export function getMarketNews(limit = 15): NewsHeadline[] {
+  try {
+    const raw = fs.readFileSync(NEWS_PATH, "utf-8");
+    const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string; content?: string }[] };
+    const matches = data.news.filter(n => {
+      const haystack = ((n.title ?? "") + " " + (n.content ?? "")).toUpperCase();
+      return MARKET_NEWS_KEYWORDS.some(kw => haystack.includes(kw));
+    });
+    return matches.slice(0, limit).map(n => ({
+      title: n.title,
+      source: n.source ?? "Unknown",
+      pubDate: n.pubDate,
+      content: n.content && n.content.length > 20 ? n.content.slice(0, 220) : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export function getRecentNews(limit = 10): NewsHeadline[] {
   try {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
