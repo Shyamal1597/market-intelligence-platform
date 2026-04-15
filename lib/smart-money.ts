@@ -108,21 +108,43 @@ export function getRecentFiiDii(days = 7): FiiDiiDay[] {
 }
 
 /**
- * Search market-news.json for articles mentioning a specific stock symbol.
- * Matches against title and content (case-insensitive).
- * Returns up to `limit` most recent matching articles.
+ * Derive search terms from an NSE symbol so we can match news articles
+ * that use the company name rather than the ticker.
+ * e.g. RECLTD → ["RECLTD","REC"] | TATASTEEL → ["TATASTEEL","TATA"] | RAYMOND → ["RAYMOND"]
+ */
+function getSearchTerms(symbol: string): string[] {
+  const terms = new Set([symbol]);
+  const suffixes = [
+    "BANK","FINSERV","FINSV","FIN","STEEL","CEMENT","CEM","POWER","ENERGY",
+    "INFRA","TECH","TECHNOLOGIES","LTD","IND","INDUSTRIES","CORP","PHARMA",
+    "PHARM","GAS","AUTO","MOTORS","LIFE","FERT","FOODS","FOOD","HOTEL",
+    "HOTELS","MEDIA","DIGITAL","VENTURES","SOLUTIONS","SERVICES","SYSTEMS",
+  ];
+  for (const suf of suffixes) {
+    if (symbol.endsWith(suf) && symbol.length > suf.length + 2) {
+      terms.add(symbol.slice(0, symbol.length - suf.length));
+    }
+  }
+  return [...terms].filter(t => t.length >= 3);
+}
+
+/**
+ * Search market-news.json for articles mentioning a specific stock.
+ * Matches on the NSE symbol AND common name variants derived from it
+ * (e.g. RECLTD also matches "REC", TATASTEEL also matches "TATA").
  */
 export function getStockNews(symbol: string, limit = 8): NewsHeadline[] {
   try {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
     const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string; content?: string }[] };
-    const sym = symbol.toUpperCase();
-    // Match symbol in title or content (case-insensitive)
+    const terms = getSearchTerms(symbol.toUpperCase());
+
     const matches = data.news.filter(n => {
-      const title = n.title?.toUpperCase() ?? "";
-      const content = n.content?.toUpperCase() ?? "";
-      return title.includes(sym) || content.includes(sym);
+      const title = (n.title ?? "").toUpperCase();
+      const content = (n.content ?? "").toUpperCase();
+      return terms.some(t => title.includes(t) || content.includes(t));
     });
+
     return matches.slice(0, limit).map(n => ({
       title: n.title,
       source: n.source ?? "Unknown",
@@ -227,11 +249,11 @@ DEAL FLOW RULES:
 - Name the top institution explicitly, do not say "various institutions"
 
 NEWS SENTIMENT RULES:
-- Count bullish vs bearish themes across ALL ${newsHeadlines.length} headlines
-- Bullish: rate cuts, earnings beat, capex plans, govt reform, M&A activity, order wins
-- Bearish: rate hikes, earnings miss, regulatory crackdown, FII exodus, geopolitical conflict, debt stress
-- If ≥60% headlines lean one way → assign that signal. 40-60% split → ⚪ NEUTRAL
-- Cite the SPECIFIC headline title and source that most strongly drives the signal
+- Read ALL ${newsHeadlines.length} headlines and pick the DOMINANT tone
+- Bullish signals: rate cuts, earnings beat, capex plans, govt reform, M&A activity, order wins, FDI inflows
+- Bearish signals: war/geopolitical tension, earnings miss, regulatory crackdown, FII outflows, debt stress, IPO cuts due to sentiment
+- DO NOT invent percentages. Instead, name the 2-3 most impactful headlines and state what they imply
+- If bearish headlines outnumber bullish → 🔴. If bullish outnumber bearish → 🟢. If roughly equal → ⚪
 - Never output "—" for News Sentiment when headlines exist
 
 CORPORATE FILINGS RULES:
@@ -262,10 +284,10 @@ Market News Sentiment: [name the dominant theme, cite 1-2 specific headline titl
 Corporate Activity: [state the dominant filing type with exact count, name the most significant company, explain what this filing activity signals about earnings or corporate momentum]
 
 ## Smart Money Signal
-One sentence — a direct, actionable verdict on NIFTY/SENSEX direction. Lead with the direction (BULLISH/BEARISH/NEUTRAL), then cite the single strongest data point. No hedging if Confidence is HIGH or MEDIUM.
+One sentence — lead with BULLISH / BEARISH / NEUTRAL. If streams conflict, the priority order is: FII/DII Flows > Institutional Deal Flow > News Sentiment > Corporate Activity. Use the highest-priority stream's signal as the verdict, then note the strongest opposing signal in parentheses. No hedging.
 
 ## Confidence: HIGH / MEDIUM / LOW
-Reason: [one sentence — state which streams converge or diverge and why that drives your confidence level]
+Reason: [state exactly how many streams agree with the verdict, and name any stream that disagrees]
 
 ━━━ DATA ━━━
 
