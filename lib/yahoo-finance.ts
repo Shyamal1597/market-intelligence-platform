@@ -74,16 +74,16 @@ export async function fetchGlobalQuotes(): Promise<(QuoteData & { region: string
 }
 
 const SECTOR_SYMBOLS: Record<string, string> = {
-  "^CNXAUTO":    "Auto",
-  "^CNXIT":      "IT",
-  "^CNXFMCG":    "FMCG",
-  "^NSEBANK":    "Banking",
-  "^CNXMETAL":   "Metal",
-  "^CNXPHARMA":  "Pharma",
-  "^CNXREALTY":  "Realty",
-  "^CNXENERGY":  "Energy",
-  "^CNXINFRA":   "Infra",
-  "^CNXPSUBANK": "PSU Bank",
+  "^CNXAUTO":    "Nifty Auto",
+  "^CNXIT":      "Nifty IT",
+  "^CNXFMCG":    "Nifty FMCG",
+  "^NSEBANK":    "Nifty Bank",
+  "^CNXMETAL":   "Nifty Metal",
+  "^CNXPHARMA":  "Nifty Pharma",
+  "^CNXREALTY":  "Nifty Realty",
+  "^CNXENERGY":  "Nifty Energy",
+  "^CNXINFRA":   "Nifty Infra",
+  "^CNXPSUBANK": "Nifty PSU Bank",
 };
 
 export async function fetchQuote(symbol: string): Promise<QuoteData | null> {
