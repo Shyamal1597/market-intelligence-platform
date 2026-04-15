@@ -14,8 +14,11 @@ function getEquitySymbols(): string[] {
     const data = JSON.parse(raw) as { map: Record<string, string> };
     // Keep only equity-like symbols: uppercase alpha + optional & - .
     // Exclude bond/G-sec codes which contain digits
+    // NSE equity symbols are purely alphabetic (plus & and - for names like M&M, BAJAJ-AUTO).
+    // Bond/G-sec codes contain digits (RECN12, 702GS2031, 426E23) — exclude them by
+    // rejecting any symbol that contains a digit anywhere.
     _cachedSymbols = Object.keys(data.map)
-      .filter(k => /^[A-Z][A-Z0-9&\-\.]{1,19}$/.test(k) && !/^\d/.test(k) && k.length >= 2)
+      .filter(k => /^[A-Z][A-Z&\-]{0,18}[A-Z]$/.test(k) || /^[A-Z]{2,4}$/.test(k))
       .sort();
     return _cachedSymbols;
   } catch {
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
   // Prefix matches first, then substring matches
   const prefix = all.filter(s => s.startsWith(q));
   const contains = all.filter(s => !s.startsWith(q) && s.includes(q));
-  const results = [...prefix, ...contains].slice(0, 12);
+  const results = [...prefix, ...contains].slice(0, 10);
 
   return Response.json({ symbols: results });
 }
