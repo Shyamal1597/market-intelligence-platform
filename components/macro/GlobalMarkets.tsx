@@ -105,11 +105,6 @@ export function GlobalMarkets() {
 
   const byRegion = (region: string) => quotes.filter((q) => q.region === region);
 
-  // Split Asia Pacific into two columns for compact display
-  const apQuotes = byRegion("Asia Pacific");
-  const apLeft = apQuotes.filter((_, i) => i % 2 === 0);
-  const apRight = apQuotes.filter((_, i) => i % 2 === 1);
-
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header */}
@@ -148,23 +143,9 @@ export function GlobalMarkets() {
           <RegionBlock region="India" quotes={byRegion("India")} loading={loading} />
         </div>
 
-        {/* Col 3: Asia Pacific — split into 2 sub-cols */}
+        {/* Col 3: Asia Pacific */}
         <div className="p-2">
-          <div className="flex items-center gap-2 px-2 pt-3 pb-1.5">
-            <span className="text-[15px] font-mono font-bold tracking-[0.15em] uppercase text-muted">Asia Pacific</span>
-            <div className="flex-1 h-px bg-[#1E2235]" />
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-x-3">
-              <div>{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-              <div>{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-x-3">
-              <div>{apLeft.map((q) => <IndexRow key={q.symbol} q={q} />)}</div>
-              <div>{apRight.map((q) => <IndexRow key={q.symbol} q={q} />)}</div>
-            </div>
-          )}
+          <RegionBlock region="Asia Pacific" quotes={byRegion("Asia Pacific")} loading={loading} />
         </div>
       </div>
     </div>
