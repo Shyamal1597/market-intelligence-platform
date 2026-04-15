@@ -6,6 +6,7 @@ import {
   setCached,
   getRecentFiiDii,
   getRecentNews,
+  getStockNews,
   type MarketStreamData,
   type SymbolStreamData,
   type CachedSignal,
@@ -88,6 +89,7 @@ async function buildSymbolData(symbol: string): Promise<SymbolStreamData> {
     announcements: filingsResult.status === "fulfilled" ? filingsResult.value : [],
     fiiDii: getRecentFiiDii(7),
     insiders: insidersResult.status === "fulfilled" ? insidersResult.value : [],
+    stockNews: getStockNews(symbol),
   };
 }
 
@@ -183,7 +185,7 @@ export async function GET(
   // FII/DII is market-wide — it cannot produce valid stock-specific insights.
   if (!isMarket) {
     const sd = rawData as SymbolStreamData;
-    const hasData = sd.insiders.length > 0 || sd.bulkBlockDeals.length > 0 || sd.announcements.length > 0;
+    const hasData = sd.insiders.length > 0 || sd.bulkBlockDeals.length > 0 || sd.announcements.length > 0 || sd.stockNews.length > 0;
     if (!hasData) {
       return new Response(
         JSON.stringify({ noData: true, symbol: upper }),

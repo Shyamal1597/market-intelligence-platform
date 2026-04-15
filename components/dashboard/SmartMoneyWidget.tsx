@@ -333,7 +333,8 @@ function InsiderSection({
   llmRawSignal?: string;
   streaming: boolean;
 }) {
-  const { insiders } = data;
+  // Filter out 0-share "Other" disclosure filings — only show actual buy/sell/pledge transactions
+  const insiders = data.insiders.filter(i => i.sharesTransacted > 0);
   const first = insiders[0];
   const rawSignal = first
     ? (first.transactionType === "Buy" ? "🟢" : first.transactionType === "Sell" ? "🔴" : "⚪")
@@ -343,7 +344,7 @@ function InsiderSection({
     <div className="mb-3 pb-3 border-b border-border/40">
       <StreamHeader label="Insider Activity" signal={rawSignal} llmSignal={llmRawSignal} />
       {insiders.length === 0 ? (
-        <p className="text-muted text-[10px] font-mono">No disclosures in last 90 days</p>
+        <p className="text-muted text-[10px] font-mono">No insider transactions in last 90 days</p>
       ) : (
         <div className="space-y-1">
           {insiders.slice(0, 5).map((ins, i) => (
@@ -361,7 +362,49 @@ function InsiderSection({
             </div>
           ))}
           {insiders.length > 5 && (
-            <p className="text-muted text-[9px] font-mono">+{insiders.length - 5} more disclosures</p>
+            <p className="text-muted text-[9px] font-mono">+{insiders.length - 5} more transactions</p>
+          )}
+        </div>
+      )}
+      <StreamFact fact={llmFact} streaming={streaming} />
+    </div>
+  );
+}
+
+function StockNewsSection({
+  data,
+  llmFact,
+  llmRawSignal,
+  streaming,
+}: {
+  data: SymbolStreamData;
+  llmFact?: string;
+  llmRawSignal?: string;
+  streaming: boolean;
+}) {
+  const { stockNews, symbol } = data;
+  const rawSignal = stockNews.length > 0 ? "⚪" : "—";
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border/40">
+      <StreamHeader label="Stock News" signal={rawSignal} llmSignal={llmRawSignal} />
+      {stockNews.length === 0 ? (
+        <p className="text-muted text-[10px] font-mono">No recent news mentioning {symbol}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {stockNews.slice(0, 5).map((n, i) => (
+            <div key={i} className="text-[10px] font-mono">
+              <div className="flex items-start gap-1.5">
+                <span className="text-amber/70 shrink-0 text-[9px] mt-px">[{n.source}]</span>
+                <span className="text-primary/80 leading-snug">{n.title}</span>
+              </div>
+              {n.content && (
+                <p className="text-muted mt-0.5 leading-snug text-[9px] line-clamp-2">{n.content}</p>
+              )}
+            </div>
+          ))}
+          {stockNews.length > 5 && (
+            <p className="text-muted text-[9px] font-mono">+{stockNews.length - 5} more articles</p>
           )}
         </div>
       )}
@@ -484,14 +527,14 @@ function SignalCard({
       {/* Stream sections */}
       {!state.noData && state.rawData && (
         <div>
-          <FiiDiiSection
-            data={state.rawData}
-            llmFact={getLlmEntry("fii")?.fact}
-            llmRawSignal={getLlmEntry("fii")?.signal}
-            streaming={state.streaming}
-          />
           {state.rawData.mode === "market" && (
             <>
+              <FiiDiiSection
+                data={state.rawData}
+                llmFact={getLlmEntry("fii")?.fact}
+                llmRawSignal={getLlmEntry("fii")?.signal}
+                streaming={state.streaming}
+              />
               <DealFlowSection
                 data={state.rawData as MarketStreamData}
                 llmFact={getLlmEntry("deal")?.fact}
@@ -526,10 +569,10 @@ function SignalCard({
                 llmRawSignal={getLlmEntry("bulk")?.signal}
                 streaming={state.streaming}
               />
-              <FiiDiiSection
-                data={state.rawData}
-                llmFact={getLlmEntry("fii")?.fact}
-                llmRawSignal={getLlmEntry("fii")?.signal}
+              <StockNewsSection
+                data={state.rawData as SymbolStreamData}
+                llmFact={getLlmEntry("stock news")?.fact ?? getLlmEntry("news")?.fact}
+                llmRawSignal={getLlmEntry("stock news")?.signal ?? getLlmEntry("news")?.signal}
                 streaming={state.streaming}
               />
               <FilingsSection
