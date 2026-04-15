@@ -34,16 +34,16 @@ function IndexRow({ q }: { q: GlobalQuote }) {
   const up = q.changePercent >= 0;
   return (
     <div className="flex items-center gap-2 py-[5px] border-b border-[#1E2235]/60 last:border-0 group hover:bg-white/[0.02] transition-colors px-2 rounded">
-      <span className="flex-1 text-[11px] font-mono text-[#C8C4BC] tracking-wide truncate group-hover:text-primary transition-colors">
+      <span className="flex-1 text-[15px] font-mono text-[#C8C4BC] tracking-wide truncate group-hover:text-primary transition-colors">
         {q.label}
       </span>
-      <span className="w-[80px] text-right text-[11px] font-mono text-primary font-medium tabular-nums">
+      <span className="w-[80px] text-right text-[15px] font-mono text-primary font-medium tabular-nums">
         {fmt(q.price, q.symbol)}
       </span>
-      <span className={`w-[58px] text-right text-[10px] font-mono tabular-nums ${up ? "text-teal" : "text-danger"}`}>
+      <span className={`w-[58px] text-right text-[15px] font-mono tabular-nums ${up ? "text-teal" : "text-danger"}`}>
         {fmtChange(q.change, q.symbol)}
       </span>
-      <span className={`w-[52px] text-right text-[10px] font-mono font-semibold tabular-nums ${up ? "text-teal" : "text-danger"}`}>
+      <span className={`w-[52px] text-right text-[15px] font-mono font-semibold tabular-nums ${up ? "text-teal" : "text-danger"}`}>
         {q.changePercent >= 0 ? "+" : ""}{q.changePercent.toFixed(2)}%
       </span>
     </div>
@@ -66,13 +66,13 @@ function RegionBlock({ region, quotes, loading }: { region: string; quotes: Glob
   return (
     <div>
       <div className="flex items-center gap-2 px-2 pt-3 pb-1.5">
-        <span className="text-[9px] font-mono font-bold tracking-[0.15em] uppercase text-muted">{region}</span>
+        <span className="text-[15px] font-mono font-bold tracking-[0.15em] uppercase text-muted">{region}</span>
         <div className="flex-1 h-px bg-[#1E2235]" />
       </div>
       {loading
         ? Array.from({ length: region === "Asia Pacific" ? 10 : region === "Others" ? 7 : 3 }).map((_, i) => (
-            <SkeletonRow key={i} />
-          ))
+          <SkeletonRow key={i} />
+        ))
         : quotes.map((q) => <IndexRow key={q.symbol} q={q} />)}
     </div>
   );
@@ -111,14 +111,14 @@ export function GlobalMarkets() {
   const apRight = apQuotes.filter((_, i) => i % 2 === 1);
 
   return (
-    <div className="bg-[#13151E] border border-[#1E2235] rounded-xl overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E2235]">
         <div className="flex items-center gap-2">
           <Globe className="w-3.5 h-3.5 text-amber" />
-          <span className="text-xs font-mono font-semibold text-primary uppercase tracking-widest">Global Markets</span>
+          <span className="text-xl font-mono font-semibold text-primary uppercase tracking-widest">Global Markets</span>
           {fetchedAt && (
-            <span className="text-[9px] font-mono text-muted ml-1">
+            <span className="text-[15px] font-mono text-muted ml-1">
               · {new Date(fetchedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
@@ -137,21 +137,21 @@ export function GlobalMarkets() {
 
         {/* Col 1: Others + US + Latin America */}
         <div className="p-2">
-          <RegionBlock region="Others"        quotes={byRegion("Others")}        loading={loading} />
-          <RegionBlock region="US"            quotes={byRegion("US")}            loading={loading} />
+          <RegionBlock region="Others" quotes={byRegion("Others")} loading={loading} />
+          <RegionBlock region="US" quotes={byRegion("US")} loading={loading} />
           <RegionBlock region="Latin America" quotes={byRegion("Latin America")} loading={loading} />
         </div>
 
         {/* Col 2: Europe + India */}
         <div className="p-2">
           <RegionBlock region="Europe" quotes={byRegion("Europe")} loading={loading} />
-          <RegionBlock region="India"  quotes={byRegion("India")}  loading={loading} />
+          <RegionBlock region="India" quotes={byRegion("India")} loading={loading} />
         </div>
 
         {/* Col 3: Asia Pacific — split into 2 sub-cols */}
         <div className="p-2">
           <div className="flex items-center gap-2 px-2 pt-3 pb-1.5">
-            <span className="text-[9px] font-mono font-bold tracking-[0.15em] uppercase text-muted">Asia Pacific</span>
+            <span className="text-[15px] font-mono font-bold tracking-[0.15em] uppercase text-muted">Asia Pacific</span>
             <div className="flex-1 h-px bg-[#1E2235]" />
           </div>
           {loading ? (

@@ -196,8 +196,10 @@ export function getMarketNews(limit = 15): NewsHeadline[] {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
     const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string; content?: string }[] };
     const matches = data.news.filter(n => {
-      const haystack = ((n.title ?? "") + " " + (n.content ?? "")).toUpperCase();
-      return MARKET_NEWS_KEYWORDS.some(kw => haystack.includes(kw));
+      // Match on title only — content-body matching produces too many false positives
+      // (unrelated articles incidentally mention financial terms in passing).
+      const title = (n.title ?? "").toUpperCase();
+      return MARKET_NEWS_KEYWORDS.some(kw => title.includes(kw));
     });
     return matches.slice(0, limit).map(n => ({
       title: n.title,
@@ -230,7 +232,7 @@ export function getRecentNews(limit = 10): NewsHeadline[] {
 // ── Prompt Builders ────────────────────────────────────────────────────────────
 
 export function buildMarketPrompt(data: MarketStreamData): string {
-  const { fiiDii, newsHeadlines, keyFilings, dealFlow } = data;
+  const { fiiDii, newsHeadlines, dealFlow } = data;
 
   // FII/DII: per-day buy/sell breakdown + 7-day cumulative
   const fiiCumulative = fiiDii.reduce((s, d) => s + d.fiiEquityNet, 0);
@@ -257,20 +259,6 @@ export function buildMarketPrompt(data: MarketStreamData): string {
       }).join("\n") +
       (newsHeadlines.length > 8 ? `\n(+${newsHeadlines.length - 8} more headlines not shown)` : "")
     : "No market news available";
-
-  // Filings: grouped by type with counts
-  const filingsByType = keyFilings.reduce<Record<string, string[]>>((acc, f) => {
-    const type = f.title || "General";
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(f.company);
-    return acc;
-  }, {});
-  const filingsBlock = Object.keys(filingsByType).length
-    ? Object.entries(filingsByType)
-        .sort(([, a], [, b]) => b.length - a.length)
-        .map(([type, companies]) => `${type} (${companies.length}): ${companies.slice(0, 5).join(", ")}${companies.length > 5 ? `… +${companies.length - 5} more` : ""}`)
-        .join("\n")
-    : "No recent filings";
 
   const dealBlock = dealFlow.totalDeals > 0
     ? [
@@ -310,13 +298,6 @@ NEWS SENTIMENT RULES:
 - If bearish headlines outnumber bullish → 🔴. If bullish outnumber bearish → 🟢. If roughly equal → ⚪
 - Never output "—" for News Sentiment when headlines exist
 
-CORPORATE FILINGS RULES:
-- >15 Board Meeting filings in one day = earnings season (⚪ NEUTRAL — routine)
-- Rights Issue / QIP = dilution risk (🔴 slightly BEARISH for existing holders)
-- Dividend / Buyback = capital return (🟢 BULLISH)
-- Merger / Demerger / Open Offer = corporate action (🟢 BULLISH for target)
-- Name the most significant company in the dominant filing type
-
 BANNED PHRASES — never use these: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating uncertainty", "could potentially", "might possibly", "uncertain environment"
 
 ━━━ OUTPUT FORMAT (follow exactly) ━━━
@@ -327,7 +308,6 @@ BANNED PHRASES — never use these: "mixed signals", "cautious optimism", "remai
 | FII/DII Flows           | 🟢 or 🔴 or ⚪ | [7-day FII cumulative ₹ + DII absorption % + trend direction] |
 | Institutional Deal Flow | 🟢 or 🔴 or ⚪ | [net ₹ + top institution name + action] |
 | Market News Sentiment   | 🟢 or 🔴 or ⚪ | [dominant theme + specific headline title (Source)] |
-| Corporate Activity      | 🟢 or 🔴 or ⚪ | [dominant filing type count + most notable company] |
 
 ## Stream Insights
 One sentence per stream. Start each line with the exact label. No preamble, no numbering, no hedging.
@@ -335,10 +315,9 @@ One sentence per stream. Start each line with the exact label. No preamble, no n
 FII/DII Flows: [cite exact 7-day cumulative ₹ figures for FII and DII, number of consecutive selling days, and state the directional implication with causal language — "because", "driven by", "resulting in"]
 Institutional Deal Flow: [name the single largest institution, their exact action and ₹ value, and state what this positioning implies for market direction]
 Market News Sentiment: [name the dominant theme, cite 1-2 specific headline titles with their sources, state what price impact this implies]
-Corporate Activity: [state the dominant filing type with exact count, name the most significant company, explain what this filing activity signals about earnings or corporate momentum]
 
 ## Smart Money Signal
-One sentence — lead with BULLISH / BEARISH / NEUTRAL. If streams conflict, the priority order is: FII/DII Flows > Institutional Deal Flow > News Sentiment > Corporate Activity. Use the highest-priority stream's signal as the verdict, then note the strongest opposing signal in parentheses. No hedging.
+One sentence — lead with BULLISH / BEARISH / NEUTRAL. If streams conflict, the priority order is: FII/DII Flows > Institutional Deal Flow > News Sentiment. Use the highest-priority stream's signal as the verdict, then note the strongest opposing signal in parentheses. No hedging.
 
 ## Confidence: HIGH / MEDIUM / LOW
 Reason: [state exactly how many streams agree with the verdict, and name any stream that disagrees]
@@ -354,14 +333,11 @@ ${dealBlock}
 MARKET NEWS HEADLINES (${newsHeadlines.length} total):
 ${newsBlock}
 
-CORPORATE FILINGS ACTIVITY:
-${filingsBlock}
-
 ━━━ END ━━━`;
 }
 
 export function buildSymbolPrompt(data: SymbolStreamData): string {
-  const { symbol, bulkBlockDeals, announcements, insiders, stockNews } = data;
+  const { symbol, bulkBlockDeals, insiders, stockNews } = data;
 
   // Only actual transactions — filter 0-share disclosure artifacts
   const activeInsiders = insiders.filter(i => i.sharesTransacted > 0);
@@ -386,10 +362,6 @@ export function buildSymbolPrompt(data: SymbolStreamData): string {
         `${d.date} | ${d.side} | ${d.client} | qty: ${d.quantity.toLocaleString()} shares | ₹${d.valueCr.toFixed(1)}Cr`
       ).join("\n")
     : "No bulk/block deals found today";
-
-  const announcementsBlock = announcements.length
-    ? announcements.map(a => `${a.date}: ${a.title}`).join("\n")
-    : "No recent announcements";
 
   const newsBlock = stockNews.length
     ? stockNews.slice(0, 6).map((n, i) => {
@@ -429,14 +401,6 @@ STOCK NEWS RULES — read every article and extract the most price-relevant even
 - Debt restructuring / default risk = 🔴 BEARISH
 - If no news: mark "—" and skip insight
 
-BSE/NSE ANNOUNCEMENTS RULES:
-- Board Meeting to consider results → earnings imminent (⚪ NEUTRAL — watch for result)
-- Dividend announcement = 🟢 BULLISH (yield support)
-- Buyback = 🟢 BULLISH (undervaluation signal by management)
-- Rights Issue / QIP = 🔴 slightly BEARISH (dilution)
-- Merger target / Open Offer = 🟢 BULLISH (M&A premium)
-- Name the specific announcement type and date
-
 CONVERGENCE RULE: If 2+ streams point the same direction → HIGH confidence. If streams conflict → MEDIUM confidence and explicitly state which streams diverge and why.
 
 BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader market trends", "could potentially", "might possibly", "navigating"
@@ -449,7 +413,6 @@ BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait a
 | Insider Activity  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [name + shares + stake change, or —] |
 | Bulk/Block Deals  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [institution name + side + ₹ value, or —] |
 | Stock News        | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [event type + source + price implication, or —] |
-| BSE Announcements | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [filing type + date + implication, or —] |
 
 ## Stream Insights
 One sentence per stream that has data. Start with the exact label. No preamble, no numbering.
@@ -457,7 +420,6 @@ One sentence per stream that has data. Start with the exact label. No preamble, 
 Insider Activity: [name the specific insider(s), their role/category, exact shares transacted and stake % change, and state the directional implication with the word "because" or "indicating"]
 Bulk/Block Deals: [name the institution, exact ₹ value and side, and state what this positioning implies — "accumulating", "exiting", "taking profit"]
 Stock News: [state the single most price-relevant event for ${symbol} from the news, cite the headline and source, and state the expected price direction with reasoning]
-BSE Announcements: [name the specific announcement type, company, date, and state what it signals for near-term price action]
 
 ## Smart Money Signal
 One sentence — lead with BULLISH / BEARISH / NEUTRAL, then cite the single strongest convergent data point with a ₹ figure or % or name. No hedging if Confidence is HIGH or MEDIUM.
@@ -475,9 +437,6 @@ ${dealsBlock}
 
 RECENT NEWS — articles mentioning ${symbol} (${stockNews.length} found):
 ${newsBlock}
-
-BSE/NSE ANNOUNCEMENTS — ${symbol}:
-${announcementsBlock}
 
 ━━━ END ━━━`;
 }

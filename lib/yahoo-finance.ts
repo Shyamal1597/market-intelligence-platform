@@ -13,6 +13,7 @@ const SYMBOLS: Record<string, string> = {
   "^NSEI": "Nifty 50",
   "^BSESN": "Sensex",
   "^NSEBANK": "Bank Nifty",
+  "^INDIAVIX": "India VIX",
   "BZ=F": "Brent Crude",
   "GC=F": "Gold",
   "SI=F": "Silver",

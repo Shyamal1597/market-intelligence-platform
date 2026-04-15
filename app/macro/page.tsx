@@ -27,13 +27,14 @@ const GLOBAL_MACRO = [
 
 // ── Groups for the live terminal ───────────────────────────────────────────────
 const LIVE_GROUPS: Record<string, string[]> = {
-  India:       ["^NSEI", "^BSESN", "^NSEBANK"],
+  India:       ["^NSEI", "^BSESN", "^NSEBANK", "^INDIAVIX"],
   Commodities: ["BZ=F", "GOLD_INR", "SILVER_INR"],
   FX:          ["INR=X"],
 };
 
 function fmtPrice(price: number, symbol: string): string {
   if (symbol === "INR=X") return price.toFixed(4);
+  if (symbol === "^INDIAVIX") return price.toFixed(2);
   if (symbol === "BZ=F") return "$" + price.toFixed(2);
   if (["GOLD_INR", "SILVER_INR"].includes(symbol))
     return "\u20B9" + Math.round(price).toLocaleString("en-IN");
@@ -139,7 +140,7 @@ export default function MacroPage() {
           <span className="text-[#272B40]">·</span>
           <span className="text-muted">Yahoo Finance</span>
         </h2>
-        <div className="bg-[#13151E] border border-[#1E2235] rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#1E2235]">
             {Object.entries(LIVE_GROUPS).map(([group, symbols]) => (
               <div key={group} className="p-2">

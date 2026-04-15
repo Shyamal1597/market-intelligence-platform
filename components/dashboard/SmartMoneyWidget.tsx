@@ -547,12 +547,6 @@ function SignalCard({
                 llmRawSignal={getLlmEntry("news")?.signal}
                 streaming={state.streaming}
               />
-              <FilingsSection
-                data={state.rawData}
-                llmFact={getLlmEntry("corporate")?.fact ?? getLlmEntry("filing")?.fact}
-                llmRawSignal={getLlmEntry("corporate")?.signal ?? getLlmEntry("filing")?.signal}
-                streaming={state.streaming}
-              />
             </>
           )}
           {state.rawData.mode === "symbol" && (
@@ -573,12 +567,6 @@ function SignalCard({
                 data={state.rawData as SymbolStreamData}
                 llmFact={getLlmEntry("stock news")?.fact ?? getLlmEntry("news")?.fact}
                 llmRawSignal={getLlmEntry("stock news")?.signal ?? getLlmEntry("news")?.signal}
-                streaming={state.streaming}
-              />
-              <FilingsSection
-                data={state.rawData}
-                llmFact={getLlmEntry("bse")?.fact ?? getLlmEntry("announce")?.fact ?? getLlmEntry("filing")?.fact}
-                llmRawSignal={getLlmEntry("bse")?.signal ?? getLlmEntry("announce")?.signal ?? getLlmEntry("filing")?.signal}
                 streaming={state.streaming}
               />
             </>
