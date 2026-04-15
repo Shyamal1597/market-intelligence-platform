@@ -232,7 +232,7 @@ export function getRecentNews(limit = 10): NewsHeadline[] {
 // ── Prompt Builders ────────────────────────────────────────────────────────────
 
 export function buildMarketPrompt(data: MarketStreamData): string {
-  const { fiiDii, newsHeadlines, dealFlow } = data;
+  const { fiiDii, newsHeadlines } = data;
 
   // FII/DII: per-day buy/sell breakdown + 7-day cumulative
   const fiiCumulative = fiiDii.reduce((s, d) => s + d.fiiEquityNet, 0);
@@ -260,77 +260,58 @@ export function buildMarketPrompt(data: MarketStreamData): string {
       (newsHeadlines.length > 8 ? `\n(+${newsHeadlines.length - 8} more headlines not shown)` : "")
     : "No market news available";
 
-  const dealBlock = dealFlow.totalDeals > 0
-    ? [
-        `${dealFlow.totalDeals} deals | Buy ₹${dealFlow.totalBuyCr.toFixed(0)}Cr | Sell ₹${dealFlow.totalSellCr.toFixed(0)}Cr | Net ${dealFlow.netCr >= 0 ? "+" : ""}${dealFlow.netCr.toFixed(0)}Cr`,
-        ...(dealFlow.topDeals?.length
-          ? dealFlow.topDeals.slice(0, 8).map(d =>
-              `  ${d.side} | ${d.institution || "Unknown"} | ${d.symbol} | ₹${d.valueCr.toFixed(1)}Cr`
-            )
-          : [])
-      ].join("\n")
-    : "No bulk/block deal data for today";
-
   return `You are a senior equity analyst at Sunidhi Capital. Today: ${new Date().toISOString().split("T")[0]}.
-Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX from the four data streams below.
+Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX from the two data streams below.
 
 ━━━ HARD INTERPRETATION RULES ━━━
 
-FII/DII RULES (apply these mechanically):
-- FII selling for 5+ of 7 days AND cumulative < -3000Cr → 🔴 BEARISH regardless of DII
-- FII selling for 3-4 days AND DII absorption ≥ 60% → ⚪ NEUTRAL (DII providing floor)
-- FII cumulative > +2000Cr over 7 days → 🟢 BULLISH
-- FII cumulative -1000 to +2000Cr → ⚪ NEUTRAL
-- Always cite the exact 7-day FII cumulative ₹ figure and DII absorption % in your insight
-
-DEAL FLOW RULES:
-- Net institutional > +300Cr → 🟢 BULLISH (institutions accumulating)
-- Net institutional < -300Cr → 🔴 BEARISH (distribution)
-- -300Cr to +300Cr → ⚪ NEUTRAL
-- If a single institution buys > ₹200Cr in one deal, that is a HIGH-CONVICTION entry — name them
-- Name the top institution explicitly, do not say "various institutions"
+FII/DII RULES (apply these mechanically — use the numbers, do not paraphrase):
+- FII selling 5+ of 7 days AND 7-day cumulative < -3000Cr → 🔴 BEARISH
+- FII selling 3-4 days AND DII absorption ≥ 60% → ⚪ NEUTRAL (DII providing floor)
+- FII 7-day cumulative > +2000Cr → 🟢 BULLISH
+- FII 7-day cumulative -1000 to +2000Cr → ⚪ NEUTRAL
+- Cite the exact cumulative ₹ figure AND DII absorption % in your insight. No rounding, no approximation.
+- "DII absorbed X% of FII outflows" = diiCumulative / abs(fiiCumulative) × 100
 
 NEWS SENTIMENT RULES:
-- Read ALL ${newsHeadlines.length} headlines and pick the DOMINANT tone
-- Bullish signals: rate cuts, earnings beat, capex plans, govt reform, M&A activity, order wins, FDI inflows
-- Bearish signals: war/geopolitical tension, earnings miss, regulatory crackdown, FII outflows, debt stress, IPO cuts due to sentiment
-- DO NOT invent percentages. Instead, name the 2-3 most impactful headlines and state what they imply
-- If bearish headlines outnumber bullish → 🔴. If bullish outnumber bearish → 🟢. If roughly equal → ⚪
-- Never output "—" for News Sentiment when headlines exist
+- Read ALL ${newsHeadlines.length} headlines. Each headline is either bullish, bearish, or neutral. Count them.
+- Bullish: rate cuts, capex, reform policy, FDI inflows, index inclusion, earnings beat, GDP upgrade
+- Bearish: geopolitical conflict, war escalation, FII outflows, earnings miss, rate hikes, regulatory penalty, currency depreciation
+- Neutral: routine corporate announcements, non-market events
+- Dominant tone = whichever category has the most headlines. State the count: e.g. "6 bearish, 2 bullish"
+- Cite the single most market-moving headline by title and source
+- If every headline is neutral → ⚪. Never output "—" when headlines exist.
 
-BANNED PHRASES — never use these: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating uncertainty", "could potentially", "might possibly", "uncertain environment"
+FINAL SIGNAL RULE: FII/DII is the primary signal. News confirms or contradicts. If both agree → HIGH confidence. If they conflict → use FII/DII direction, MEDIUM confidence.
+
+BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating", "could potentially", "might possibly"
 
 ━━━ OUTPUT FORMAT (follow exactly) ━━━
 
 ## Stream Scorecard
-| Stream                  | Signal | Key Fact |
-|-------------------------|--------|----------|
-| FII/DII Flows           | 🟢 or 🔴 or ⚪ | [7-day FII cumulative ₹ + DII absorption % + trend direction] |
-| Institutional Deal Flow | 🟢 or 🔴 or ⚪ | [net ₹ + top institution name + action] |
-| Market News Sentiment   | 🟢 or 🔴 or ⚪ | [dominant theme + specific headline title (Source)] |
+| Stream                | Signal | Key Fact |
+|-----------------------|--------|----------|
+| FII/DII Flows         | 🟢 or 🔴 or ⚪ | [7-day FII cumulative ₹ + selling days count + DII absorption %] |
+| Market News Sentiment | 🟢 or 🔴 or ⚪ | [bullish count vs bearish count + most impactful headline title (Source)] |
 
 ## Stream Insights
-One sentence per stream. Start each line with the exact label. No preamble, no numbering, no hedging.
+Two sentences only. Start each with the exact label below.
 
-FII/DII Flows: [cite exact 7-day cumulative ₹ figures for FII and DII, number of consecutive selling days, and state the directional implication with causal language — "because", "driven by", "resulting in"]
-Institutional Deal Flow: [name the single largest institution, their exact action and ₹ value, and state what this positioning implies for market direction]
-Market News Sentiment: [name the dominant theme, cite 1-2 specific headline titles with their sources, state what price impact this implies]
+FII/DII Flows: [state the exact 7-day FII cumulative ₹, number of selling days out of 7, DII 7-day cumulative ₹, and DII absorption %. End with a direct directional statement using "because".]
+Market News Sentiment: [state the bullish vs bearish headline count, name the single most impactful headline with its source in brackets, and state what it implies for NIFTY direction.]
 
 ## Smart Money Signal
-One sentence — lead with BULLISH / BEARISH / NEUTRAL. If streams conflict, the priority order is: FII/DII Flows > Institutional Deal Flow > News Sentiment. Use the highest-priority stream's signal as the verdict, then note the strongest opposing signal in parentheses. No hedging.
+One sentence — start with BULLISH / BEARISH / NEUTRAL. Cite the specific ₹ figure or headline that drives the call. No hedging.
 
 ## Confidence: HIGH / MEDIUM / LOW
-Reason: [state exactly how many streams agree with the verdict, and name any stream that disagrees]
+Reason: [one sentence — state whether FII/DII and news agree or conflict, and name the specific tension if they conflict]
 
 ━━━ DATA ━━━
 
 FII/DII EQUITY FLOWS (${fiiDii.length} trading days):
 ${fiiBlock}
 
-INSTITUTIONAL BULK/BLOCK DEAL FLOW:
-${dealBlock}
-
-MARKET NEWS HEADLINES (${newsHeadlines.length} total):
+MARKET NEWS HEADLINES (${newsHeadlines.length} total — read all, classify each as bullish/bearish/neutral):
 ${newsBlock}
 
 ━━━ END ━━━`;
