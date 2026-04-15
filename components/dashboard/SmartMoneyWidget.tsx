@@ -166,7 +166,7 @@ function FiiDiiSection({
           </tr>
         </thead>
         <tbody>
-          {fiiDii.slice(-7).map(d => (
+          {fiiDii.slice(-2).map(d => (
             <tr key={d.date}>
               <td className="pr-2 py-0.5 text-muted">{d.date.slice(5)}</td>
               <td className={`text-right pr-2 py-0.5 ${d.fiiEquityNet >= 0 ? "text-teal" : "text-danger"}`}>
@@ -179,7 +179,7 @@ function FiiDiiSection({
           ))}
           {fiiDii.length > 1 && (
             <tr className="border-t border-border/40 font-semibold text-primary/80">
-              <td className="pr-2 py-0.5">7d total</td>
+              <td className="pr-2 py-0.5 text-muted text-[9px]">7d total</td>
               <td className={`text-right pr-2 py-0.5 ${cumFii >= 0 ? "text-teal" : "text-danger"}`}>
                 {cumFii >= 0 ? "+" : ""}{(cumFii / 100).toFixed(1)}kCr
               </td>
@@ -629,7 +629,13 @@ export function SmartMoneyWidget() {
   const [searchValue, setSearchValue] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [symbolOrder, setSymbolOrder] = useState<string[]>([]);
+  const [dropdownResults, setDropdownResults] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownIdx, setDropdownIdx] = useState(-1);
   const abortRefs = useRef<Record<string, AbortController>>({});
+  const searchRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const streamSignal = useCallback(async (symbol: string, isSearch = false) => {
     const key = symbol.toUpperCase().trim();
@@ -733,12 +739,63 @@ export function SmartMoneyWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounced autocomplete fetch
+  useEffect(() => {
+    const q = searchValue.trim();
+    if (!q) { setDropdownResults([]); setShowDropdown(false); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/nse-symbols?q=${encodeURIComponent(q)}`);
+        const json = await res.json() as { symbols: string[] };
+        setDropdownResults(json.symbols ?? []);
+        setShowDropdown((json.symbols ?? []).length > 0);
+        setDropdownIdx(-1);
+      } catch { /* ignore */ }
+    }, 120);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchValue]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (
+        !searchRef.current?.contains(e.target as Node) &&
+        !dropdownRef.current?.contains(e.target as Node)
+      ) setShowDropdown(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  function selectSymbol(sym: string) {
+    setSearchValue("");
+    setShowDropdown(false);
+    setDropdownResults([]);
+    streamSignal(sym, true);
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const sym = searchValue.trim().toUpperCase();
     if (!sym || sym === "MARKET") return;
-    streamSignal(sym, true);
-    setSearchValue("");
+    selectSymbol(sym);
+  }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showDropdown || dropdownResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setDropdownIdx(i => Math.min(i + 1, dropdownResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setDropdownIdx(i => Math.max(i - 1, -1));
+    } else if (e.key === "Enter" && dropdownIdx >= 0) {
+      e.preventDefault();
+      selectSymbol(dropdownResults[dropdownIdx]);
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+    }
   }
 
   function removeSymbol(symbol: string) {
@@ -763,17 +820,44 @@ export function SmartMoneyWidget() {
         <span className="text-[10px] font-mono text-muted">llama3.1:8b</span>
       </div>
 
-      {/* Search */}
+      {/* Search with autocomplete */}
       <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
           <input
+            ref={searchRef}
             type="text"
             value={searchValue}
             onChange={e => setSearchValue(e.target.value.toUpperCase())}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => dropdownResults.length > 0 && setShowDropdown(true)}
             placeholder="Analyse a stock symbol…"
+            autoComplete="off"
+            spellCheck={false}
             className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-surface border border-border rounded-lg text-primary placeholder:text-muted focus:outline-none focus:border-amber/50 transition-colors"
           />
+          {/* Dropdown */}
+          {showDropdown && dropdownResults.length > 0 && (
+            <div
+              ref={dropdownRef}
+              className="absolute left-0 right-0 top-full mt-1 bg-[#13151E] border border-border rounded-lg shadow-xl z-50 overflow-hidden"
+            >
+              {dropdownResults.map((sym, i) => (
+                <button
+                  key={sym}
+                  type="button"
+                  onMouseDown={e => { e.preventDefault(); selectSymbol(sym); }}
+                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
+                    i === dropdownIdx
+                      ? "bg-amber/10 text-amber"
+                      : "text-primary/80 hover:bg-border/30 hover:text-primary"
+                  }`}
+                >
+                  {sym}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <button
           type="submit"
