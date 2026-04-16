@@ -149,17 +149,18 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
   return (
     <div
       ref={ref}
-      className="absolute top-8 right-0 z-30 w-60 bg-[#13151E] border border-[#1E2235] rounded-xl shadow-2xl overflow-hidden"
+      className="absolute top-8 right-0 z-30 w-64 rounded-xl shadow-2xl overflow-hidden"
+      style={{ background: "#13151E", border: "1px solid #1E2235" }}
     >
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#1E2235]">
-        <span className="text-[10px] font-mono uppercase tracking-widest text-amber">Customize Metrics</span>
-        <button onClick={onClose} className="text-muted hover:text-primary transition-colors">
+      <div className="flex items-center justify-between px-3 py-2.5" style={{ borderBottom: "1px solid #1E2235" }}>
+        <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#F5820D" }}>Customize Metrics</span>
+        <button onClick={onClose} style={{ color: "#6B7280" }} className="hover:text-white transition-colors">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
       {atMax && (
-        <div className="px-3 py-1.5 bg-amber/5 border-b border-amber/20">
-          <p className="text-[9px] font-mono text-amber">Max {MAX_TILES} tiles. Deselect one to add another.</p>
+        <div className="px-3 py-1.5" style={{ background: "rgba(245,130,13,0.05)", borderBottom: "1px solid rgba(245,130,13,0.2)" }}>
+          <p className="text-[9px] font-mono" style={{ color: "#F5820D" }}>Max {MAX_TILES} tiles. Deselect one to add another.</p>
         </div>
       )}
       <div className="max-h-[60vh] overflow-y-auto p-2 space-y-3">
@@ -168,7 +169,7 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
           if (groupSymbols.length === 0) return null;
           return (
             <div key={group}>
-              <p className="text-[9px] font-mono uppercase tracking-widest text-muted px-2 mb-1">{group}</p>
+              <p className="text-[9px] font-mono uppercase tracking-widest px-2 mb-1" style={{ color: "#6B7280" }}>{group}</p>
               {groupSymbols.map((sym) => {
                 const active = selected.includes(sym.symbol);
                 const disabled = !active && atMax;
@@ -177,14 +178,18 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
                     key={sym.symbol}
                     onClick={() => toggle(sym.symbol)}
                     disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"
-                      }`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"}`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${active ? "bg-amber/20 border-amber" : "border-[#3A4060]"
-                      }`}>
-                      {active && <Check className="w-2.5 h-2.5 text-amber" />}
+                    <span
+                      className="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors"
+                      style={{
+                        border: active ? "1px solid #F5820D" : "1px solid #3A4060",
+                        background: active ? "rgba(245,130,13,0.15)" : "transparent",
+                      }}
+                    >
+                      {active && <Check className="w-2.5 h-2.5" style={{ color: "#F5820D" }} />}
                     </span>
-                    <span className={`text-[11px] font-mono ${active ? "text-primary" : "text-muted"}`}>
+                    <span className="text-[11px] font-mono" style={{ color: active ? "#F0EDE8" : "#9CA3AF" }}>
                       {sym.label}
                     </span>
                   </button>
@@ -194,8 +199,8 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
           );
         })}
       </div>
-      <div className="px-3 py-2 border-t border-[#1E2235]">
-        <p className="text-[9px] font-mono text-muted">{selected.length}/{MAX_TILES} selected · saved automatically</p>
+      <div className="px-3 py-2" style={{ borderTop: "1px solid #1E2235" }}>
+        <p className="text-[9px] font-mono" style={{ color: "#6B7280" }}>{selected.length}/{MAX_TILES} selected · saved automatically</p>
       </div>
     </div>
   );
@@ -265,7 +270,7 @@ export function MetricsRow() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
-          <span className="text-[10px] font-mono uppercase tracking-widest text-muted">Live Market Metrics</span>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "#6B7280" }}>Live Market Metrics</span>
         </div>
         <div className="relative">
           <button
