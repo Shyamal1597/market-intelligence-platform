@@ -15,36 +15,36 @@ interface Quote {
 
 // ── All selectable symbols ─────────────────────────────────────────────────────
 const ALL_SYMBOLS = [
-  { symbol: "^NSEI",      label: "Nifty 50",        group: "India" },
-  { symbol: "^BSESN",     label: "Sensex",           group: "India" },
-  { symbol: "^NSEBANK",   label: "Bank Nifty",       group: "India" },
-  { symbol: "BZ=F",       label: "Brent Crude",      group: "Commodities" },
-  { symbol: "GOLD_INR",   label: "Gold \u20B9/10g",  group: "Commodities" },
+  { symbol: "^NSEI", label: "Nifty 50", group: "India" },
+  { symbol: "^BSESN", label: "Sensex", group: "India" },
+  { symbol: "^NSEBANK", label: "Bank Nifty", group: "India" },
+  { symbol: "BZ=F", label: "Brent Crude", group: "Commodities" },
+  { symbol: "GOLD_INR", label: "Gold \u20B9/10g", group: "Commodities" },
   { symbol: "SILVER_INR", label: "Silver \u20B9/kg", group: "Commodities" },
-  { symbol: "INR=X",      label: "USD/INR",          group: "FX" },
-  { symbol: "^DJI",       label: "DJIA",             group: "US" },
-  { symbol: "^IXIC",      label: "NASDAQ",           group: "US" },
-  { symbol: "^GSPC",      label: "S&P 500",          group: "US" },
-  { symbol: "^FTSE",      label: "FTSE",             group: "Europe" },
-  { symbol: "^FCHI",      label: "CAC 40",           group: "Europe" },
-  { symbol: "^GDAXI",     label: "DAX",              group: "Europe" },
-  { symbol: "^N225",      label: "Nikkei",           group: "Asia Pacific" },
-  { symbol: "^HSI",       label: "Hang Seng",        group: "Asia Pacific" },
-  { symbol: "000001.SS",  label: "Shanghai",         group: "Asia Pacific" },
-  { symbol: "^KS11",      label: "KOSPI",            group: "Asia Pacific" },
-  { symbol: "^AXJO",      label: "ASX 200",          group: "Asia Pacific" },
-  { symbol: "^JKSE",      label: "Jakarta",          group: "Asia Pacific" },
-  { symbol: "^KLSE",      label: "KLSE",             group: "Asia Pacific" },
-  { symbol: "^STI",       label: "Straits",          group: "Asia Pacific" },
-  { symbol: "^TWII",      label: "Taiwan",           group: "Asia Pacific" },
-  { symbol: "^SET.BK",    label: "Thailand",         group: "Asia Pacific" },
-  { symbol: "^BVSP",      label: "BOVESPA",          group: "Latin America" },
-  { symbol: "^MXX",       label: "BOLSA",            group: "Latin America" },
-  { symbol: "^TNX",       label: "US 10yr",          group: "Others" },
-  { symbol: "^INBY10",    label: "India 10yr",       group: "Others" },
-  { symbol: "DX-Y.NYB",   label: "$ Index",          group: "Others" },
-  { symbol: "^VIX",       label: "VIX",              group: "Others" },
-  { symbol: "CL=F",       label: "Nymex Crude",      group: "Others" },
+  { symbol: "INR=X", label: "USD/INR", group: "FX" },
+  { symbol: "^DJI", label: "DJIA", group: "US" },
+  { symbol: "^IXIC", label: "NASDAQ", group: "US" },
+  { symbol: "^GSPC", label: "S&P 500", group: "US" },
+  { symbol: "^FTSE", label: "FTSE", group: "Europe" },
+  { symbol: "^FCHI", label: "CAC 40", group: "Europe" },
+  { symbol: "^GDAXI", label: "DAX", group: "Europe" },
+  { symbol: "^N225", label: "Nikkei", group: "Asia Pacific" },
+  { symbol: "^HSI", label: "Hang Seng", group: "Asia Pacific" },
+  { symbol: "000001.SS", label: "Shanghai", group: "Asia Pacific" },
+  { symbol: "^KS11", label: "KOSPI", group: "Asia Pacific" },
+  { symbol: "^AXJO", label: "ASX 200", group: "Asia Pacific" },
+  { symbol: "^JKSE", label: "Jakarta", group: "Asia Pacific" },
+  { symbol: "^KLSE", label: "KLSE", group: "Asia Pacific" },
+  { symbol: "^STI", label: "Straits", group: "Asia Pacific" },
+  { symbol: "^TWII", label: "Taiwan", group: "Asia Pacific" },
+  { symbol: "^SET.BK", label: "Thailand", group: "Asia Pacific" },
+  { symbol: "^BVSP", label: "BOVESPA", group: "Latin America" },
+  { symbol: "^MXX", label: "BOLSA", group: "Latin America" },
+  { symbol: "^TNX", label: "US 10yr", group: "Others" },
+  { symbol: "^INBY10", label: "India 10yr", group: "Others" },
+  { symbol: "DX-Y.NYB", label: "$ Index", group: "Others" },
+  { symbol: "^VIX", label: "VIX", group: "Others" },
+  { symbol: "CL=F", label: "Nymex Crude", group: "Others" },
 ];
 
 const DEFAULT_SYMBOLS = ["^NSEI", "^BSESN", "^NSEBANK", "BZ=F", "INR=X", "GOLD_INR", "SILVER_INR"];
@@ -61,7 +61,7 @@ function loadSelectedSymbols(): string[] {
 }
 
 function saveSelectedSymbols(symbols: string[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(symbols)); } catch { }
 }
 
 function formatPrice(price: number, symbol: string): string {
@@ -72,7 +72,7 @@ function formatPrice(price: number, symbol: string): string {
   if (["GOLD_INR", "SILVER_INR"].includes(symbol))
     return "\u20B9" + Math.round(price).toLocaleString("en-IN");
   if (price > 10000) return price.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-  if (price > 1000)  return price.toLocaleString("en-IN", { maximumFractionDigits: 1 });
+  if (price > 1000) return price.toLocaleString("en-IN", { maximumFractionDigits: 1 });
   return price.toFixed(2);
 }
 
@@ -85,7 +85,7 @@ function MetricTile({ quote }: { quote: Quote }) {
         <span className="text-[10px] font-mono uppercase tracking-wider text-muted truncate">{quote.label}</span>
         {up ? <TrendingUp className="w-3 h-3 text-teal shrink-0" /> : <TrendingDown className="w-3 h-3 text-danger shrink-0" />}
       </div>
-      <span className="font-mono text-lg font-semibold text-primary leading-none">
+      <span className="font-mono text-xl font-semibold text-primary leading-none">
         {formatPrice(quote.price, quote.symbol)}
       </span>
       <div className="flex items-center justify-between">
@@ -177,13 +177,11 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
                     key={sym.symbol}
                     onClick={() => toggle(sym.symbol)}
                     disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${
-                      disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"
-                    }`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"
+                      }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                      active ? "bg-amber/20 border-amber" : "border-[#2a2f47]"
-                    }`}>
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${active ? "bg-amber/20 border-amber" : "border-[#3A4060]"
+                      }`}>
                       {active && <Check className="w-2.5 h-2.5 text-amber" />}
                     </span>
                     <span className={`text-[11px] font-mono ${active ? "text-primary" : "text-muted"}`}>
