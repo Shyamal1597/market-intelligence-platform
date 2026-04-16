@@ -229,6 +229,47 @@ export function getRecentNews(limit = 10): NewsHeadline[] {
   }
 }
 
+// ── Headline classifier (server-side, deterministic) ──────────────────────────
+
+const BULLISH_KW = [
+  "RATE CUT","RATE CUTS","REPO RATE CUT","CUT RATES","RATE REDUCTION",
+  "RALLY","RALLIES","SURGE","SURGES","JUMP","SOAR","SOARS","GAIN","GAINS",
+  "BULL RUN","MARKET RISE","MARKET UP","STOCKS UP","INDICES UP","INDICES GAIN",
+  "FII BUY","FPI BUY","FPI INFLOW","FII INFLOW","NET BUYER","NET BUYING",
+  "INFLOWS","FOREIGN INFLOW","FOREIGN BUYING","INSTITUTIONAL BUYING",
+  "GDP UPGRADE","GDP GROWTH","GROWTH BEATS","ABOVE ESTIMATE","BEATS ESTIMATE",
+  "FDI INFLOW","REFORM","CAPEX BOOST","POLICY SUPPORT","FISCAL STIMULUS",
+  "ORDER WIN","CONTRACT WIN","INDEX INCLUSION","ADDED TO INDEX",
+  "RECOVERY","REBOUND","BOUNCE","OPTIMISM","RECORD HIGH","52-WEEK HIGH",
+  "NIFTY RISES","NIFTY GAINS","SENSEX RISES","SENSEX GAINS","SENSEX UP","NIFTY UP",
+];
+
+const BEARISH_KW = [
+  "SELL-OFF","SELLOFF","CRASH","SLUMP","FALLS","DROP","DROPS","DECLINE","DECLINES",
+  "TUMBLE","TUMBLES","PLUNGE","PLUNGES","ROUT","TANKING","TANKS",
+  "FII SELL","FPI SELL","FII SELLING","FPI SELLING","NET SELLER","NET SELLING",
+  "OUTFLOWS","FOREIGN OUTFLOW","FOREIGN SELLING","INSTITUTIONAL SELLING",
+  "WAR","CONFLICT","ESCALAT","SANCTION","PENALTY","TARIFF WAR","TRADE WAR",
+  "EARNINGS MISS","PROFIT FALLS","BELOW ESTIMATE","MISSES ESTIMATE",
+  "DOWNGRADE","DOWNGRADED","RATING CUT","TARGET CUT",
+  "DEFAULT","DEBT STRESS","INSOLVENCY","BANKRUPTCY",
+  "INFLATION RISES","INFLATION HIGH","RATE HIKE","POLICY TIGHTENING",
+  "RUPEE FALLS","RUPEE WEAKENS","RUPEE DROPS","CURRENCY FALLS",
+  "MARKET FALL","MARKET FALLS","STOCKS FALL","INDICES FALL",
+  "NIFTY FALLS","NIFTY DOWN","SENSEX FALLS","SENSEX DOWN",
+  "RISK-OFF","PANIC","FEAR","BLOODBATH",
+];
+
+function classifyHeadline(title: string): "bullish" | "bearish" | "neutral" {
+  const t = title.toUpperCase();
+  const isBullish = BULLISH_KW.some(kw => t.includes(kw));
+  const isBearish = BEARISH_KW.some(kw => t.includes(kw));
+  // Both signals cancel → neutral; neither → neutral
+  if (isBullish && !isBearish) return "bullish";
+  if (isBearish && !isBullish) return "bearish";
+  return "neutral";
+}
+
 // ── Prompt Builders ────────────────────────────────────────────────────────────
 
 export function buildMarketPrompt(data: MarketStreamData): string {
@@ -251,67 +292,82 @@ export function buildMarketPrompt(data: MarketStreamData): string {
       (diiAbsorptionRatio > 0 ? ` | DII absorbed ${diiAbsorptionRatio}% of FII outflows` : "")
     : "No FII/DII data";
 
-  // News: all headlines with full snippets
+  // Pre-classify headlines server-side — LLM receives facts, not a classification task
+  const classified = newsHeadlines.map(n => ({ ...n, tone: classifyHeadline(n.title) }));
+  const bullishCount = classified.filter(n => n.tone === "bullish").length;
+  const bearishCount = classified.filter(n => n.tone === "bearish").length;
+  const neutralCount = classified.filter(n => n.tone === "neutral").length;
+  const dominantTone = bullishCount > bearishCount ? "BULLISH" : bearishCount > bullishCount ? "BEARISH" : "NEUTRAL";
+  const dominantEmoji = dominantTone === "BULLISH" ? "🟢" : dominantTone === "BEARISH" ? "🔴" : "⚪";
+
+  const topBullish = classified.find(n => n.tone === "bullish");
+  const topBearish = classified.find(n => n.tone === "bearish");
+  const topHeadlineForInsight = dominantTone === "BULLISH"
+    ? (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : "—")
+    : dominantTone === "BEARISH"
+    ? (topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "—")
+    : (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "—");
+
   const newsBlock = newsHeadlines.length
-    ? newsHeadlines.slice(0, 8).map((n, i) => {
-        const snippet = n.content ? ` — ${n.content}` : "";
-        return `${i + 1}. [${n.source}] ${n.title}${snippet}`;
-      }).join("\n") +
-      (newsHeadlines.length > 8 ? `\n(+${newsHeadlines.length - 8} more headlines not shown)` : "")
+    ? classified.map((n, i) => `${i + 1}. [${n.tone.toUpperCase()}] [${n.source}] ${n.title}`).join("\n")
     : "No market news available";
 
+  // Determine FII/DII signal mechanically
+  const fiiSignal =
+    fiiSellingDays >= 5 && fiiCumulative < -3000 ? "🔴 BEARISH" :
+    fiiSellingDays >= 3 && diiAbsorptionRatio >= 60 ? "⚪ NEUTRAL" :
+    fiiCumulative > 2000 ? "🟢 BULLISH" :
+    fiiCumulative >= -1000 ? "⚪ NEUTRAL" :
+    "🔴 BEARISH";
+
   return `You are a senior equity analyst at Sunidhi Capital. Today: ${new Date().toISOString().split("T")[0]}.
-Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX from the two data streams below.
+Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX. All classification is pre-computed — your job is to write clear, specific insights using the facts below.
 
-━━━ HARD INTERPRETATION RULES ━━━
+━━━ PRE-COMPUTED SIGNALS (do NOT override or recompute) ━━━
 
-FII/DII RULES (apply these mechanically — use the numbers, do not paraphrase):
-- FII selling 5+ of 7 days AND 7-day cumulative < -3000Cr → 🔴 BEARISH
-- FII selling 3-4 days AND DII absorption ≥ 60% → ⚪ NEUTRAL (DII providing floor)
-- FII 7-day cumulative > +2000Cr → 🟢 BULLISH
-- FII 7-day cumulative -1000 to +2000Cr → ⚪ NEUTRAL
-- Cite the exact cumulative ₹ figure AND DII absorption % in your insight. No rounding, no approximation.
-- "DII absorbed X% of FII outflows" = diiCumulative / abs(fiiCumulative) × 100
+FII/DII SIGNAL: ${fiiSignal}
+- 7-day FII cumulative: ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr
+- FII selling days: ${fiiSellingDays}/${fiiDii.length}
+- 7-day DII cumulative: ${diiCumulative >= 0 ? "+" : ""}${diiCumulative.toFixed(0)}Cr
+${diiAbsorptionRatio > 0 ? `- DII absorbed ${diiAbsorptionRatio}% of FII outflows` : ""}
 
-NEWS SENTIMENT RULES:
-- Read ALL ${newsHeadlines.length} headlines. Each headline is either bullish, bearish, or neutral. Count them.
-- Bullish: rate cuts, capex, reform policy, FDI inflows, index inclusion, earnings beat, GDP upgrade
-- Bearish: geopolitical conflict, war escalation, FII outflows, earnings miss, rate hikes, regulatory penalty, currency depreciation
-- Neutral: routine corporate announcements, non-market events
-- Dominant tone = whichever category has the most headlines. State the count: e.g. "6 bearish, 2 bullish"
-- Cite the single most market-moving headline by title and source
-- If every headline is neutral → ⚪. Never output "—" when headlines exist.
+NEWS SENTIMENT SIGNAL: ${dominantEmoji} ${dominantTone}
+- Classified counts: ${bullishCount} bullish, ${bearishCount} bearish, ${neutralCount} neutral
+- Most impactful headline: ${topHeadlineForInsight}
 
-FINAL SIGNAL RULE: FII/DII is the primary signal. News confirms or contradicts. If both agree → HIGH confidence. If they conflict → use FII/DII direction, MEDIUM confidence.
-
-BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating", "could potentially", "might possibly"
+━━━ RULES ━━━
+- Use the pre-computed signals above verbatim in your scorecard — do not change the signal icons or direction.
+- FII/DII is the PRIMARY signal. If FII/DII and News conflict → final call follows FII/DII, confidence = MEDIUM.
+- If both agree → final call follows both, confidence = HIGH.
+- Cite exact ₹ figures from the data — no rounding, no paraphrasing.
+BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating", "could potentially"
 
 ━━━ OUTPUT FORMAT (follow exactly) ━━━
 
 ## Stream Scorecard
 | Stream                | Signal | Key Fact |
 |-----------------------|--------|----------|
-| FII/DII Flows         | 🟢 or 🔴 or ⚪ | [7-day FII cumulative ₹ + selling days count + DII absorption %] |
-| Market News Sentiment | 🟢 or 🔴 or ⚪ | [bullish count vs bearish count + most impactful headline title (Source)] |
+| FII/DII Flows         | ${fiiSignal} | 7-day FII: ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr, ${fiiSellingDays}/${fiiDii.length} selling days${diiAbsorptionRatio > 0 ? `, DII absorbed ${diiAbsorptionRatio}%` : ""} |
+| Market News Sentiment | ${dominantEmoji} ${dominantTone} | ${bullishCount} bullish, ${bearishCount} bearish — ${topHeadlineForInsight} |
 
 ## Stream Insights
-Two sentences only. Start each with the exact label below.
+Two sentences only. Start each with the exact label.
 
-FII/DII Flows: [state the exact 7-day FII cumulative ₹, number of selling days out of 7, DII 7-day cumulative ₹, and DII absorption %. End with a direct directional statement using "because".]
-Market News Sentiment: [state the bullish vs bearish headline count, name the single most impactful headline with its source in brackets, and state what it implies for NIFTY direction.]
+FII/DII Flows: [use the exact numbers above — FII cumulative ₹, selling days count, DII cumulative ₹, DII absorption %. State direction with "because".]
+Market News Sentiment: [state "${bullishCount} bullish vs ${bearishCount} bearish headlines", cite the most impactful headline with source in brackets, and state what it implies for NIFTY.]
 
 ## Smart Money Signal
-One sentence — start with BULLISH / BEARISH / NEUTRAL. Cite the specific ₹ figure or headline that drives the call. No hedging.
+One sentence — start with BULLISH / BEARISH / NEUTRAL. Cite the specific ₹ figure or headline that drives the call.
 
 ## Confidence: HIGH / MEDIUM / LOW
-Reason: [one sentence — state whether FII/DII and news agree or conflict, and name the specific tension if they conflict]
+Reason: [state whether FII/DII and news agree or conflict; if conflict, name the specific tension]
 
-━━━ DATA ━━━
+━━━ FULL DATA ━━━
 
 FII/DII EQUITY FLOWS (${fiiDii.length} trading days):
 ${fiiBlock}
 
-MARKET NEWS HEADLINES (${newsHeadlines.length} total — read all, classify each as bullish/bearish/neutral):
+MARKET NEWS HEADLINES (pre-classified — ${newsHeadlines.length} total):
 ${newsBlock}
 
 ━━━ END ━━━`;
