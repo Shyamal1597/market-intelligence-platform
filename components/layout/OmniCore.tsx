@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme";
 import {
   LayoutDashboard,
+  Briefcase,
   Newspaper,
   TrendingUp,
   FileText,
@@ -21,6 +22,7 @@ import { clsx } from "clsx";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/news", label: "Market News", icon: Newspaper },
   { href: "/macro", label: "Macro Data", icon: TrendingUp },
   { href: "/filings", label: "NSE Filings", icon: FileText },

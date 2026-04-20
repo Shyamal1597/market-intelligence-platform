@@ -9,7 +9,7 @@ export default function PortfolioPage() {
   const [selected, setSelected] = useState<{ symbol: string; name: string } | null>(null);
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-base fixed inset-0 z-10">
       <PortfolioSidebar
         selected={selected?.symbol ?? null}
         onSelect={(symbol, name) => setSelected({ symbol, name })}
