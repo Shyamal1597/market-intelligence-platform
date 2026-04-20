@@ -7,17 +7,23 @@ import { PortfolioActivityPanel } from "@/components/portfolio/PortfolioActivity
 
 export default function PortfolioPage() {
   const [selected, setSelected] = useState<{ symbol: string; name: string } | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  // When search is focused, show the general feed regardless of selection
+  const effectiveSymbol = searchFocused ? null : (selected?.symbol ?? null);
+  const effectiveName   = searchFocused ? null : (selected?.name   ?? null);
 
   return (
     <div className="flex h-screen overflow-hidden bg-base fixed inset-0 z-10">
       <PortfolioSidebar
         selected={selected?.symbol ?? null}
         onSelect={(symbol, name) => setSelected({ symbol, name })}
+        onSearchFocusChange={setSearchFocused}
       />
       <div className="flex-1 min-w-0 overflow-hidden">
         <PortfolioActivityPanel
-          symbol={selected?.symbol ?? null}
-          name={selected?.name ?? null}
+          symbol={effectiveSymbol}
+          name={effectiveName}
         />
       </div>
     </div>

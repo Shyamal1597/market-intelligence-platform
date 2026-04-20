@@ -230,65 +230,77 @@ export function PortfolioActivityPanel({
 
         {/* Deals */}
         <ActivityColumn
-          title="Bulk & Block Deals"
+          title="Bulk / Block / Short"
           icon={<Shuffle className="w-3.5 h-3.5" />}
           count={activity?.deals.items.length ?? 0}
           loading={loading}
           empty={!loading && (activity?.deals.items.length ?? 0) === 0}
         >
-          {activity?.deals.items.map((d) => (
-            <div
-              key={d.id}
-              className="p-2.5 rounded-lg"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid #1E2235" }}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
-                    style={{
-                      background: d.side === "BUY" ? "rgba(0,229,255,0.1)" : "rgba(232,64,64,0.1)",
-                      color: d.side === "BUY" ? "#00E5FF" : "#E84040",
-                    }}
-                  >
-                    {d.side}
+          {activity?.deals.items.map((d) => {
+            const isShort = d.type === "SHORT";
+            const hasSide = !isShort && d.side !== "UNKNOWN";
+            return (
+              <div
+                key={d.id}
+                className="p-2.5 rounded-lg"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid #1E2235" }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    {hasSide ? (
+                      <span
+                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
+                        style={{
+                          background: d.side === "BUY" ? "rgba(0,229,255,0.1)" : "rgba(232,64,64,0.1)",
+                          color: d.side === "BUY" ? "#00E5FF" : "#E84040",
+                        }}
+                      >
+                        {d.side}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(245,130,13,0.1)", color: "#F5820D" }}
+                      >
+                        NET SHORT
+                      </span>
+                    )}
+                    <span className="text-[9px] font-mono uppercase" style={{ color: "#6B7280" }}>
+                      {d.type}
+                    </span>
+                    {isGeneral && d.symbol && (
+                      <span className="text-[9px] font-mono font-semibold" style={{ color: "#F0EDE8" }}>
+                        {d.symbol}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
+                    {fmtDate(d.date)}
                   </span>
-                  <span className="text-[9px] font-mono uppercase" style={{ color: "#6B7280" }}>
-                    {d.type}
+                </div>
+                {!isShort && d.client && (
+                  <p className="text-[11px] font-mono" style={{ color: "#F0EDE8" }}>
+                    {d.client}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
+                    Qty: {d.quantity.toLocaleString("en-IN")}
                   </span>
-                  {isGeneral && d.symbol && (
-                    <span
-                      className="text-[9px] font-mono font-semibold"
-                      style={{ color: "#F0EDE8" }}
-                    >
-                      {d.symbol}
+                  {d.price != null && d.price > 0 && (
+                    <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
+                      @ ₹{d.price.toFixed(2)}
+                    </span>
+                  )}
+                  {d.valueCr != null && d.valueCr > 0 && (
+                    <span className="text-[9px] font-mono font-semibold" style={{ color: "#F5820D" }}>
+                      {fmtCr(d.valueCr)}
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
-                  {fmtDate(d.date)}
-                </span>
               </div>
-              <p className="text-[11px] font-mono" style={{ color: "#F0EDE8" }}>
-                {d.client}
-              </p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
-                  Qty: {d.quantity.toLocaleString("en-IN")}
-                </span>
-                {d.price != null && (
-                  <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
-                    @ ₹{d.price.toFixed(2)}
-                  </span>
-                )}
-                {d.valueCr != null && (
-                  <span className="text-[9px] font-mono font-semibold" style={{ color: "#F5820D" }}>
-                    {fmtCr(d.valueCr)}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </ActivityColumn>
       </div>
     </div>

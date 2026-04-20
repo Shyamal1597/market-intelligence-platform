@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSearchTerms } from "@/lib/smart-money";
 import { fetchNSEFilings } from "@/lib/nse-filings";
-import { fetchBulkDeals, fetchBlockDeals } from "@/lib/nse-deals";
+import { fetchBulkDeals, fetchBlockDeals, fetchShortDeals } from "@/lib/nse-deals";
 import fs from "fs";
 import path from "path";
 
@@ -73,10 +73,24 @@ const SYMBOL_ALIASES: Record<string, string[]> = {
 // Builds all search terms for a symbol: NSE ticker variants + known aliases
 function buildSearchTerms(symbol: string): string[] {
   const base = getSearchTerms(symbol);               // suffix-stripping variants
-  const aliases = SYMBOL_ALIASES[symbol] ?? [];
+  const aliases = [...(SYMBOL_ALIASES[symbol] ?? [])];
   // Handle M&M specially — symbol is "M&M" in NSE
   if (symbol === "M&M") aliases.push(...(SYMBOL_ALIASES["M_M"] ?? []));
   return [...new Set([...base, ...aliases])];
+}
+
+// NSE RSS filings may use either the NSE ticker OR the full company name in the
+// "SYMBOL : Description" title format. Match both the ticker and all known
+// long-form aliases against the filing's scripCode field.
+function matchesFiling(scripCode: string, sym: string): boolean {
+  const sc = scripCode.toUpperCase().trim();
+  if (sc === sym) return true;                      // exact ticker match
+  const aliases = SYMBOL_ALIASES[sym] ?? [];
+  return aliases.some((alias) =>
+    alias.length >= 6                              // avoid short-term false positives
+      ? sc.includes(alias)                         // "STATE BANK OF INDIA" ⊆ "State Bank Of India Limited"
+      : sc === alias                               // short alias: must be exact
+  );
 }
 
 function getPortfolioNews(symbol: string, limit = 15) {
@@ -123,11 +137,12 @@ export async function GET(
   const { symbol } = await params;
   const sym = symbol.toUpperCase().trim();
 
-  const [filingsResult, bulkResult, blockResult] =
+  const [filingsResult, bulkResult, blockResult, shortResult] =
     await Promise.allSettled([
       fetchNSEFilings(500),
       fetchBulkDeals(),
       fetchBlockDeals(),
+      fetchShortDeals(),
     ]);
 
   const newsItems = getPortfolioNews(sym, 15);
@@ -135,7 +150,8 @@ export async function GET(
   const filings =
     filingsResult.status === "fulfilled"
       ? filingsResult.value
-          .filter((f) => f.scripCode === sym)
+          // Match on ticker OR full company name via aliases (NSE RSS uses both formats)
+          .filter((f) => matchesFiling(f.scripCode, sym))
           .slice(0, 20)
           .map((f) => ({
             id: f.id,
@@ -155,11 +171,12 @@ export async function GET(
     blockResult.status === "fulfilled"
       ? blockResult.value.deals.filter((d) => d.symbol === sym)
       : [];
+  const shortDeals =
+    shortResult.status === "fulfilled"
+      ? shortResult.value.deals.filter((d) => d.symbol === sym)
+      : [];
 
-  // Short-selling data is excluded here: NSE's SHORT_DEALS_DATA is an
-  // aggregated positional snapshot with no clientName/buySell fields,
-  // so it renders as "UNKNOWN · ₹0" — not useful at the individual-stock level.
-  const allDeals = [...bulkDeals, ...blockDeals]
+  const allDeals = [...bulkDeals, ...blockDeals, ...shortDeals]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 20)
     .map((d) => ({

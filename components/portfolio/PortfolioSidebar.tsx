@@ -120,9 +120,10 @@ interface CsvResult {
 interface Props {
   selected: string | null;
   onSelect: (symbol: string, name: string) => void;
+  onSearchFocusChange?: (focused: boolean) => void;
 }
 
-export function PortfolioSidebar({ selected, onSelect }: Props) {
+export function PortfolioSidebar({ selected, onSelect, onSearchFocusChange }: Props) {
   const [portfolio, setPortfolio] = useState<PortfolioEntry[]>([]);
   const [search, setSearch] = useState("");
   const [dropdown, setDropdown] = useState<string[]>([]);
@@ -445,7 +446,11 @@ export function PortfolioSidebar({ selected, onSelect }: Props) {
                 setError(null);
               }}
               onKeyDown={handleKeyDown}
-              onFocus={() => dropdown.length > 0 && setShowDropdown(true)}
+              onFocus={() => {
+                if (dropdown.length > 0) setShowDropdown(true);
+                onSearchFocusChange?.(true);
+              }}
+              onBlur={() => onSearchFocusChange?.(false)}
               placeholder="Add symbol…"
               autoComplete="off"
               spellCheck={false}
