@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSearchTerms } from "@/lib/smart-money";
 import { fetchNSEFilings } from "@/lib/nse-filings";
-import { fetchBulkDeals, fetchBlockDeals, fetchShortDeals } from "@/lib/nse-deals";
+import { fetchBulkDeals, fetchBlockDeals } from "@/lib/nse-deals";
 import fs from "fs";
 import path from "path";
 
@@ -88,13 +88,11 @@ function getPortfolioNews(symbol: string, limit = 15) {
     const terms = buildSearchTerms(symbol.toUpperCase());
 
     const matches = data.news.filter((n) => {
-      const title   = (n.title   ?? "").toUpperCase();
-      const content = (n.content ?? "").toUpperCase();
-      // Title match scores highest — always include
-      if (terms.some((t) => title.includes(t))) return true;
-      // Content match — only include if the term is specific enough (≥4 chars)
-      // to avoid false positives from short terms like "RIL" or "SBI" in unrelated text
-      return terms.some((t) => t.length >= 4 && content.includes(t));
+      const title = (n.title ?? "").toUpperCase();
+      // Title-only match: if the article title doesn't mention the company,
+      // it's not primarily about it — content search causes too many false positives
+      // (generic "stocks to watch" articles mention every company in the body).
+      return terms.some((t) => title.includes(t));
     });
 
     // De-dupe by title in case the same article appears twice
@@ -125,12 +123,11 @@ export async function GET(
   const { symbol } = await params;
   const sym = symbol.toUpperCase().trim();
 
-  const [filingsResult, bulkResult, blockResult, shortResult] =
+  const [filingsResult, bulkResult, blockResult] =
     await Promise.allSettled([
       fetchNSEFilings(500),
       fetchBulkDeals(),
       fetchBlockDeals(),
-      fetchShortDeals(),
     ]);
 
   const newsItems = getPortfolioNews(sym, 15);
@@ -158,12 +155,11 @@ export async function GET(
     blockResult.status === "fulfilled"
       ? blockResult.value.deals.filter((d) => d.symbol === sym)
       : [];
-  const shortDeals =
-    shortResult.status === "fulfilled"
-      ? shortResult.value.deals.filter((d) => d.symbol === sym)
-      : [];
 
-  const allDeals = [...bulkDeals, ...blockDeals, ...shortDeals]
+  // Short-selling data is excluded here: NSE's SHORT_DEALS_DATA is an
+  // aggregated positional snapshot with no clientName/buySell fields,
+  // so it renders as "UNKNOWN · ₹0" — not useful at the individual-stock level.
+  const allDeals = [...bulkDeals, ...blockDeals]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 20)
     .map((d) => ({

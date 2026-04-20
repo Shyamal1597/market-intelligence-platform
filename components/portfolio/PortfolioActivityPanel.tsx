@@ -230,7 +230,7 @@ export function PortfolioActivityPanel({
 
         {/* Deals */}
         <ActivityColumn
-          title="Bulk / Block / Short"
+          title="Bulk & Block Deals"
           icon={<Shuffle className="w-3.5 h-3.5" />}
           count={activity?.deals.items.length ?? 0}
           loading={loading}

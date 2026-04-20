@@ -1,7 +1,7 @@
 // app/api/portfolio/general/activity/route.ts
 import { NextResponse } from "next/server";
 import { fetchNSEFilings } from "@/lib/nse-filings";
-import { fetchBulkDeals, fetchBlockDeals, fetchShortDeals } from "@/lib/nse-deals";
+import { fetchBulkDeals, fetchBlockDeals } from "@/lib/nse-deals";
 import fs from "fs";
 import path from "path";
 
@@ -27,12 +27,11 @@ function getLatestNews(limit = 20) {
 }
 
 export async function GET() {
-  const [filingsResult, bulkResult, blockResult, shortResult] =
+  const [filingsResult, bulkResult, blockResult] =
     await Promise.allSettled([
       fetchNSEFilings(500),
       fetchBulkDeals(),
       fetchBlockDeals(),
-      fetchShortDeals(),
     ]);
 
   const newsItems = getLatestNews(20);
@@ -51,9 +50,8 @@ export async function GET() {
 
   const bulkDeals  = bulkResult.status  === "fulfilled" ? bulkResult.value.deals  : [];
   const blockDeals = blockResult.status === "fulfilled" ? blockResult.value.deals : [];
-  const shortDeals = shortResult.status === "fulfilled" ? shortResult.value.deals : [];
 
-  const allDeals = [...bulkDeals, ...blockDeals, ...shortDeals]
+  const allDeals = [...bulkDeals, ...blockDeals]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 25)
     .map((d) => ({
