@@ -143,13 +143,12 @@ export function PortfolioSidebar({ selected, onSelect, onSearchFocusChange }: Pr
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load once on mount. Do NOT use a separate save-effect — it fires with
+  // portfolio=[] on the initial render (before the load effect updates state)
+  // and wipes localStorage. Save explicitly in every mutation instead.
   useEffect(() => {
     setPortfolio(loadPortfolio());
   }, []);
-
-  useEffect(() => {
-    savePortfolio(portfolio);
-  }, [portfolio]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -216,7 +215,11 @@ export function PortfolioSidebar({ selected, onSelect, onSearchFocusChange }: Pr
           name: upper,
           addedAt: new Date().toISOString(),
         };
-        setPortfolio((prev) => [...prev, entry]);
+        setPortfolio((prev) => {
+          const next = [...prev, entry];
+          savePortfolio(next);
+          return next;
+        });
         onSelect(upper, upper);
       } catch {
         setError("Failed to validate symbol. Try again.");
@@ -248,7 +251,11 @@ export function PortfolioSidebar({ selected, onSelect, onSearchFocusChange }: Pr
   }
 
   function remove(symbol: string) {
-    setPortfolio((prev) => prev.filter((e) => e.symbol !== symbol));
+    setPortfolio((prev) => {
+      const next = prev.filter((e) => e.symbol !== symbol);
+      savePortfolio(next);
+      return next;
+    });
   }
 
   async function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -280,7 +287,11 @@ export function PortfolioSidebar({ selected, onSelect, onSearchFocusChange }: Pr
       );
 
       if (added.length > 0) {
-        setPortfolio((prev) => [...prev, ...added]);
+        setPortfolio((prev) => {
+          const next = [...prev, ...added];
+          savePortfolio(next);
+          return next;
+        });
       }
 
       const result: CsvResult = {

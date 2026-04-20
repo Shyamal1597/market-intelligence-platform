@@ -93,6 +93,24 @@ function matchesFiling(scripCode: string, sym: string): boolean {
   );
 }
 
+/**
+ * Word-boundary-aware match: the term must appear as a whole word in the title.
+ * Prevents "RIL" matching "APRIL" (A-P-R-I-L), "SBI" matching "NSBI", etc.
+ * A "word boundary" here means the character immediately before/after the term
+ * is not an uppercase letter or digit.
+ */
+function titleContainsTerm(title: string, term: string): boolean {
+  let start = 0;
+  while (true) {
+    const idx = title.indexOf(term, start);
+    if (idx === -1) return false;
+    const before = idx > 0 ? title[idx - 1] : " ";
+    const after  = idx + term.length < title.length ? title[idx + term.length] : " ";
+    if (!/[A-Z0-9]/.test(before) && !/[A-Z0-9]/.test(after)) return true;
+    start = idx + 1;
+  }
+}
+
 function getPortfolioNews(symbol: string, limit = 15) {
   try {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
@@ -103,10 +121,8 @@ function getPortfolioNews(symbol: string, limit = 15) {
 
     const matches = data.news.filter((n) => {
       const title = (n.title ?? "").toUpperCase();
-      // Title-only match: if the article title doesn't mention the company,
-      // it's not primarily about it — content search causes too many false positives
-      // (generic "stocks to watch" articles mention every company in the body).
-      return terms.some((t) => title.includes(t));
+      // Title-only, whole-word match — prevents "RIL" ⊂ "APRIL", "LT" ⊂ "RESULT", etc.
+      return terms.some((t) => titleContainsTerm(title, t));
     });
 
     // De-dupe by title in case the same article appears twice
