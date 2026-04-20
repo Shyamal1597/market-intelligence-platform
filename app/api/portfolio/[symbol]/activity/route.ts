@@ -10,23 +10,109 @@ export const dynamic = "force-dynamic";
 
 const NEWS_PATH = path.join(process.cwd(), "data", "market-news.json");
 
+// Common aliases for well-known NSE symbols — maps symbol → extra search terms
+// These are abbreviations/names that appear in news articles but not in NSE tickers
+const SYMBOL_ALIASES: Record<string, string[]> = {
+  RELIANCE:    ["RIL", "RELIANCE INDUSTRIES", "RELIANCE JIO", "MUKESH AMBANI"],
+  HDFCBANK:    ["HDFC BANK", "HDFC BANK LTD"],
+  ICICIBANK:   ["ICICI BANK", "ICICI BANK LTD"],
+  SBIN:        ["SBI", "STATE BANK", "STATE BANK OF INDIA"],
+  TCS:         ["TATA CONSULTANCY", "TATA CONSULTANCY SERVICES"],
+  INFY:        ["INFOSYS", "INFOSYS LTD"],
+  WIPRO:       ["WIPRO LTD", "WIPRO LIMITED"],
+  HCLTECH:     ["HCL TECH", "HCL TECHNOLOGIES"],
+  TATAMOTORS:  ["TATA MOTORS", "TATA MOTORS LTD"],
+  TATASTEEL:   ["TATA STEEL", "TATA STEEL LTD"],
+  TATACONSUM:  ["TATA CONSUMER", "TATA CONSUMER PRODUCTS"],
+  BAJFINANCE:  ["BAJAJ FINANCE", "BAJAJ FINANCE LTD"],
+  BAJAJFINSV:  ["BAJAJ FINSERV", "BAJAJ FINSERV LTD"],
+  AXISBANK:    ["AXIS BANK", "AXIS BANK LTD"],
+  KOTAKBANK:   ["KOTAK BANK", "KOTAK MAHINDRA BANK"],
+  INDUSINDBK:  ["INDUSIND BANK", "INDUSIND"],
+  LT:          ["LARSEN", "L&T", "LARSEN & TOUBRO"],
+  ONGC:        ["OIL AND NATURAL GAS", "ONGC LTD"],
+  NTPC:        ["NTPC LTD", "NTPC LIMITED"],
+  POWERGRID:   ["POWER GRID", "POWER GRID CORP"],
+  ADANIENT:    ["ADANI ENTERPRISES", "ADANI GROUP"],
+  ADANIPORTS:  ["ADANI PORTS", "ADANI PORTS AND SEZ"],
+  ADANIGREEN:  ["ADANI GREEN", "ADANI GREEN ENERGY"],
+  ADANIPOWER:  ["ADANI POWER"],
+  MARUTI:      ["MARUTI SUZUKI", "MARUTI SUZUKI INDIA"],
+  BHARTIARTL:  ["BHARTI AIRTEL", "AIRTEL"],
+  JSWSTEEL:    ["JSW STEEL", "JSW STEEL LTD"],
+  HINDALCO:    ["HINDALCO INDUSTRIES", "HINDALCO"],
+  COALINDIA:   ["COAL INDIA", "COAL INDIA LTD"],
+  SUNPHARMA:   ["SUN PHARMA", "SUN PHARMACEUTICAL"],
+  DRREDDY:     ["DR REDDY", "DR. REDDY'S"],
+  CIPLA:       ["CIPLA LTD", "CIPLA LIMITED"],
+  DIVISLAB:    ["DIVI'S LAB", "DIVIS LABORATORIES"],
+  ULTRACEMCO:  ["ULTRATECH CEMENT", "ULTRATECH"],
+  GRASIM:      ["GRASIM INDUSTRIES", "GRASIM"],
+  ASIANPAINT:  ["ASIAN PAINTS", "ASIAN PAINTS LTD"],
+  NESTLEIND:   ["NESTLE INDIA", "NESTLE"],
+  TITAN:       ["TITAN COMPANY", "TITAN CO"],
+  ITC:         ["ITC LTD", "ITC LIMITED"],
+  M_M:         ["MAHINDRA", "M&M", "MAHINDRA & MAHINDRA"],
+  EICHERMOT:   ["EICHER MOTORS", "ROYAL ENFIELD"],
+  BPCL:        ["BHARAT PETROLEUM", "BPCL LTD"],
+  IOCL:        ["INDIAN OIL", "INDIAN OIL CORP"],
+  RECLTD:      ["REC", "REC LIMITED", "RURAL ELECTRIFICATION"],
+  PFC:         ["POWER FINANCE", "POWER FINANCE CORP"],
+  SBILIFE:     ["SBI LIFE", "SBI LIFE INSURANCE"],
+  HDFCLIFE:    ["HDFC LIFE", "HDFC LIFE INSURANCE"],
+  ICICIlombard:["ICICI LOMBARD", "ICICI LOMBARD GIC"],
+  ICICIPRU:    ["ICICI PRUDENTIAL", "ICICI PRU"],
+  SHRIRAMFIN:  ["SHRIRAM FINANCE", "SHRIRAM"],
+  JIOFIN:      ["JIO FINANCIAL", "JIO FINANCE"],
+  ETERNAL:     ["ZOMATO"],
+  NYKAA:       ["FSN E-COMMERCE", "NYKAA"],
+  PAYTM:       ["ONE97 COMMUNICATIONS", "PAYTM"],
+  DMART:       ["AVENUE SUPERMARTS", "D-MART"],
+};
+
+// Builds all search terms for a symbol: NSE ticker variants + known aliases
+function buildSearchTerms(symbol: string): string[] {
+  const base = getSearchTerms(symbol);               // suffix-stripping variants
+  const aliases = SYMBOL_ALIASES[symbol] ?? [];
+  // Handle M&M specially — symbol is "M&M" in NSE
+  if (symbol === "M&M") aliases.push(...(SYMBOL_ALIASES["M_M"] ?? []));
+  return [...new Set([...base, ...aliases])];
+}
+
 function getPortfolioNews(symbol: string, limit = 15) {
   try {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
     const data = JSON.parse(raw) as {
-      news: { title: string; source?: string; pubDate: string; link?: string }[];
+      news: { title: string; source?: string; pubDate: string; link?: string; content?: string }[];
     };
-    const terms = getSearchTerms(symbol.toUpperCase());
+    const terms = buildSearchTerms(symbol.toUpperCase());
+
     const matches = data.news.filter((n) => {
-      const title = (n.title ?? "").toUpperCase();
-      return terms.some((t) => title.includes(t));
+      const title   = (n.title   ?? "").toUpperCase();
+      const content = (n.content ?? "").toUpperCase();
+      // Title match scores highest — always include
+      if (terms.some((t) => title.includes(t))) return true;
+      // Content match — only include if the term is specific enough (≥4 chars)
+      // to avoid false positives from short terms like "RIL" or "SBI" in unrelated text
+      return terms.some((t) => t.length >= 4 && content.includes(t));
     });
-    return matches.slice(0, limit).map((n) => ({
-      title: n.title,
-      source: n.source ?? "Unknown",
-      pubDate: n.pubDate,
-      link: n.link ?? null,
-    }));
+
+    // De-dupe by title in case the same article appears twice
+    const seen = new Set<string>();
+    return matches
+      .filter((n) => {
+        const key = n.title?.trim() ?? "";
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit)
+      .map((n) => ({
+        title: n.title,
+        source: n.source ?? "Unknown",
+        pubDate: n.pubDate,
+        link: n.link ?? null,
+      }));
   } catch {
     return [];
   }
