@@ -15,19 +15,10 @@ export default function PortfolioPage() {
         onSelect={(symbol, name) => setSelected({ symbol, name })}
       />
       <div className="flex-1 min-w-0 overflow-hidden">
-        {selected ? (
-          <PortfolioActivityPanel symbol={selected.symbol} name={selected.name} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <span className="text-4xl opacity-20">📊</span>
-            <p
-              className="text-[12px] font-mono"
-              style={{ color: "#6B7280" }}
-            >
-              Select a symbol from your portfolio to view activity
-            </p>
-          </div>
-        )}
+        <PortfolioActivityPanel
+          symbol={selected?.symbol ?? null}
+          name={selected?.name ?? null}
+        />
       </div>
     </div>
   );

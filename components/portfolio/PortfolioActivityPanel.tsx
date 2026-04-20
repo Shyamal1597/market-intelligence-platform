@@ -23,6 +23,7 @@ interface DealItem {
   id: string;
   type: string;
   date: string;
+  symbol?: string;
   client: string;
   side: string;
   quantity: number;
@@ -30,7 +31,7 @@ interface DealItem {
   valueCr: number | null;
 }
 interface ActivityData {
-  symbol: string;
+  symbol: string | null;
   news: { items: NewsItem[]; fetchedAt: string };
   filings: { items: FilingItem[]; fetchedAt: string };
   deals: { items: DealItem[]; fetchedAt: string };
@@ -58,7 +59,13 @@ function fmtCr(n: number | null) {
   return "₹" + n.toFixed(2) + " Cr";
 }
 
-export function PortfolioActivityPanel({ symbol, name }: { symbol: string; name: string }) {
+export function PortfolioActivityPanel({
+  symbol,
+  name,
+}: {
+  symbol: string | null;
+  name: string | null;
+}) {
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,34 +75,46 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string; name:
     setQuote(null);
     setLoading(true);
 
-    Promise.all([
-      fetch(`/api/portfolio/${symbol}/activity`).then((r) => r.json()),
-      fetch(`/api/quote/${symbol}`).then((r) => (r.ok ? r.json() : null)),
-    ]).then(([activityData, quoteData]) => {
-      setActivity(activityData as ActivityData);
-      setQuote(quoteData as Quote | null);
-      setLoading(false);
-    });
+    if (symbol) {
+      Promise.all([
+        fetch(`/api/portfolio/${symbol}/activity`).then((r) => r.json()),
+        fetch(`/api/quote/${symbol}`).then((r) => (r.ok ? r.json() : null)),
+      ]).then(([activityData, quoteData]) => {
+        setActivity(activityData as ActivityData);
+        setQuote(quoteData as Quote | null);
+        setLoading(false);
+      });
+    } else {
+      fetch("/api/portfolio/general/activity")
+        .then((r) => r.json())
+        .then((data) => {
+          setActivity(data as ActivityData);
+          setLoading(false);
+        });
+    }
   }, [symbol]);
 
   const up = (quote?.changePercent ?? 0) >= 0;
+  const isGeneral = !symbol;
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Stock header */}
+      {/* Header */}
       <div
         className="flex items-center justify-between px-5 py-3 border-b border-[#1E2235] shrink-0"
         style={{ background: "rgba(255,255,255,0.015)" }}
       >
         <div className="flex flex-col">
           <span className="text-sm font-mono font-semibold" style={{ color: "#F0EDE8" }}>
-            {name}
+            {isGeneral ? "Market Overview" : name}
           </span>
           <span className="text-[10px] font-mono" style={{ color: "#6B7280" }}>
-            {symbol} · NSE
+            {isGeneral
+              ? "Live feed across all instruments"
+              : `${symbol} · NSE`}
           </span>
         </div>
-        {quote && (
+        {quote && !isGeneral && (
           <div className="flex items-center gap-3">
             <span className="text-lg font-mono font-semibold" style={{ color: "#F0EDE8" }}>
               ₹{quote.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
@@ -107,6 +126,14 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string; name:
               {up ? "+" : ""}{quote.changePercent.toFixed(2)}%
             </span>
           </div>
+        )}
+        {isGeneral && (
+          <span
+            className="text-[9px] font-mono px-2 py-1 rounded"
+            style={{ background: "rgba(245,130,13,0.1)", color: "#F5820D" }}
+          >
+            ALL INSTRUMENTS
+          </span>
         )}
       </div>
 
@@ -178,6 +205,11 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string; name:
                   {fmtDate(f.submittedAt)}
                 </span>
               </div>
+              {isGeneral && f.company && (
+                <p className="text-[9px] font-mono mb-0.5" style={{ color: "#F5820D" }}>
+                  {f.company}
+                </p>
+              )}
               <p className="text-[11px] font-mono leading-relaxed" style={{ color: "#F0EDE8" }}>
                 {f.description || f.filingType}
               </p>
@@ -224,6 +256,14 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string; name:
                   <span className="text-[9px] font-mono uppercase" style={{ color: "#6B7280" }}>
                     {d.type}
                   </span>
+                  {isGeneral && d.symbol && (
+                    <span
+                      className="text-[9px] font-mono font-semibold"
+                      style={{ color: "#F0EDE8" }}
+                    >
+                      {d.symbol}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[9px] font-mono" style={{ color: "#6B7280" }}>
                   {fmtDate(d.date)}
