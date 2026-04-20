@@ -112,7 +112,7 @@ export function getRecentFiiDii(days = 7): FiiDiiDay[] {
  * that use the company name rather than the ticker.
  * e.g. RECLTD → ["RECLTD","REC"] | TATASTEEL → ["TATASTEEL","TATA"] | RAYMOND → ["RAYMOND"]
  */
-function getSearchTerms(symbol: string): string[] {
+export function getSearchTerms(symbol: string): string[] {
   const terms = new Set([symbol]);
   const suffixes = [
     "BANK","FINSERV","FINSV","FIN","STEEL","CEMENT","CEM","POWER","ENERGY",
