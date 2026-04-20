@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
+  Briefcase,
   Newspaper,
   TrendingUp,
   FileText,
@@ -21,6 +22,7 @@ import { clsx } from "clsx";
 
 const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/portfolio", icon: Briefcase, label: "Portfolio" },
   { href: "/news", icon: Newspaper, label: "Market News" },
   { href: "/macro", icon: TrendingUp, label: "Macro" },
   { href: "/filings", icon: FileText, label: "NSE Filings" },
