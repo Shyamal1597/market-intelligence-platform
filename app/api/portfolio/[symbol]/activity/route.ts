@@ -79,18 +79,28 @@ function buildSearchTerms(symbol: string): string[] {
   return [...new Set([...base, ...aliases])];
 }
 
-// NSE RSS filings may use either the NSE ticker OR the full company name in the
-// "SYMBOL : Description" title format. Match both the ticker and all known
-// long-form aliases against the filing's scripCode field.
-function matchesFiling(scripCode: string, sym: string): boolean {
-  const sc = scripCode.toUpperCase().trim();
-  if (sc === sym) return true;                      // exact ticker match
+// NSE RSS feed titles are now just the company name ("State Bank Of India").
+// scripCode and company both hold the company name after the recent NSE format change.
+// Match the NSE ticker OR any known long-form alias against both fields.
+function matchesFiling(scripCode: string, company: string, sym: string): boolean {
+  const fields = [scripCode.toUpperCase().trim(), company.toUpperCase().trim()];
+
+  for (const f of fields) {
+    if (!f) continue;
+    if (f === sym) return true;                    // exact ticker ("SBIN")
+    // Strip common series suffixes like "-EQ", "-BE"
+    if (f.replace(/-[A-Z0-9]+$/, "").trim() === sym) return true;
+  }
+
   const aliases = SYMBOL_ALIASES[sym] ?? [];
-  return aliases.some((alias) =>
-    alias.length >= 6                              // avoid short-term false positives
-      ? sc.includes(alias)                         // "STATE BANK OF INDIA" ⊆ "State Bank Of India Limited"
-      : sc === alias                               // short alias: must be exact
-  );
+  return aliases.some((alias) => {
+    const a = alias.toUpperCase();
+    return fields.some((f) => {
+      if (!f) return false;
+      if (a.length >= 6) return f.includes(a);    // long alias: substring OK
+      return f === a;                              // short alias: exact only
+    });
+  });
 }
 
 /**
@@ -166,8 +176,8 @@ export async function GET(
   const filings =
     filingsResult.status === "fulfilled"
       ? filingsResult.value
-          // Match on ticker OR full company name via aliases (NSE RSS uses both formats)
-          .filter((f) => matchesFiling(f.scripCode, sym))
+          // Match on ticker OR full company name via aliases (NSE RSS now uses company names)
+          .filter((f) => matchesFiling(f.scripCode, f.company, sym))
           .slice(0, 20)
           .map((f) => ({
             id: f.id,

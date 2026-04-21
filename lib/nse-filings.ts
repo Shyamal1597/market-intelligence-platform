@@ -59,10 +59,10 @@ const FEED_LABEL: Record<NSEFeedKey, string> = {
 };
 
 /**
- * NSE RSS titles use the format: "SYMBOL : Description of filing"
- * e.g. "INFY : Standalone Q3 FY25 Financial Results"
- *      "RELIANCE : Outcome of Board Meeting held on 14-Feb-2026"
- * Fall back gracefully when the separator is absent.
+ * NSE RSS title is now just the company name (e.g. "State Bank Of India").
+ * The actual subject/description lives in the RSS <description> field.
+ * We keep the old "SYMBOL : Description" parsing for backward compat in
+ * case any feed still uses that format.
  */
 function parseNSETitle(raw: string): { symbol: string; description: string } {
   const sep = raw.indexOf(" : ");
@@ -72,7 +72,23 @@ function parseNSETitle(raw: string): { symbol: string; description: string } {
       description: raw.slice(sep + 3).trim(),
     };
   }
+  // New format: title is the company name only — symbol is unknown from title alone
   return { symbol: "", description: raw.trim() };
+}
+
+/**
+ * Extract a concise subject from the RSS <description> field.
+ * NSE descriptions look like:
+ *   "Company Name has informed the Exchange regarding ... |SUBJECT: Board Meeting"
+ * We extract the SUBJECT text; fall back to the full snippet (≤180 chars).
+ */
+function extractFilingSubject(content: string | undefined): string {
+  if (!content) return "";
+  const subjectMatch = content.match(/\|SUBJECT:\s*(.+)/i);
+  if (subjectMatch) return subjectMatch[1].trim();
+  // Strip the leading "Company has informed..." boilerplate if no SUBJECT tag
+  const stripped = content.replace(/^.+?has informed the exchange[^|]*/i, "").trim();
+  return stripped.slice(0, 180) || content.slice(0, 180);
 }
 
 /**
@@ -92,15 +108,32 @@ export async function fetchNSEFilings(limit = 50): Promise<NSEFiling[]> {
       const feed = await parser.parseURL(url);
       return feed.items.slice(0, perFeed).map((item, i): NSEFiling => {
         const rawTitle = item.title ?? "Untitled";
-        const { symbol, description } = parseNSETitle(rawTitle);
-        // Prefer item.link (always the NSE filing page URL); fall back to pdfLink custom field
+        const { symbol: parsedSymbol } = parseNSETitle(rawTitle);
+        // link: prefer item.link (NSE filing page); fall back to pdfLink custom field
         const link: string | null =
           item.link ?? ((item as unknown as Record<string, unknown>).pdfLink as string) ?? null;
 
+        // Company name: either the symbol part of old "SYMBOL : Desc" format, or the full title
+        const companyName = parsedSymbol || rawTitle;
+
+        // scripCode: if the title had the old SYMBOL format use that;
+        // otherwise use the company name — the portfolio matching layer does
+        // alias lookup against this field.
+        const scripCode = parsedSymbol || rawTitle;
+
+        // Description: prefer the RSS <description> SUBJECT tag; fall back to
+        // the old title-parsed description for feeds still using "SYMBOL : Desc".
+        const rssContent: string =
+          (item as unknown as Record<string, unknown>).contentSnippet as string ??
+          (item as unknown as Record<string, unknown>).content as string ??
+          (item as unknown as Record<string, unknown>).summary as string ??
+          "";
+        const description = extractFilingSubject(rssContent) || (parsedSymbol ? rawTitle.slice(parsedSymbol.length + 3) : rawTitle);
+
         return {
           id: `nse-${key}-${i}-${item.isoDate ?? Date.now()}`,
-          company: symbol || rawTitle,
-          scripCode: symbol,
+          company: companyName,
+          scripCode,
           filingType: FEED_LABEL[key],
           category: FEED_CATEGORY[key],
           description,

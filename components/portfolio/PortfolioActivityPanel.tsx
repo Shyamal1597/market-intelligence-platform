@@ -101,35 +101,37 @@ export function PortfolioActivityPanel({
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-5 py-3 border-b border-[#1E2235] shrink-0"
+        className="flex items-center px-5 py-3 border-b border-[#1E2235] shrink-0 gap-4"
         style={{ background: "rgba(255,255,255,0.015)" }}
       >
-        <div className="flex flex-col">
-          <span className="text-sm font-mono font-semibold" style={{ color: "#F0EDE8" }}>
-            {isGeneral ? "Market Overview" : name}
-          </span>
+        <div className="flex flex-col min-w-0">
+          {/* Name + live price inline */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-mono font-semibold" style={{ color: "#F0EDE8" }}>
+              {isGeneral ? "Market Overview" : name}
+            </span>
+            {quote && !isGeneral && (
+              <>
+                <span className="text-sm font-mono font-semibold" style={{ color: "#F0EDE8" }}>
+                  ₹{quote.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                </span>
+                <span
+                  className="text-[11px] font-mono font-semibold"
+                  style={{ color: up ? "#00E5FF" : "#E84040" }}
+                >
+                  {up ? "+" : ""}{quote.changePercent.toFixed(2)}%
+                </span>
+              </>
+            )}
+          </div>
+          {/* Sub-label */}
           <span className="text-[10px] font-mono" style={{ color: "#6B7280" }}>
-            {isGeneral
-              ? "Live feed across all instruments"
-              : `${symbol} · NSE`}
+            {isGeneral ? "Live feed across all instruments" : `${symbol} · NSE`}
           </span>
         </div>
-        {quote && !isGeneral && (
-          <div className="flex items-center gap-3">
-            <span className="text-lg font-mono font-semibold" style={{ color: "#F0EDE8" }}>
-              ₹{quote.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-            </span>
-            <span
-              className="text-[11px] font-mono font-semibold"
-              style={{ color: up ? "#00E5FF" : "#E84040" }}
-            >
-              {up ? "+" : ""}{quote.changePercent.toFixed(2)}%
-            </span>
-          </div>
-        )}
         {isGeneral && (
           <span
-            className="text-[9px] font-mono px-2 py-1 rounded"
+            className="ml-auto text-[9px] font-mono px-2 py-1 rounded shrink-0"
             style={{ background: "rgba(245,130,13,0.1)", color: "#F5820D" }}
           >
             ALL INSTRUMENTS
