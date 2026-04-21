@@ -29,7 +29,7 @@ function getLatestNews(limit = 20) {
 export async function GET() {
   const [filingsResult, bulkResult, blockResult] =
     await Promise.allSettled([
-      fetchNSEFilings(500),
+      fetchNSEFilings(2000),
       fetchBulkDeals(),
       fetchBlockDeals(),
     ]);

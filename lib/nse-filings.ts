@@ -123,11 +123,7 @@ export async function fetchNSEFilings(limit = 50): Promise<NSEFiling[]> {
 
         // Description: prefer the RSS <description> SUBJECT tag; fall back to
         // the old title-parsed description for feeds still using "SYMBOL : Desc".
-        const rssContent: string =
-          (item as unknown as Record<string, unknown>).contentSnippet as string ??
-          (item as unknown as Record<string, unknown>).content as string ??
-          (item as unknown as Record<string, unknown>).summary as string ??
-          "";
+        const rssContent = item.contentSnippet ?? item.content ?? "";
         const description = extractFilingSubject(rssContent) || (parsedSymbol ? rawTitle.slice(parsedSymbol.length + 3) : rawTitle);
 
         return {

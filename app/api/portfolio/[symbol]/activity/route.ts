@@ -165,7 +165,7 @@ export async function GET(
 
   const [filingsResult, bulkResult, blockResult, shortResult] =
     await Promise.allSettled([
-      fetchNSEFilings(500),
+      fetchNSEFilings(2000), // ~333 per feed — covers a full day of NSE filings
       fetchBulkDeals(),
       fetchBlockDeals(),
       fetchShortDeals(),
