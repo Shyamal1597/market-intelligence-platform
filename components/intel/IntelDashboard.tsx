@@ -15,7 +15,6 @@ interface IntelData {
   model: string;
   generatedAt: string;
   hasChecks: boolean;
-  hasFundamentals: boolean;
   registry: Array<{ key: string; label: string; unit: string; segment: string }>;
   byQuarter: Record<string, EnrichedClaim[]>;
   warnings: string[];
@@ -67,43 +66,63 @@ export function IntelDashboard() {
     <div className="space-y-6">
       {/* Symbol selector row */}
       <div className="flex flex-wrap gap-2">
-        {companies.map((c) => (
-          <button
-            key={c.symbol}
-            onClick={() => setSelectedSymbol(c.symbol)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded border text-xs font-mono transition-colors ${
-              c.symbol === selectedSymbol
-                ? "border-amber/50 bg-amber/10 text-amber"
-                : "border-border bg-surface text-muted hover:text-primary hover:border-border/70"
-            }`}
-          >
-            {c.symbol}
-            {c.totalClaims > 0 && (
-              <span className="text-[10px] text-muted">{c.totalClaims}</span>
-            )}
-          </button>
-        ))}
+        {companies.map((c) => {
+          const isSelected = c.symbol === selectedSymbol;
+          const decisive = c.metCount + c.movingCount + c.missCount;
+          const onTrackPct = decisive > 0
+            ? Math.round(((c.metCount + c.movingCount) / decisive) * 100)
+            : null;
+          return (
+            <button
+              key={c.symbol}
+              onClick={() => setSelectedSymbol(c.symbol)}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded border font-mono transition-colors ${
+                isSelected
+                  ? "border-amber/50 bg-amber/10 text-amber"
+                  : "border-border bg-surface text-muted hover:text-primary hover:border-border/70"
+              }`}
+            >
+              <span className="text-xs font-bold">{c.symbol}</span>
+              {c.totalClaims > 0 && (
+                <span className={`text-[10px] ${isSelected ? "text-amber/70" : "text-muted"}`}>
+                  {c.totalClaims} claims
+                </span>
+              )}
+              {onTrackPct !== null && (
+                <span className={`text-[10px] font-bold ${
+                  isSelected ? "text-teal" : (onTrackPct >= 70 ? "text-teal" : onTrackPct >= 40 ? "text-amber" : "text-danger")
+                }`}>
+                  {onTrackPct}%
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Header */}
       <IntelHeader company={company} symbol={selectedSymbol} />
 
-      {/* Pipeline status row */}
+      {/* Pipeline meta — compact */}
       {data && (
-        <div className="flex flex-wrap gap-3 text-[11px] font-mono text-muted">
-          <span>model: <span className="text-primary">{data.model}</span></span>
-          <span>·</span>
-          <span>fundamentals: <span className={data.hasFundamentals ? "text-teal" : "text-danger"}>
-            {data.hasFundamentals ? "✓" : "missing"}
-          </span></span>
-          <span>·</span>
-          <span>cross-checks: <span className={data.hasChecks ? "text-teal" : "text-amber"}>
-            {data.hasChecks ? "✓" : "pending"}
-          </span></span>
+        <div className="flex flex-wrap gap-3 text-[10px] font-mono text-muted -mt-2">
+          <span>{data.model}</span>
+          {!data.hasChecks && (
+            <>
+              <span>·</span>
+              <span className="text-amber">cross-checks pending</span>
+            </>
+          )}
           {data.generatedAt && (
             <>
               <span>·</span>
-              <span>extracted: <span className="text-primary">{new Date(data.generatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}</span></span>
+              <span>
+                {new Date(data.generatedAt).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </span>
             </>
           )}
         </div>

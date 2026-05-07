@@ -5,28 +5,27 @@ import type {
   ClaimsArtifact,
   ChecksArtifact,
   ClaimCheck,
-  CheckStatus,
+  Verdict,
   ExtractedClaim,
   SectorRegistry,
 } from "./types";
-import type { Fundamentals } from "./types";
 import { callJson, estimateCostUsd, defaultVerificationModel } from "./llm";
 import { resolveClaimTarget } from "./targetResolver";
 import { claimsHash } from "./extractClaims";
 
-export const STAGE4_PROMPT_VERSION = 1;
+export const STAGE4_PROMPT_VERSION = 2;
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
 export interface CrossCheckArgs {
   symbol: string;
   claims: ClaimsArtifact;
-  fundamentals: Fundamentals;
+  /** Directory containing {quarter}.txt transcript files. */
+  transcriptsDir: string;
   registry: SectorRegistry;
   outFile: string;
   claimsHashValue: string;
-  fundamentalsHashValue: string;
-  /** Process only specific source quarters (used for incremental runs). */
+  /** Process only claims from specific source quarters. */
   onlyQuarters?: string[];
 }
 
@@ -37,9 +36,8 @@ export interface CrossCheckResult {
 
 // ── prompt ────────────────────────────────────────────────────────────────────
 
-interface VerifyItem {
+interface ClaimForVerification {
   claimId: string;
-  metricKey: string;
   metricLabel: string;
   metricUnit: string;
   quote: string;
@@ -49,143 +47,54 @@ interface VerifyItem {
   rangeMax: number | null;
   qualitativeText: string | null;
   targetText: string;
-  resolvedTargetQuarter: string;
-  actualValue: number | null;
-  sourceQuarterValue: number | null;
   conditional: string | null;
 }
 
-export function buildCrossCheckPrompt(items: VerifyItem[]): { system: string; user: string } {
-  const system = `You are a senior equity research analyst verifying management guidance accuracy. You are given a set of claims made during an earnings concall, each paired with the actual reported value for the target period.
+export function buildCrossCheckPrompt(
+  sourceQuarter: string,
+  targetQuarter: string,
+  claims: ClaimForVerification[],
+  transcript: string,
+): { system: string; user: string } {
+  const system = `You are verifying whether company management delivered on forward-looking promises made during earnings calls.
 
-VERDICTS — assign exactly one per claim:
-- "hit"        — guidance was achieved; actual matches direction/value within reasonable margin (±10% for value claims, within range for range claims, directionally correct for up/down/stable)
-- "miss"       — guidance clearly not achieved
-- "partial"    — partially achieved; directionally correct but magnitude off, or within an extended margin (10–25%)
-- "no-data"    — actual value is null / unavailable; cannot assess
-- "pending"    — target quarter is in the future; no actual data yet
-- "ambiguous"  — the claim is too vague to verify even with data
+For each claim, classify as exactly one of:
+- "met":       management clearly achieved the stated target or guided direction
+- "moving":    trending in the right direction but the guided level is not yet fully reached
+- "miss":      clear failure — opposite direction, significantly below target, or explicitly acknowledged as a miss
+- "ambiguous": this specific metric or topic was not discussed in the transcript; insufficient information to judge
 
-For conditional claims, evaluate only if the condition applied (or assume it did if unknown).
-
-OUTPUT: a JSON object: { "results": [Result, ...] } where Result is:
+OUTPUT: a JSON object { "results": [ Result, ... ] } where Result is:
 {
   "claimId": string,
-  "status": "hit" | "miss" | "partial" | "no-data" | "pending" | "ambiguous",
-  "actualValue": number | null,
-  "deltaText": string,       // e.g. "Guided 4.0%, reported 4.2% (+20bps)" or "" if no-data/pending
-  "reasoning": string,       // 1–2 sentences explaining the verdict
-  "conditionalApplied": boolean,
-  "conditionalNote": string | null
+  "verdict": "met" | "moving" | "miss" | "ambiguous",
+  "actualText": string | null,   // what management said about the actual outcome (1-2 sentences)
+  "quote": string | null,        // verbatim from transcript, ≤200 chars; null if ambiguous
+  "reasoning": string            // 1-2 sentences explaining the verdict
 }`;
 
-  const user = `Verify the following management guidance claims against reported actuals:
+  const user = `CLAIMS MADE IN ${sourceQuarter} (verify against ${targetQuarter} results):
+${JSON.stringify(claims, null, 2)}
 
-${JSON.stringify(items, null, 2)}
+${targetQuarter} EARNINGS TRANSCRIPT:
+${transcript}
 
 Return ONLY the JSON object with "results" array.`;
 
   return { system, user };
 }
 
-// ── rule-based fallback ───────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Fast rule-based check for quantitative claims.
- * Returns null when the claim is qualitative-only (needs LLM).
- */
-export function ruleBasedCheck(item: VerifyItem): Omit<ClaimCheck, "claimId" | "metricKey" | "sourceQuarter" | "targetQuarter" | "actualUnit"> | null {
-  const actual = item.actualValue;
-
-  // Can't check without actual
-  if (actual === null) {
-    return {
-      status: "no-data",
-      actualValue: null,
-      reasoning: "No actual data available for the target quarter.",
-      deltaText: "",
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  const { direction, value, rangeMin, rangeMax, qualitativeText } = item;
-
-  // Qualitative-only claims need LLM
-  if ((direction === "up" || direction === "down" || direction === "stable") && qualitativeText && !value) {
-    return null;
-  }
-
-  const src = item.sourceQuarterValue;
-
-  if (direction === "value" && value !== null) {
-    const pctDiff = Math.abs((actual - value) / (value || 1));
-    const status: CheckStatus = pctDiff <= 0.10 ? "hit" : pctDiff <= 0.25 ? "partial" : "miss";
-    const delta = actual - value;
-    const sign = delta > 0 ? "+" : "";
-    return {
-      status,
-      actualValue: actual,
-      reasoning: `Guided ${value}${item.metricUnit}, reported ${actual}${item.metricUnit} (${sign}${delta.toFixed(2)}${item.metricUnit}, ${(pctDiff * 100).toFixed(1)}% diff).`,
-      deltaText: `Guided ${value}${item.metricUnit}, reported ${actual}${item.metricUnit}`,
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  if (direction === "range" && rangeMin !== null && rangeMax !== null) {
-    const inRange = actual >= rangeMin && actual <= rangeMax;
-    const nearRange = actual >= rangeMin * 0.90 && actual <= rangeMax * 1.10;
-    const status: CheckStatus = inRange ? "hit" : nearRange ? "partial" : "miss";
-    return {
-      status,
-      actualValue: actual,
-      reasoning: `Guided ${rangeMin}–${rangeMax}${item.metricUnit}, reported ${actual}${item.metricUnit}.`,
-      deltaText: `Guided ${rangeMin}–${rangeMax}${item.metricUnit}, reported ${actual}${item.metricUnit}`,
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  if (direction === "up" && src !== null) {
-    const status: CheckStatus = actual > src ? "hit" : actual >= src * 0.97 ? "partial" : "miss";
-    return {
-      status,
-      actualValue: actual,
-      reasoning: `Guided improvement from ${src}${item.metricUnit}; reported ${actual}${item.metricUnit}.`,
-      deltaText: `${src}${item.metricUnit} → ${actual}${item.metricUnit}`,
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  if (direction === "down" && src !== null) {
-    const status: CheckStatus = actual < src ? "hit" : actual <= src * 1.03 ? "partial" : "miss";
-    return {
-      status,
-      actualValue: actual,
-      reasoning: `Guided decline from ${src}${item.metricUnit}; reported ${actual}${item.metricUnit}.`,
-      deltaText: `${src}${item.metricUnit} → ${actual}${item.metricUnit}`,
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  if (direction === "stable" && src !== null) {
-    const pctDiff = Math.abs((actual - src) / (src || 1));
-    const status: CheckStatus = pctDiff <= 0.05 ? "hit" : pctDiff <= 0.10 ? "partial" : "miss";
-    return {
-      status,
-      actualValue: actual,
-      reasoning: `Guided stable around ${src}${item.metricUnit}; reported ${actual}${item.metricUnit}.`,
-      deltaText: `${src}${item.metricUnit} → ${actual}${item.metricUnit}`,
-      conditionalApplied: false,
-      conditionalNote: null,
-    };
-  }
-
-  // Couldn't apply any rule → LLM fallback
-  return null;
+/** Sort quarter labels chronologically. Returns positive if a > b. */
+function compareQuarters(a: string, b: string): number {
+  // Format: Q{1-4}-FY{YY}
+  const parse = (q: string) => {
+    const m = q.match(/^Q(\d)-FY(\d+)$/);
+    if (!m) return 0;
+    return parseInt(m[2]) * 10 + parseInt(m[1]);
+  };
+  return parse(a) - parse(b);
 }
 
 // ── main driver ───────────────────────────────────────────────────────────────
@@ -196,129 +105,175 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
   const warnings: string[] = [];
   let totalCost = 0;
 
-  // Flatten all claims into a list with resolved target quarters
-  const allClaims: Array<{ claim: ExtractedClaim; sourceQuarter: string; targetQuarter: string | null }> = [];
+  // Load all available transcripts
+  const transcriptFiles = (await fs.readdir(args.transcriptsDir).catch(() => [] as string[]))
+    .filter((f) => f.endsWith(".txt"))
+    .sort((a, b) => compareQuarters(a.replace(/\.txt$/i, ""), b.replace(/\.txt$/i, "")));
+
+  const transcriptMap = new Map<string, string>();
+  for (const fname of transcriptFiles) {
+    const quarter = fname.replace(/\.txt$/i, "");
+    const text = await fs.readFile(path.join(args.transcriptsDir, fname), "utf-8");
+    transcriptMap.set(quarter, text);
+  }
+
+  const availableQuarters = [...transcriptMap.keys()].sort(compareQuarters);
+
+  // Flatten claims and resolve target transcripts
+  // Group by (sourceQuarter, verifiedInQuarter) → batch those together into one LLM call
+  type BatchKey = string; // `${sourceQuarter}::${verifiedInQuarter}`
+  const batches = new Map<BatchKey, {
+    sourceQuarter: string;
+    verifiedInQuarter: string;
+    targetQuarter: string;
+    claim: ExtractedClaim;
+  }[]>();
 
   for (const [sourceQ, claims] of Object.entries(args.claims.byQuarter)) {
     if (args.onlyQuarters && !args.onlyQuarters.includes(sourceQ)) continue;
+
     for (const claim of claims) {
       const resolved = resolveClaimTarget(claim.targetQuarter, claim.targetText, sourceQ);
-      allClaims.push({ claim, sourceQuarter: sourceQ, targetQuarter: resolved.quarter });
+      const targetQ = resolved.quarter; // may be null for vague targets
+
+      // Find which transcript to verify against
+      let verifiedInQuarter: string | null = null;
+
+      if (targetQ && transcriptMap.has(targetQ)) {
+        // Exact match: use the target quarter transcript
+        verifiedInQuarter = targetQ;
+      } else if (targetQ && !transcriptMap.has(targetQ)) {
+        // Target quarter exists but no transcript → pending
+        const check: ClaimCheck = {
+          claimId: claim.id,
+          metricKey: claim.metricKey,
+          sourceQuarter: sourceQ,
+          targetQuarter: targetQ,
+          verifiedInQuarter: targetQ,
+          verdict: "pending",
+          actualText: null,
+          quote: null,
+          reasoning: `Transcript for ${targetQ} not yet available.`,
+        };
+        byTargetQuarter[targetQ] = [...(byTargetQuarter[targetQ] ?? []), check];
+        continue;
+      } else {
+        // No resolved target quarter (vague claim) → use earliest transcript after sourceQ
+        const laterQuarters = availableQuarters.filter((q) => compareQuarters(q, sourceQ) > 0);
+        if (laterQuarters.length > 0) {
+          verifiedInQuarter = laterQuarters[0];
+        } else {
+          // No later transcript available → pending
+          const check: ClaimCheck = {
+            claimId: claim.id,
+            metricKey: claim.metricKey,
+            sourceQuarter: sourceQ,
+            targetQuarter: "unknown",
+            verifiedInQuarter: "unknown",
+            verdict: "pending",
+            actualText: null,
+            quote: null,
+            reasoning: "No subsequent transcript available to verify this claim.",
+          };
+          byTargetQuarter["unknown"] = [...(byTargetQuarter["unknown"] ?? []), check];
+          continue;
+        }
+      }
+
+      const key: BatchKey = `${sourceQ}::${verifiedInQuarter}`;
+      if (!batches.has(key)) batches.set(key, []);
+      batches.get(key)!.push({
+        sourceQuarter: sourceQ,
+        verifiedInQuarter,
+        targetQuarter: targetQ ?? verifiedInQuarter,
+        claim,
+      });
     }
   }
 
-  // Group by target quarter for batched LLM calls
-  const llmBatch: VerifyItem[] = [];
+  // Process each batch (one LLM call per source+target transcript pair)
+  for (const [key, items] of batches) {
+    const { sourceQuarter, verifiedInQuarter } = items[0];
+    const transcript = transcriptMap.get(verifiedInQuarter)!;
 
-  for (const { claim, sourceQuarter, targetQuarter } of allClaims) {
-    const metric = args.registry.metrics.find((m) => m.key === claim.metricKey);
-    if (!metric) {
-      warnings.push(`${claim.id}: metric ${claim.metricKey} not in registry`);
-      continue;
-    }
+    const metric = (metricKey: string) =>
+      args.registry.metrics.find((m) => m.key === metricKey);
 
-    // Look up actual value
-    let actualValue: number | null = null;
-    let sourceQuarterValue: number | null = null;
-
-    if (targetQuarter) {
-      const qFund = args.fundamentals.quarters[targetQuarter];
-      if (qFund) actualValue = qFund.metrics[claim.metricKey] ?? null;
-    }
-    const srcFund = args.fundamentals.quarters[sourceQuarter];
-    if (srcFund) sourceQuarterValue = srcFund.metrics[claim.metricKey] ?? null;
-
-    // Status for claims with no resolved target quarter
-    if (!targetQuarter) {
-      const check: ClaimCheck = {
+    const claimsForPrompt: ClaimForVerification[] = items.map(({ claim }) => {
+      const m = metric(claim.metricKey);
+      return {
         claimId: claim.id,
-        metricKey: claim.metricKey,
-        sourceQuarter,
-        targetQuarter: "unknown",
-        status: "ambiguous",
-        actualValue: null,
-        actualUnit: metric.unit,
-        reasoning: "Could not determine target quarter from claim text.",
-        deltaText: "",
-        conditionalApplied: false,
-        conditionalNote: null,
+        metricLabel: m?.label ?? claim.metricKey,
+        metricUnit: m?.unit ?? "",
+        quote: claim.quote,
+        direction: claim.direction,
+        value: claim.value,
+        rangeMin: claim.rangeMin,
+        rangeMax: claim.rangeMax,
+        qualitativeText: claim.qualitativeText,
+        targetText: claim.targetText,
+        conditional: claim.conditional,
       };
-      byTargetQuarter["unknown"] = [...(byTargetQuarter["unknown"] ?? []), check];
+    });
+
+    const { system, user } = buildCrossCheckPrompt(
+      sourceQuarter,
+      verifiedInQuarter,
+      claimsForPrompt,
+      transcript,
+    );
+
+    let result: Awaited<ReturnType<typeof callJson<{ results: Array<Partial<ClaimCheck> & { verdict?: Verdict }> }>>>;
+    try {
+      result = await callJson({
+        model,
+        system,
+        user,
+        maxTokens: 4096,
+        temperature: 0,
+      });
+    } catch (err) {
+      warnings.push(`${key}: LLM error — ${(err as Error).message.slice(0, 120)}`);
+      // Mark all claims in this batch as ambiguous
+      for (const { claim, targetQuarter } of items) {
+        const check: ClaimCheck = {
+          claimId: claim.id,
+          metricKey: claim.metricKey,
+          sourceQuarter,
+          targetQuarter,
+          verifiedInQuarter,
+          verdict: "ambiguous",
+          actualText: null,
+          quote: null,
+          reasoning: "LLM verification failed.",
+        };
+        byTargetQuarter[targetQuarter] = [...(byTargetQuarter[targetQuarter] ?? []), check];
+      }
       continue;
     }
 
-    const item: VerifyItem = {
-      claimId: claim.id,
-      metricKey: claim.metricKey,
-      metricLabel: metric.label,
-      metricUnit: metric.unit,
-      quote: claim.quote,
-      direction: claim.direction,
-      value: claim.value,
-      rangeMin: claim.rangeMin,
-      rangeMax: claim.rangeMax,
-      qualitativeText: claim.qualitativeText,
-      targetText: claim.targetText,
-      resolvedTargetQuarter: targetQuarter,
-      actualValue,
-      sourceQuarterValue,
-      conditional: claim.conditional,
-    };
+    totalCost += estimateCostUsd(model, result);
 
-    // Try rule-based first
-    const ruleResult = ruleBasedCheck(item);
-    if (ruleResult) {
+    // Map results back to ClaimCheck objects
+    const resultMap = new Map<string, typeof result.data.results[0]>();
+    for (const r of result.data.results ?? []) {
+      if (r.claimId) resultMap.set(r.claimId as string, r);
+    }
+
+    for (const { claim, targetQuarter } of items) {
+      const r = resultMap.get(claim.id);
       const check: ClaimCheck = {
         claimId: claim.id,
         metricKey: claim.metricKey,
         sourceQuarter,
         targetQuarter,
-        actualUnit: metric.unit,
-        ...ruleResult,
+        verifiedInQuarter,
+        verdict: (r?.verdict ?? "ambiguous") as Verdict,
+        actualText: (r as { actualText?: string | null })?.actualText ?? null,
+        quote: (r as { quote?: string | null })?.quote ?? null,
+        reasoning: (r as { reasoning?: string })?.reasoning ?? "",
       };
       byTargetQuarter[targetQuarter] = [...(byTargetQuarter[targetQuarter] ?? []), check];
-    } else {
-      // Queue for LLM batch
-      llmBatch.push(item);
-    }
-  }
-
-  // Process LLM batch in chunks of 10 to keep prompts manageable
-  const CHUNK = 10;
-  for (let i = 0; i < llmBatch.length; i += CHUNK) {
-    const chunk = llmBatch.slice(i, i + CHUNK);
-    const { system, user } = buildCrossCheckPrompt(chunk);
-
-    const result = await callJson<{ results: Array<Partial<ClaimCheck>> }>({
-      model,
-      system,
-      user,
-      maxTokens: 4096,
-      temperature: 0,
-    });
-    totalCost += estimateCostUsd(model, result);
-
-    for (const r of result.data.results ?? []) {
-      if (!r.claimId) continue;
-      // Find the original item
-      const item = chunk.find((it) => it.claimId === r.claimId);
-      if (!item) continue;
-      const metric = args.registry.metrics.find((m) => m.key === item.metricKey);
-
-      const check: ClaimCheck = {
-        claimId: r.claimId,
-        metricKey: item.metricKey,
-        sourceQuarter: allClaims.find((a) => a.claim.id === r.claimId)?.sourceQuarter ?? "unknown",
-        targetQuarter: item.resolvedTargetQuarter,
-        status: (r.status ?? "ambiguous") as CheckStatus,
-        actualValue: r.actualValue ?? item.actualValue,
-        actualUnit: metric?.unit ?? "",
-        reasoning: r.reasoning ?? "",
-        deltaText: r.deltaText ?? "",
-        conditionalApplied: r.conditionalApplied ?? false,
-        conditionalNote: r.conditionalNote ?? null,
-      };
-      byTargetQuarter[check.targetQuarter] = [...(byTargetQuarter[check.targetQuarter] ?? []), check];
     }
   }
 
@@ -328,7 +283,6 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
     model,
     generatedAt: new Date().toISOString(),
     claimsHash: args.claimsHashValue,
-    fundamentalsHash: args.fundamentalsHashValue,
     byTargetQuarter,
     warnings,
   };

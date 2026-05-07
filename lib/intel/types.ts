@@ -68,21 +68,23 @@ export interface ClaimsArtifact {
 }
 
 // ── Checks (Stage 4 output) ─────────────────────────────────────────────────
-export type CheckStatus =
-  | "hit" | "miss" | "partial" | "no-data" | "pending" | "ambiguous";
+/** Verdict rendered by reading the target quarter's earnings transcript. */
+export type Verdict = "met" | "moving" | "miss" | "pending" | "ambiguous";
 
 export interface ClaimCheck {
   claimId: string;
   metricKey: string;
   sourceQuarter: string;
+  /** Quarter the claim targets (resolved). */
   targetQuarter: string;
-  status: CheckStatus;
-  actualValue: number | null;
-  actualUnit: string;
+  /** Actual transcript quarter used for verification (may differ for rolling claims). */
+  verifiedInQuarter: string;
+  verdict: Verdict;
+  /** What management said about the actual outcome in the target transcript. */
+  actualText: string | null;
+  /** Verbatim quote from the target transcript (≤200 chars). */
+  quote: string | null;
   reasoning: string;
-  deltaText: string;
-  conditionalApplied: boolean;
-  conditionalNote: string | null;
 }
 
 export interface ChecksArtifact {
@@ -91,7 +93,6 @@ export interface ChecksArtifact {
   model: string;
   generatedAt: string;
   claimsHash: string;
-  fundamentalsHash: string;
   byTargetQuarter: { [targetQuarter: string]: ClaimCheck[] };
   warnings: string[];
 }

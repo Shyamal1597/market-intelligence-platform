@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
-import type { ClaimsArtifact, ChecksArtifact, Fundamentals, SectorRegistry } from "@/lib/intel/types";
+import type { ClaimsArtifact, ChecksArtifact, SectorRegistry } from "@/lib/intel/types";
 import { loadRegistry } from "@/lib/intel/registry";
 import { resolveClaimTarget } from "@/lib/intel/targetResolver";
 
@@ -16,7 +16,7 @@ async function readJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
-/** Enrich claims with resolved target quarter and check status from checks.json */
+/** Enrich claims with resolved target quarter and check verdict from checks.json */
 function enrichClaims(
   claims: ClaimsArtifact,
   checks: ChecksArtifact | null,
@@ -45,13 +45,11 @@ function enrichClaims(
         metricUnit: metric?.unit ?? "",
         check: check
           ? {
-              status:           check.status,
-              actualValue:      check.actualValue,
-              actualUnit:       check.actualUnit,
-              deltaText:        check.deltaText,
+              verdict:          check.verdict,
+              verifiedInQuarter: check.verifiedInQuarter,
+              actualText:       check.actualText,
+              quote:            check.quote,
               reasoning:        check.reasoning,
-              conditionalApplied: check.conditionalApplied,
-              conditionalNote:  check.conditionalNote,
             }
           : null,
       };
@@ -75,7 +73,6 @@ export async function GET(
   const base     = path.join("data/intelligence", symbol);
   const claims   = await readJson<ClaimsArtifact>(path.join(base, "claims.json"));
   const checks   = await readJson<ChecksArtifact>(path.join(base, "checks.json"));
-  const fund     = await readJson<Fundamentals>(path.join(base, "fundamentals.json"));
   const registry = loadRegistry(SYMBOL_SECTOR[symbol]);
 
   if (!claims) {
@@ -89,18 +86,16 @@ export async function GET(
 
   return NextResponse.json({
     symbol,
-    sector:           SYMBOL_SECTOR[symbol],
-    model:            claims.model,
-    generatedAt:      claims.generatedAt,
-    registryHash:     claims.registryHash,
-    hasChecks:        !!checks,
-    hasFundamentals:  !!fund,
-    registry:         registry.metrics.map((m) => ({
+    sector:       SYMBOL_SECTOR[symbol],
+    model:        claims.model,
+    generatedAt:  claims.generatedAt,
+    registryHash: claims.registryHash,
+    hasChecks:    !!checks,
+    registry:     registry.metrics.map((m) => ({
       key: m.key, label: m.label, unit: m.unit, segment: m.segment,
     })),
-    byQuarter:        enriched,
-    fundamentalsByQuarter: fund?.quarters ?? {},
-    warnings:         [
+    byQuarter:    enriched,
+    warnings:     [
       ...claims.warnings,
       ...(checks?.warnings ?? []),
     ],
