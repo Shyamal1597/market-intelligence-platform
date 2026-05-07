@@ -25,12 +25,12 @@ function timeAgo(d: string): string {
 }
 
 const CATEGORIES = [
-  { key: "all", label: "All" },
-  { key: "results", label: "Results" },
-  { key: "board-meeting", label: "Board Meeting" },
-  { key: "insider-trade", label: "Insider / Promoter" },
-  { key: "ipo-drhp", label: "IPO / DRHP" },
-  { key: "general", label: "General" },
+  { key: "all",                label: "All" },
+  { key: "results",            label: "Results" },
+  { key: "corporate-action",   label: "Corporate Actions" },
+  { key: "annual-report",      label: "Annual Report" },
+  { key: "investor-complaint", label: "Investor Complaints" },
+  { key: "insider-trade",      label: "Insider Trading" },
 ] as const;
 
 export default function FilingsPage() {

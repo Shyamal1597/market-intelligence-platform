@@ -1,5 +1,20 @@
 # Sunidhi Research Intelligence Platform — Claude Guidelines
 
+## Repo & Worktree Map
+
+| Path | Git Branch | Purpose |
+|------|-----------|---------|
+| `D:\Sunidhi Intranet\` | `main` | Bare repo root — source of truth for all branches |
+| `D:\Sunidhi-Intranet-Futuristic\` | `futuristic-design` | **PRIMARY FRONTEND WORKTREE** — all UI/feature work goes here. Has `.env.local` with BREEZE keys. Run dev server from here. |
+| `D:\Sunidhi Intranet\.claude\worktrees\awesome-chaplygin\` | `claude/awesome-chaplygin` | Claude Code internal scratch worktree — do not use for feature work |
+| `D:\Sunidhi Intranet\.claude\worktrees\gracious-dirac\` | (other) | Unused / legacy Claude worktree |
+
+**Dev server:** Configured in `D:\Sunidhi Intranet\.claude\launch.json` → runs Next.js from `D:\Sunidhi-Intranet-Futuristic\` on port 3001.
+
+**`.env.local`** lives in `D:\Sunidhi-Intranet-Futuristic\` — contains `BREEZE_API_KEY` and `BREEZE_SECRET_KEY`. Never copy to other worktrees.
+
+---
+
 ## Project Overview
 Internal financial research intranet for Sunidhi Capital's research team. Next.js 16 App Router, TypeScript, Tailwind CSS. No auth, no database. File-based JSON persistence. Open access on internal network only.
 
@@ -28,21 +43,95 @@ app/                    # Next.js App Router pages + API routes
 │   ├── macro/          # Yahoo Finance proxy
 │   ├── filings/        # BSE XML feed proxy
 │   ├── market-news/    # Serve stored news JSON
-│   └── fetch-market-news/  # Pull from RSS feeds
+│   ├── fetch-market-news/  # Pull from RSS feeds
+│   ├── coverage/       # SQLite-backed coverage universe + [symbol]/financials
+│   ├── breeze/         # ICICI Breeze live price data (auth, historical/[symbol])
+│   ├── watchlist/      # Watchlist CRUD (JSON persistence) + [symbol] PATCH
+│   └── reports/        # PDF report management
 ├── page.tsx            # Dashboard
 ├── news/               # Market News
 ├── macro/              # Macro Command Centre
 ├── filings/            # BSE Filing Monitor
-└── links/              # Quick Links Hub
+├── links/              # Quick Links Hub
+├── results/            # Earnings Intelligence (CoverageIntelligence)
+├── reports/            # RAG PDF viewer
+└── research/[symbol]/  # Per-stock research page
 components/
 ├── layout/             # Sidebar, TopBar, TickerStrip
 ├── dashboard/          # Dashboard widgets
 ├── macro/              # MetricTile, Sparkline
+├── results/            # CoverageIntelligence, CoverageRow, FinancialsPanel, …
+├── research/           # CompanyHeader, QuarterlyResultsPanel, ShareholdingPanel, …
 └── ui/                 # Badge, SectionHeader
-lib/                    # Utilities and data fetchers
+lib/
+├── db.ts               # SQLite via better-sqlite3 (reports table)
+├── theme.tsx           # ThemeProvider — see Theme System section below
+└── watchlist.ts        # Watchlist JSON helpers
 data/
 └── market-news.json    # Persisted news store (up to 200 items)
 ```
+
+---
+
+## Branches & Active Dev Environment
+
+- **Active branch for UI work**: `futuristic-design` at `D:/Sunidhi-Intranet-Futuristic/`
+- **This is the project the dev server serves** — edits must go here, NOT in `D:\Sunidhi Intranet\`
+- **Dev server**: named `sunidhi-intranet`, port 3001. Launch config at `D:\Sunidhi Intranet\.claude\launch.json`:
+  ```json
+  { "name": "sunidhi-intranet", "runtimeExecutable": "node",
+    "runtimeArgs": ["D:\\Sunidhi Intranet\\node_modules\\next\\dist\\bin\\next", "dev", "-p", "3001"],
+    "port": 3001 }
+  ```
+  `node_modules` live in `D:\Sunidhi Intranet\` (not in the futuristic worktree).
+- **Other worktrees**: `D:\Sunidhi Intranet\.claude\worktrees\{gracious-dirac,nifty-noyce,silly-yalow}` — feature branches, not actively served.
+
+---
+
+## Theme System — Read Before Any UI Work
+
+`lib/theme.tsx` — `ThemeProvider` sets `data-theme` on `<html>` and calls `applyTheme()` which injects CSS custom properties. Preference persisted in `localStorage` key `sunidhi-theme-v1`.
+
+| Tailwind class | CSS var | Dark value | Light value |
+|---|---|---|---|
+| `bg-base` | `--color-base` | `#0C0E14` | `#F4F1EB` |
+| `bg-surface` | `--color-surface` | `#13151E` | `#FFFFFF` |
+| `border-border` | `--color-border` | `#1E2235` | `#E5DDD0` |
+| `text-primary` | `--color-primary` | `#F0EDE8` | `#1C1814` |
+| `text-muted` | `--color-muted` | `#6E7590` | `#8A7F74` |
+| `text-amber` | `--color-amber` | `#F5820D` | `#F5820D` |
+| `text-teal` | `--color-teal` | `#00C9A7` | `#00C9A7` |
+| `text-danger` | `--color-danger` | `#E84040` | `#E84040` |
+
+**Critical rule**: Always use CSS-variable Tailwind classes (`bg-surface`, `text-primary`, `border-border`, etc.) for component backgrounds and text. **Never hardcode** `#0C0E14`, `#13151E`, `#F0EDE8` etc. directly on component backgrounds — they break the light theme (dark bg + dark text = invisible).
+
+**Exceptions where hardcoded dark colours are correct**:
+- Recharts chart internals (SVG grid/axis) — always dark regardless of theme
+- `CustomTooltip` components inside charts — intentionally dark `bg-[#13151E]`
+
+---
+
+## Coverage Intelligence — Key Patterns
+
+**`components/results/CoverageIntelligence.tsx`**:
+- **Metric tiles**: `bg-surface border-border rounded-lg` — text uses `text-primary` / `text-muted`
+- **Rating tile value**: uses `ratingBg()` which returns theme-compatible Tailwind strings
+- **Covered-by analyst badges**: `bg-surface border-border`
+- **Report history cards**: latest → `border-amber/20 bg-amber/[0.04]`; older → `border-border bg-surface`
+- **Price Target Walk chart**: fixed `h-[300px]` container (not `flex-1` — breaks `ResponsiveContainer`), `domain={["auto","auto"]}` on `YAxis`
+- **Chart legend**: SVG line swatches with plain-English labels (amber solid = Price Target, gray dashed = CMP at Issue, blue solid = Market Price)
+
+**`app/api/coverage/route.ts`**:
+- Falls back to most-recent report WITH data: `reports.find(r => r.rating) ?? reports[0]` for rating; same pattern for `targetPrice > 0`
+- Prevents "Note"-type reports (no rating/TP) from blanking the metric tiles
+
+**Breeze integration**: `/api/breeze/auth` → `{ loggedIn, loginUrl }`. When `loggedIn=false`, Overview tab shows "Connect Breeze for price history ↗". Historical OHLC via `/api/breeze/historical/[symbol]?from=YYYY-MM-DD&to=YYYY-MM-DD`.
+
+## Known Coverage Data Notes
+- **KTKBANK** — company name stored as "KBL" (Karnataka Bank Ltd); 1 RU by Rabindra, BUY, TP ₹2,015
+- **AXISBANK** — latest report is a Note (no rating/TP); API fallback surfaces OUTPERFORM · TP ₹1,402 from the underlying RU
+
+---
 
 ## Working Relationship & Tooling
 
@@ -344,3 +433,7 @@ When generating code, always:
 8. **Keep dependencies updated**
 
 When unsure, choose the more restrictive/secure option and document the security consideration in comments.
+
+## Secrets
+
+- `ANTHROPIC_API_KEY` — required for `npm run intel:rebuild`. Place in `.env.local` (gitignored). See `.env.local.example`.

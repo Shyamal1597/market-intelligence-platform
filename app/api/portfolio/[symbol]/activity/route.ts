@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSearchTerms } from "@/lib/smart-money";
 import { fetchNSEFilings } from "@/lib/nse-filings";
-import { fetchBulkDeals, fetchBlockDeals, fetchShortDeals } from "@/lib/nse-deals";
+import { fetchAllDeals } from "@/lib/nse-deals";
 import fs from "fs";
 import path from "path";
 
@@ -163,13 +163,10 @@ export async function GET(
   const { symbol } = await params;
   const sym = symbol.toUpperCase().trim();
 
-  const [filingsResult, bulkResult, blockResult, shortResult] =
-    await Promise.allSettled([
-      fetchNSEFilings(2000), // ~333 per feed — covers a full day of NSE filings
-      fetchBulkDeals(),
-      fetchBlockDeals(),
-      fetchShortDeals(),
-    ]);
+  const [filingsResult, dealsResult] = await Promise.allSettled([
+    fetchNSEFilings(2000), // ~333 per feed — covers a full day of NSE filings
+    fetchAllDeals(),       // single NSE session → bulk + block + short in one shot
+  ]);
 
   const newsItems = getPortfolioNews(sym, 15);
 
@@ -189,32 +186,56 @@ export async function GET(
           }))
       : [];
 
-  const bulkDeals =
-    bulkResult.status === "fulfilled"
-      ? bulkResult.value.deals.filter((d) => d.symbol === sym)
-      : [];
-  const blockDeals =
-    blockResult.status === "fulfilled"
-      ? blockResult.value.deals.filter((d) => d.symbol === sym)
-      : [];
-  const shortDeals =
-    shortResult.status === "fulfilled"
-      ? shortResult.value.deals.filter((d) => d.symbol === sym)
-      : [];
+  const { bulk = [], block = [], short = [] } =
+    dealsResult.status === "fulfilled" ? dealsResult.value : {};
 
-  const allDeals = [...bulkDeals, ...blockDeals, ...shortDeals]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 20)
-    .map((d) => ({
+  const symbolShort = short.filter((d) => d.symbol === sym);
+
+  // Enrich short deals for this symbol with the live price (one fetch — symbol is known)
+  let enrichedShort = symbolShort;
+  if (symbolShort.length > 0) {
+    try {
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?interval=1d&range=1d`,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+          cache: "no-store",
+          signal: AbortSignal.timeout(5000),
+        }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const meta = json?.chart?.result?.[0]?.meta;
+        const price: number = meta?.regularMarketPrice ?? meta?.previousClose ?? 0;
+        if (price > 0) {
+          enrichedShort = symbolShort.map((d) => ({
+            ...d,
+            price,
+            valueCr: d.quantity > 0 ? (d.quantity * price) / 10_000_000 : d.valueCr,
+          }));
+        }
+      }
+    } catch {
+      // non-fatal — fall back to unenriched short deals
+    }
+  }
+
+  function mapDeal(d: (typeof bulk)[number]) {
+    return {
       id: d.id,
       type: d.type,
       date: d.date,
+      symbol: d.symbol,
       client: d.client,
       side: d.side,
       quantity: d.quantity,
       price: d.price,
       valueCr: d.valueCr,
-    }));
+    };
+  }
 
   const now = new Date().toISOString();
 
@@ -222,6 +243,11 @@ export async function GET(
     symbol: sym,
     news: { items: newsItems, fetchedAt: now },
     filings: { items: filings, fetchedAt: now },
-    deals: { items: allDeals, fetchedAt: now },
+    deals: {
+      bulk:  bulk.filter((d) => d.symbol === sym).map(mapDeal),
+      block: block.filter((d) => d.symbol === sym).map(mapDeal),
+      short: enrichedShort.map(mapDeal),
+      fetchedAt: now,
+    },
   });
 }

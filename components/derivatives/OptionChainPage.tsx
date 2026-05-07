@@ -14,6 +14,12 @@ import { clsx } from "clsx";
 export type ActiveTab = "chain" | "volatility";
 export type BarMode = "oi" | "volume";
 
+function isMarketOpen(): boolean {
+  const ist = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const mins = ist.getHours() * 60 + ist.getMinutes();
+  return mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
+}
+
 export function OptionChainPage() {
   const [symbol, setSymbol] = useState("NIFTY");
   const [expiries, setExpiries] = useState<string[]>([]);
@@ -78,8 +84,17 @@ export function OptionChainPage() {
 
   useEffect(() => {
     if (!selectedExpiry) return;
+    // Don't start polling when market is closed — NSE data is frozen after 15:30 IST
+    if (!isMarketOpen()) return;
+
     intervalRef.current = setInterval(() => {
       if (document.hidden) return;
+      // Stop polling if market closes mid-session
+      if (!isMarketOpen()) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        return;
+      }
       setCountdown((c) => {
         if (c <= 1) {
           fetchChain(symbol, selectedExpiry);
@@ -151,7 +166,7 @@ export function OptionChainPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-muted hover:text-primary text-xs font-mono transition-colors"
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-            {loading ? "…" : `${countdown}s`}
+            {loading ? "…" : isMarketOpen() ? `${countdown}s` : "EOD"}
           </button>
         </div>
       </div>

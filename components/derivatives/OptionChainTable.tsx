@@ -145,9 +145,9 @@ export function OptionChainTable({ data, barMode, columns }: Props) {
                 {showSeparator && (
                   <tr key={`sep-${row.strikePrice}`} className="pointer-events-none">
                     <td colSpan={totalCols} className="p-0">
-                      <div className="relative flex items-center h-5">
+                      <div className="relative flex items-center justify-center h-5">
                         <div className="absolute inset-x-0 top-1/2 h-px bg-amber/40" />
-                        <span className="relative ml-3 px-2 py-0.5 bg-surface text-[9px] font-mono text-amber/80 border border-amber/30 rounded whitespace-nowrap z-10">
+                        <span className="relative px-2 py-0.5 bg-surface text-[9px] font-mono text-amber/80 border border-amber/30 rounded whitespace-nowrap z-10">
                           {spotLabel}
                         </span>
                       </div>

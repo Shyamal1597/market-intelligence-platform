@@ -1,0 +1,112 @@
+{
+  "symbol": "HDFCBANK",
+  "ticker": "HDFCBANK",
+  "unit": "Cr",
+  "quarters": {
+    "Q2-FY24": {
+      "endDate": "2023-09-30",
+      "metrics": {
+        "pat": 168114.1,
+        "roa": 1.7964,
+        "roe": 15.9927
+      }
+    },
+    "Q3-FY24": {
+      "endDate": "2023-12-31",
+      "metrics": {
+        "pat": 172578.7,
+        "roa": 1.9114,
+        "roe": 16.7505
+      }
+    },
+    "Q4-FY24": {
+      "endDate": "2024-03-31",
+      "metrics": {
+        "pat": 176223.8,
+        "roa": 1.9529,
+        "roe": 17.1787
+      }
+    },
+    "Q1-FY25": {
+      "endDate": "2024-06-30",
+      "metrics": {
+        "pat": 164748.5,
+        "roa": 2.0727,
+        "roe": 17.494
+      }
+    },
+    "Q2-FY25": {
+      "endDate": "2024-09-30",
+      "metrics": {
+        "pat": 178259.1,
+        "roa": 1.7441,
+        "roe": 15.3614
+      }
+    },
+    "Q3-FY25": {
+      "endDate": "2024-12-31",
+      "metrics": {
+        "pat": 176566.1,
+        "roa": 1.7159,
+        "roe": 14.8119
+      }
+    },
+    "Q4-FY25": {
+      "endDate": "2025-03-31",
+      "metrics": {
+        "pat": 188348.8,
+        "roa": 1.681,
+        "roe": 14.4742
+      }
+    },
+    "Q1-FY26": {
+      "endDate": "2025-06-30",
+      "metrics": {
+        "pat": 162579.1,
+        "roa": 1.6679,
+        "roe": 13.8591
+      }
+    },
+    "Q2-FY26": {
+      "endDate": "2025-09-30",
+      "metrics": {
+        "pat": 196106.7,
+        "roa": 1.6699,
+        "roe": 14.1175
+      }
+    },
+    "Q3-FY26": {
+      "endDate": "2025-12-31",
+      "metrics": {
+        "pat": 198066.3,
+        "roa": 1.683,
+        "roe": 13.9672
+      }
+    },
+    "Q4-FY26": {
+      "endDate": "2026-03-31",
+      "metrics": {
+        "pat": 203507.6,
+        "roa": 1.6349,
+        "roe": 13.725
+      }
+    }
+  },
+  "warnings": [
+    "nim: no row matching [\"net interest margin\",\"NIM\"] in sheet \"Ratios\"",
+    "gross_npa: no row matching [\"gross NPA\",\"GNPA\"] in sheet \"Supplemental\"",
+    "net_npa: no row matching [\"net NPA\",\"NNPA\"] in sheet \"Supplemental\"",
+    "pcr: no row matching [\"provision coverage\",\"PCR\"] in sheet \"Supplemental\"",
+    "credit_cost: no row matching [\"credit cost\",\"provisions/avg loans\"] in sheet \"Ratios\"",
+    "slippages: no row matching [\"slippage\",\"gross slippages\"] in sheet \"Supplemental\"",
+    "cost_to_income: no row matching [\"cost to income\",\"cost-to-income\"] in sheet \"Ratios\"",
+    "casa_ratio: no row matching [\"CASA\",\"current and savings\"] in sheet \"Supplemental\"",
+    "deposit_growth: no row matching [\"deposit growth\",\"deposits growth\"] in sheet \"Ratios\"",
+    "advance_growth: no row matching [\"advance growth\",\"loan growth\",\"advances growth\"] in sheet \"Ratios\"",
+    "retail_advance_share: no row matching [\"retail loans\",\"retail advances\",\"retail share\"] in sheet \"Segments\"",
+    "nii: no row matching [\"net interest income\",\"NII\"] in sheet \"Income Statement\"",
+    "cet1: no row matching [\"CET1\",\"common equity tier 1\"] in sheet \"Capital Structure Summary\"",
+    "crar: no row matching [\"capital adequacy\",\"CRAR\",\"total capital ratio\"] in sheet \"Capital Structure Summary\"",
+    "branch_count: no row matching [\"branches\",\"branch count\"] in sheet \"Supplemental\""
+  ]
+}

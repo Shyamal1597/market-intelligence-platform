@@ -16,7 +16,10 @@ export type FilingCategory =
   | "board-meeting"
   | "insider-trade"
   | "ipo-drhp"
-  | "general";
+  | "general"
+  | "corporate-action"
+  | "annual-report"
+  | "investor-complaint";
 
 function classifyFiling(filingType: string): FilingCategory {
   const t = filingType.toLowerCase();

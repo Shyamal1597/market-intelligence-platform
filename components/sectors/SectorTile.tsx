@@ -32,13 +32,13 @@ export function SectorTile({ quote }: SectorTileProps) {
       className={`border border-[#1E2235] border-l-2 ${bgClass} ${borderClass} rounded-xl p-4 flex flex-col justify-between transition-all hover:bg-white/[0.05]`}
     >
       <div>
-        <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-1.5">
+        <p className="font-mono text-[15px] tracking-widest text-muted uppercase mb-1.5">
           {quote.label}
         </p>
         <p className="font-mono text-xl font-bold text-primary leading-none mb-1">
           {quote.price.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
         </p>
-        <p className={`font-mono text-xs ${valueColor} flex items-center gap-1`}>
+        <p className={`font-mono text-15px ${valueColor} flex items-center gap-1`}>
           {up ? (
             <TrendingUp className="w-3 h-3" />
           ) : (

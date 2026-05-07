@@ -1,0 +1,315 @@
+#!/usr/bin/env tsx
+/**
+ * intel-rebuild — CLI orchestrator for the Intel Dashboard pipeline.
+ *
+ * Usage:
+ *   npx tsx scripts/intel-rebuild.ts <SYMBOL> [options]
+ *
+ * Options:
+ *   --stage=<1|2|3|4>   Run only the specified stage (1=parseExcel 2=transcripts 3=extractClaims 4=crossCheck)
+ *   --force             Re-run even if output is current
+ *   --all               Run all symbols (BAJAJFINSV + HDFCBANK)
+ *   --only=<Q1-FY26>    Process only this quarter (stage 3 & 4)
+ *   --cost-cap=<N>      Abort if cumulative LLM cost exceeds $N (default: 10)
+ *   --dry-run           Print plan without executing
+ *
+ * Environment variables:
+ *   ANTHROPIC_API_KEY   — enables Anthropic backend (set in .env.local)
+ *   LLM_BACKEND=ollama  — force local Ollama even if API key is present
+ *   OLLAMA_BASE_URL     — override Ollama endpoint (default: http://localhost:11434)
+ */
+
+import path from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { promises as fs } from "node:fs";
+
+// Load .env.local (dotenv is not a dependency)
+try {
+  for (const line of readFileSync(".env.local", "utf-8").split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+  }
+} catch { /* .env.local not required */ }
+
+import { SYMBOL_SECTOR } from "@/lib/intel/types";
+import { loadRegistry, registryHash } from "@/lib/intel/registry";
+import { parseExcel, writeFundamentals, fundamentalsHash } from "@/lib/intel/parseExcel";
+import { ingestTranscripts } from "@/lib/intel/transcripts";
+import { extractClaimsForSymbol } from "@/lib/intel/extractClaims";
+import { crossCheckForSymbol } from "@/lib/intel/crossCheck";
+import { claimsHash } from "@/lib/intel/extractClaims";
+import { activeBackend, defaultExtractionModel, defaultVerificationModel } from "@/lib/intel/llm";
+import type { Fundamentals, ClaimsArtifact } from "@/lib/intel/types";
+
+// ── CLI parsing ───────────────────────────────────────────────────────────────
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const flags: Record<string, string | boolean> = {};
+  const positional: string[] = [];
+
+  for (const arg of args) {
+    if (arg.startsWith("--")) {
+      const [key, val] = arg.slice(2).split("=");
+      flags[key] = val ?? true;
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return {
+    symbol: positional[0] ?? null,
+    stage: flags.stage ? parseInt(flags.stage as string) : null,
+    force: flags.force === true,
+    all: flags.all === true,
+    onlyQuarter: flags.only as string | undefined,
+    costCap: flags["cost-cap"] ? parseFloat(flags["cost-cap"] as string) : 10,
+    dryRun: flags["dry-run"] === true,
+  };
+}
+
+// ── data paths ────────────────────────────────────────────────────────────────
+
+function dataPaths(symbol: string) {
+  const base = path.join("data/intelligence", symbol);
+  return {
+    fundamentals:  path.join(base, "fundamentals.json"),
+    transcripts:   path.join(base, "transcripts"),
+    claims:        path.join(base, "claims.json"),
+    checks:        path.join(base, "checks.json"),
+  };
+}
+
+/** Known Excel filename overrides when the file doesn't match the symbol name. */
+const EXCEL_PATHS: Record<string, string> = {
+  BAJAJFINSV: "Bajaj finserve.xlsx",
+  HDFCBANK:   "HDFC.xlsx",
+};
+
+function excelGlob(symbol: string): string | null {
+  const concallDir = "Concall Data/Fundamental data";
+  if (!existsSync(concallDir)) return null;
+  // Check known overrides first, then fall back to convention-based names
+  const candidates = [
+    EXCEL_PATHS[symbol] ? path.join(concallDir, EXCEL_PATHS[symbol]) : null,
+    path.join(concallDir, `${symbol}.xlsx`),
+    path.join(concallDir, `${symbol}_Fundamentals.xlsx`),
+  ].filter(Boolean) as string[];
+  return candidates.find(existsSync) ?? null;
+}
+
+function transcriptDir(symbol: string): string {
+  return path.join("Concall Data", symbol);
+}
+
+// ── stage runners ─────────────────────────────────────────────────────────────
+
+async function runStage1(symbol: string, opts: ReturnType<typeof parseArgs>): Promise<Fundamentals | null> {
+  const paths = dataPaths(symbol);
+  const sector = SYMBOL_SECTOR[symbol];
+  const reg = loadRegistry(sector);
+
+  if (!opts.force && existsSync(paths.fundamentals)) {
+    log(symbol, "stage1", "skip (output current, use --force to re-run)");
+    return JSON.parse(await fs.readFile(paths.fundamentals, "utf-8")) as Fundamentals;
+  }
+
+  const xlsxFile = excelGlob(symbol);
+  if (!xlsxFile) {
+    log(symbol, "stage1", `SKIP — no Excel file found in Concall Data/Fundamental data/`);
+    return null;
+  }
+
+  if (opts.dryRun) {
+    log(symbol, "stage1", `DRY-RUN: would parse ${xlsxFile}`);
+    return null;
+  }
+
+  log(symbol, "stage1", `parsing ${xlsxFile}…`);
+  const fund = await parseExcel({ symbol, ticker: symbol, registry: reg, xlsxPath: xlsxFile });
+  await writeFundamentals(symbol, fund);
+  const total = Object.keys(fund.quarters).length;
+  log(symbol, "stage1", `${total} quarters extracted (${fund.warnings.length} warnings)`);
+  return fund;
+}
+
+async function runStage2(symbol: string, opts: ReturnType<typeof parseArgs>): Promise<void> {
+  const paths = dataPaths(symbol);
+  const srcDir = transcriptDir(symbol);
+
+  if (!existsSync(srcDir)) {
+    log(symbol, "stage2", `SKIP — no transcript source dir: ${srcDir}`);
+    return;
+  }
+
+  if (!opts.force && existsSync(paths.transcripts)) {
+    const existing = await fs.readdir(paths.transcripts).catch(() => []);
+    if (existing.length > 0) {
+      log(symbol, "stage2", `skip (${existing.length} transcripts present, use --force)`);
+      return;
+    }
+  }
+
+  if (opts.dryRun) {
+    log(symbol, "stage2", `DRY-RUN: would ingest from ${srcDir}`);
+    return;
+  }
+
+  log(symbol, "stage2", `ingesting transcripts from ${srcDir}…`);
+  const manifest = await ingestTranscripts({
+    symbol,
+    inputDir: srcDir,
+    outputDir: paths.transcripts,
+  });
+  log(symbol, "stage2", `${manifest.ingested.length} transcripts ingested (${manifest.duplicatesSkipped.length} duplicates skipped)`);
+}
+
+async function runStage3(
+  symbol: string,
+  opts: ReturnType<typeof parseArgs>,
+  totalCost: { v: number },
+): Promise<ClaimsArtifact | null> {
+  const paths = dataPaths(symbol);
+  const sector = SYMBOL_SECTOR[symbol];
+  const reg = loadRegistry(sector);
+
+  if (!opts.force && existsSync(paths.claims)) {
+    log(symbol, "stage3", "skip (output current, use --force to re-run)");
+    return JSON.parse(await fs.readFile(paths.claims, "utf-8")) as ClaimsArtifact;
+  }
+
+  if (!existsSync(paths.transcripts)) {
+    log(symbol, "stage3", "SKIP — run stage 2 first");
+    return null;
+  }
+
+  if (opts.dryRun) {
+    const tFiles = await fs.readdir(paths.transcripts).catch(() => []);
+    log(symbol, "stage3", `DRY-RUN: would extract claims from ${tFiles.length} transcripts using ${defaultExtractionModel()} (backend: ${activeBackend()})`);
+    return null;
+  }
+
+  log(symbol, "stage3", `extracting claims via ${activeBackend()}:${defaultExtractionModel()}…`);
+  const r = await extractClaimsForSymbol({
+    symbol,
+    registry: reg,
+    transcriptsDir: paths.transcripts,
+    outFile: paths.claims,
+    registryHash: registryHash(reg),
+    onlyQuarters: opts.onlyQuarter ? [opts.onlyQuarter] : undefined,
+  });
+  totalCost.v += r.totalCostUsd;
+
+  const total = Object.values(r.artifact.byQuarter).reduce((s, c) => s + c.length, 0);
+  const quarters = Object.keys(r.artifact.byQuarter).length;
+  log(symbol, "stage3", `${total} claims across ${quarters} quarters | cost ~$${r.totalCostUsd.toFixed(3)}`);
+  if (r.artifact.warnings.length) {
+    log(symbol, "stage3", `warnings: ${r.artifact.warnings.slice(0, 3).join("; ")}`);
+  }
+  return r.artifact;
+}
+
+async function runStage4(
+  symbol: string,
+  opts: ReturnType<typeof parseArgs>,
+  totalCost: { v: number },
+): Promise<void> {
+  const paths = dataPaths(symbol);
+  const sector = SYMBOL_SECTOR[symbol];
+  const reg = loadRegistry(sector);
+
+  if (!existsSync(paths.claims)) {
+    log(symbol, "stage4", "SKIP — run stage 3 first");
+    return;
+  }
+  if (!existsSync(paths.fundamentals)) {
+    log(symbol, "stage4", "SKIP — no fundamentals.json (run stage 1 first)");
+    return;
+  }
+
+  if (!opts.force && existsSync(paths.checks)) {
+    log(symbol, "stage4", "skip (output current, use --force to re-run)");
+    return;
+  }
+
+  if (opts.dryRun) {
+    log(symbol, "stage4", `DRY-RUN: would cross-check via ${activeBackend()}:${defaultVerificationModel()}`);
+    return;
+  }
+
+  const claims: ClaimsArtifact = JSON.parse(await fs.readFile(paths.claims, "utf-8"));
+  const fund: Fundamentals = JSON.parse(await fs.readFile(paths.fundamentals, "utf-8"));
+  const cHash = claimsHash(claims);
+  const fHash = fundamentalsHash(fund);
+
+  log(symbol, "stage4", `cross-checking via ${activeBackend()}:${defaultVerificationModel()}…`);
+  const r = await crossCheckForSymbol({
+    symbol,
+    claims,
+    fundamentals: fund,
+    registry: reg,
+    outFile: paths.checks,
+    claimsHashValue: cHash,
+    fundamentalsHashValue: fHash,
+    onlyQuarters: opts.onlyQuarter ? [opts.onlyQuarter] : undefined,
+  });
+  totalCost.v += r.totalCostUsd;
+
+  const total = Object.values(r.artifact.byTargetQuarter).reduce((s, c) => s + c.length, 0);
+  log(symbol, "stage4", `${total} checks | cost ~$${r.totalCostUsd.toFixed(3)}`);
+}
+
+// ── logging ───────────────────────────────────────────────────────────────────
+
+function log(symbol: string, stage: string, msg: string) {
+  console.log(`[${symbol}][${stage}] ${msg}`);
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
+
+(async () => {
+  const opts = parseArgs();
+
+  // Determine which symbols to process
+  let symbols: string[] = [];
+  if (opts.all) {
+    symbols = Object.keys(SYMBOL_SECTOR);
+  } else if (opts.symbol && SYMBOL_SECTOR[opts.symbol]) {
+    symbols = [opts.symbol];
+  } else {
+    console.error("usage: npx tsx scripts/intel-rebuild.ts <SYMBOL> [--stage=N] [--force] [--all] [--dry-run]");
+    console.error(`  valid symbols: ${Object.keys(SYMBOL_SECTOR).join(", ")}`);
+    process.exit(2);
+  }
+
+  if (opts.dryRun) {
+    console.log(`[dry-run] backend=${activeBackend()} extract=${defaultExtractionModel()} verify=${defaultVerificationModel()}`);
+  }
+
+  const totalCost = { v: 0 };
+
+  for (const sym of symbols) {
+    const runStages = opts.stage ? [opts.stage] : [1, 2, 3, 4];
+
+    if (runStages.includes(1)) await runStage1(sym, opts);
+    if (runStages.includes(2)) await runStage2(sym, opts);
+    if (runStages.includes(3)) {
+      if (totalCost.v > opts.costCap) {
+        console.error(`Cost cap $${opts.costCap} exceeded ($${totalCost.v.toFixed(3)}). Aborting.`);
+        process.exit(1);
+      }
+      await runStage3(sym, opts, totalCost);
+    }
+    if (runStages.includes(4)) {
+      if (totalCost.v > opts.costCap) {
+        console.error(`Cost cap $${opts.costCap} exceeded ($${totalCost.v.toFixed(3)}). Aborting.`);
+        process.exit(1);
+      }
+      await runStage4(sym, opts, totalCost);
+    }
+  }
+
+  if (totalCost.v > 0) {
+    console.log(`\nTotal LLM cost: ~$${totalCost.v.toFixed(4)}`);
+  }
+})().catch((e) => { console.error(e); process.exit(1); });

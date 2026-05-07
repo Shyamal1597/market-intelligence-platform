@@ -1,0 +1,112 @@
+{
+  "symbol": "BAJAJFINSV",
+  "ticker": "BAJAJFINSV",
+  "unit": "Cr",
+  "quarters": {
+    "Q1-FY24": {
+      "endDate": "2023-06-30",
+      "metrics": {
+        "consol_revenue": 191217.2,
+        "consol_pat": 19426.3,
+        "windmill_revenue": 64.6
+      }
+    },
+    "Q2-FY24": {
+      "endDate": "2023-09-30",
+      "metrics": {
+        "consol_revenue": 209374.4,
+        "consol_pat": 19289.6,
+        "windmill_revenue": 112.9
+      }
+    },
+    "Q3-FY24": {
+      "endDate": "2023-12-31",
+      "metrics": {
+        "consol_revenue": 230867.3,
+        "consol_pat": 21576.7,
+        "windmill_revenue": 33.9
+      }
+    },
+    "Q4-FY24": {
+      "endDate": "2024-03-31",
+      "metrics": {
+        "consol_revenue": 320408.4,
+        "consol_pat": 21185.3,
+        "windmill_revenue": 29.4
+      }
+    },
+    "Q1-FY25": {
+      "endDate": "2024-06-30",
+      "metrics": {
+        "consol_revenue": 253768.2,
+        "consol_pat": 21377,
+        "windmill_revenue": 58.9
+      }
+    },
+    "Q2-FY25": {
+      "endDate": "2024-09-30",
+      "metrics": {
+        "consol_revenue": 272535.1,
+        "consol_pat": 20869.7,
+        "windmill_revenue": 103.8
+      }
+    },
+    "Q3-FY25": {
+      "endDate": "2024-12-31",
+      "metrics": {
+        "consol_revenue": 262393.7,
+        "consol_pat": 22310,
+        "windmill_revenue": 31.8
+      }
+    },
+    "Q4-FY25": {
+      "endDate": "2025-03-31",
+      "metrics": {
+        "consol_revenue": 365953.6,
+        "consol_pat": 24166.4,
+        "windmill_revenue": 28.3
+      }
+    },
+    "Q1-FY26": {
+      "endDate": "2025-06-30",
+      "metrics": {
+        "consol_revenue": 298003.1,
+        "consol_pat": 27890.5,
+        "windmill_revenue": 75.8
+      }
+    },
+    "Q2-FY26": {
+      "endDate": "2025-09-30",
+      "metrics": {
+        "consol_revenue": 305551.8,
+        "consol_pat": 22441,
+        "windmill_revenue": 98.8
+      }
+    },
+    "Q3-FY26": {
+      "endDate": "2025-12-31",
+      "metrics": {
+        "consol_revenue": 329807.3,
+        "consol_pat": 22291.5,
+        "windmill_revenue": 40.8
+      }
+    }
+  },
+  "warnings": [
+    "bagic_combined_ratio: no row matching [\"combined ratio\"] in sheet \"Ratios\"",
+    "bagic_loss_ratio: no row matching [\"loss ratio\"] in sheet \"Ratios\"",
+    "bagic_expense_ratio: no row matching [\"expense ratio\"] in sheet \"Ratios\"",
+    "bagic_gwp_growth: no row matching [\"BAGIC\",\"general insurance gwp\",\"gross written premium\"] in sheet \"Segments\"",
+    "bagic_pat: no row matching [\"BAGIC PAT\",\"BAGIC profit\"] in sheet \"Segments\"",
+    "balic_nbp_growth: no row matching [\"new business premium\",\"BALIC NBP\"] in sheet \"Segments\"",
+    "balic_vnb_margin: no row matching [\"VNB margin\",\"value of new business margin\"] in sheet \"Ratios\"",
+    "balic_persistency_13m: no row matching [\"persistency 13\",\"13 month persistency\"] in sheet \"Supplemental\"",
+    "balic_persistency_61m: no row matching [\"persistency 61\",\"61 month persistency\"] in sheet \"Supplemental\"",
+    "balic_aum: no row matching [\"BALIC AUM\",\"life insurance AUM\"] in sheet \"Segments\"",
+    "bfl_aum: no row matching [\"BFL AUM\",\"Bajaj Finance AUM\",\"loan book\"] in sheet \"Segments\"",
+    "bfl_nim: no row matching [\"NIM\",\"net interest margin\"] in sheet \"Ratios\"",
+    "bfl_credit_cost: no row matching [\"credit cost\",\"loan loss\"] in sheet \"Ratios\"",
+    "bfl_gross_npa: no row matching [\"gross NPA\",\"GNPA\"] in sheet \"Supplemental\"",
+    "consol_solvency_ratio: no row matching [\"solvency ratio\",\"solvency\"] in sheet \"Supplemental\""
+  ]
+}

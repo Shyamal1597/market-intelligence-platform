@@ -5,17 +5,18 @@
  *  1. Direct user to getBreezeLoginUrl()
  *  2. ICICI POSTs to /api/breeze/callback?apisession=XXX
  *  3. Callback calls generateBreezeSession(apisession) → GET /customerdetails
- *     Response Success.session_token (base64) is stored as the API session
- *  4. Data calls use the stored base64 session token via X-SessionToken
+ *     Response Success.session_token (base64 "userId:sessionKey") is stored.
+ *  4. Historical data (V2): plain GET with URL params, no checksum.
+ *     Headers: X-SessionToken (base64) + apikey.
  *
- * Checksum scheme (per official JS SDK):
- *  - Session generation : no checksum — only Content-Type header
- *  - Data requests      : sha256(timestamp + JSON.stringify(body) + API_SECRET)
+ * V2 auth (per Python SDK source):
+ *  - No X-Checksum, no X-Timestamp, no X-AppKey
+ *  - Headers: Content-Type, X-SessionToken (base64), apikey
+ *  - Params: interval, from_date, to_date, stock_code, exch_code, product_type
  *
- * Reference: https://github.com/Idirect-Tech/Breeze-JS-SDK
+ * Reference: https://github.com/Idirect-Tech/Breeze-Python-SDK
  */
 
-import crypto from "crypto";
 import fs from "fs";
 import https from "https";
 import path from "path";
@@ -31,6 +32,8 @@ const BASE_V2 = "https://breezeapi.icicidirect.com/api/v2";
 
 const SESSION_FILE = path.join(process.cwd(), "data", "breeze-session.json");
 const CACHE_DIR = path.join(process.cwd(), "data", "breeze-cache");
+const SCRIP_CACHE_FILE = path.join(process.cwd(), "data", "breeze-scrip-map.json");
+const SCRIP_CSV_URL = "https://traderweb.icicidirect.com/Content/File/txtFile/ScripFile/StockScriptNew.csv";
 
 // ── Session persistence ───────────────────────────────────────────────────────
 
@@ -71,18 +74,11 @@ export function clearBreezeSession(): void {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function utcTimestamp(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, ".000Z");
-}
-
-function sha256(input: string): string {
-  return crypto.createHash("sha256").update(input, "utf-8").digest("hex");
-}
-
 /**
  * GET request with a JSON body — bypasses the Fetch API's GET-body restriction.
  * Required because the Breeze /customerdetails endpoint expects GET + JSON body
  * (same as the official JS SDK which uses axios, which allows GET body).
+ * Used only for session generation; historical data uses plain URL params.
  */
 function getWithBody(
   url: string,
@@ -114,26 +110,6 @@ function getWithBody(
     req.write(bodyStr);
     req.end();
   });
-}
-
-/**
- * Build headers for authenticated data API calls.
- * Checksum per JS SDK: sha256(timestamp + JSON.stringify(body) + API_SECRET)
- * X-SessionToken is the base64 session_token from customerdetails response.
- */
-function dataHeaders(
-  apiSession: string,
-  timestamp: string,
-  body: Record<string, string>
-): Record<string, string> {
-  const checksum = sha256(timestamp + JSON.stringify(body) + API_SECRET);
-  return {
-    "Content-Type": "application/json",
-    "X-Checksum": `token ${checksum}`,
-    "X-Timestamp": timestamp,
-    "X-AppKey": API_KEY,
-    "X-SessionToken": apiSession,
-  };
 }
 
 // ── Public auth helpers ───────────────────────────────────────────────────────
@@ -191,12 +167,57 @@ interface CacheFile {
   candles: DailyCandle[];
 }
 
-// NSE symbol → Breeze stock_code exceptions (add as discovered)
-const SYMBOL_MAP: Record<string, string> = {
-  BHARTIARTL: "BRTI",
-  HDFCBANK: "HDBK",
-  KOTAKBANK: "KTKM",
-};
+// ── Scrip map (NSE symbol → Breeze stock_code) ────────────────────────────────
+// Downloaded from the Breeze security master CSV, cached for 24h.
+// Many NSE symbols differ from Breeze codes: AXISBANK → AXIBAN, etc.
+
+interface ScripCache {
+  fetchedAt: string;
+  map: Record<string, string>; // NSE symbol → Breeze stock_code
+}
+
+let _scripMapPromise: Promise<Record<string, string>> | null = null;
+
+async function loadScripMap(): Promise<Record<string, string>> {
+  if (_scripMapPromise) return _scripMapPromise;
+  _scripMapPromise = _fetchScripMap();
+  return _scripMapPromise;
+}
+
+async function _fetchScripMap(): Promise<Record<string, string>> {
+  // Try disk cache first
+  try {
+    const raw = fs.readFileSync(SCRIP_CACHE_FILE, "utf-8");
+    const cache = JSON.parse(raw) as ScripCache;
+    const ageH = (Date.now() - new Date(cache.fetchedAt).getTime()) / 3_600_000;
+    if (ageH < 24) return cache.map;
+  } catch { /* cache missing or stale — download */ }
+
+  try {
+    const res = await fetch(SCRIP_CSV_URL);
+    const text = await res.text();
+    const map: Record<string, string> = {};
+    for (const line of text.split("\n")) {
+      const cols = line.split(",");
+      // CSV columns: [breezeCode, name, exchange, scrip, assetClass, token, lot, display, nseSymbol, ...]
+      if (cols.length < 9) continue;
+      const breezeCode = cols[0].trim();
+      const exchange   = cols[2].trim();
+      const assetClass = cols[4].trim();
+      const nseSymbol  = cols[8].trim();
+      if (exchange === "NSE" && assetClass === "EQUITY" && nseSymbol && breezeCode) {
+        map[nseSymbol] = breezeCode;
+      }
+    }
+    fs.mkdirSync(path.dirname(SCRIP_CACHE_FILE), { recursive: true });
+    fs.writeFileSync(SCRIP_CACHE_FILE, JSON.stringify({ fetchedAt: new Date().toISOString(), map }), "utf-8");
+    return map;
+  } catch (err) {
+    console.error("[Breeze] Failed to load scrip map:", err);
+    _scripMapPromise = null; // allow retry
+    return {};
+  }
+}
 
 function safeName(symbol: string): string {
   return symbol.replace(/[^A-Z0-9]/gi, "").toUpperCase();
@@ -251,31 +272,32 @@ export async function getHistoricalData(
     return cached.candles.filter((c) => c.date >= fromDate && c.date <= toDate);
   }
 
-  const stockCode = SYMBOL_MAP[symbol.toUpperCase()] ?? symbol.toUpperCase();
+  const scripMap = await loadScripMap();
+  const stockCode = scripMap[symbol] ?? symbol;
 
-  const body: Record<string, string> = {
-    interval: "day",
+  // V2 endpoint: URL query params (no GET body, no checksum).
+  // Headers: X-SessionToken (base64) + apikey (lowercase).
+  // Key: exch_code (not exchange_code) per Python SDK source.
+  const params = new URLSearchParams({
+    interval: "1day",
     from_date: `${fromDate}T07:00:00.000Z`,
     to_date: `${toDate}T07:00:00.000Z`,
     stock_code: stockCode,
-    exchange_code: "NSE",
+    exch_code: "NSE",
     product_type: "cash",
-  };
-
-  const ts = utcTimestamp();
-  // V2 endpoint (breezeapi subdomain); params sent as GET body.
-  // V2 validates interval values: "minute","5minute","30minute","day"
-  // Checksum: sha256(timestamp + JSON.stringify(body) + API_SECRET)
-  const headers = dataHeaders(apiSession, ts, body);
-  // Remove Content-Type from dataHeaders — getWithBody adds it with Content-Length
-  const { "Content-Type": _ct, ...authHeaders } = headers;
+  });
 
   try {
-    const data = await getWithBody(
-      `${BASE_V2}/historicalcharts`,
-      body,
-      authHeaders
-    ) as {
+    const res = await fetch(`${BASE_V2}/historicalcharts?${params}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-SessionToken": apiSession,
+        "apikey": API_KEY,
+      },
+    });
+
+    const data = await res.json() as {
       Success?: Array<{
         datetime: string;
         open: number;
@@ -288,10 +310,12 @@ export async function getHistoricalData(
       Status?: number;
     };
 
-    // DEBUG — remove after diagnosing
     if (!data.Success || !Array.isArray(data.Success)) {
-      console.error("[Breeze] historicalcharts raw error:", JSON.stringify(data));
+      console.error("[Breeze] historicalcharts error:", JSON.stringify(data));
       return { error: data.Error ?? `Empty response (Status ${data.Status})` };
+    }
+    if (data.Success.length === 0) {
+      return []; // no trading data for this symbol/range
     }
 
     const candles: DailyCandle[] = data.Success.map((item) => ({

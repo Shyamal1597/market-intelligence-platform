@@ -1,4 +1,3 @@
-// app/portfolio/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,7 +8,6 @@ export default function PortfolioPage() {
   const [selected, setSelected] = useState<{ symbol: string; name: string } | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // When search is focused, show the general feed regardless of selection
   const effectiveSymbol = searchFocused ? null : (selected?.symbol ?? null);
   const effectiveName   = searchFocused ? null : (selected?.name   ?? null);
 
@@ -21,10 +19,7 @@ export default function PortfolioPage() {
         onSearchFocusChange={setSearchFocused}
       />
       <div className="flex-1 min-w-0 overflow-hidden">
-        <PortfolioActivityPanel
-          symbol={effectiveSymbol}
-          name={effectiveName}
-        />
+        <PortfolioActivityPanel symbol={effectiveSymbol} name={effectiveName} />
       </div>
     </div>
   );
