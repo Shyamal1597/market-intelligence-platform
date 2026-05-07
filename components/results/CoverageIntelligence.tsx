@@ -121,7 +121,7 @@ function TargetPriceWalk({
   if (reportPoints.length < 1 && !hasPrices) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-muted text-xs font-mono">No price target data available</p>
+        <p className="text-muted text-xl font-mono">No price target data available</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ function TargetPriceWalk({
     const closeEntry = payload.find((p) => p.name === "Market Price");
     return (
       <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-3 text-xs font-mono shadow-xl min-w-[180px]">
-        <p className="text-primary mb-1.5 font-semibold">{fmtDate(pt.date)}</p>
+        <p className="text-[#F0EDE8] mb-1.5 font-semibold">{fmtDate(pt.date)}</p>
         {closeEntry?.value != null && (
           <div className="flex justify-between gap-4 leading-5">
             <span style={{ color: "#3D7CAD" }}>Market price</span>
@@ -186,20 +186,20 @@ function TargetPriceWalk({
           </div>
         )}
         {pt.reportType && (
-          <p className="text-muted mt-1 mb-0.5 text-[10px]">
+          <p className="text-[#8890A4] mt-1 mb-0.5 text-[10px]">
             {REPORT_TYPE_LABEL[pt.reportType] ?? pt.reportType} · {pt.analyst}
           </p>
         )}
         {pt.targetPrice != null && (
           <div className="flex justify-between gap-4 leading-5">
-            <span className="text-amber">Target</span>
-            <span className="text-amber">{fmt(pt.targetPrice)}</span>
+            <span style={{ color: "#F5820D" }}>Target</span>
+            <span style={{ color: "#F5820D" }}>{fmt(pt.targetPrice)}</span>
           </div>
         )}
         {pt.cmp != null && (
           <div className="flex justify-between gap-4 leading-5">
-            <span className="text-muted">CMP at issue</span>
-            <span className="text-muted">{fmt(pt.cmp)}</span>
+            <span className="text-[#8890A4]">CMP at issue</span>
+            <span className="text-[#8890A4]">{fmt(pt.cmp)}</span>
           </div>
         )}
         {pt.targetPrice != null && pt.cmp != null && (
@@ -212,7 +212,7 @@ function TargetPriceWalk({
         )}
         {pt.rating && (
           <p className="mt-1.5">
-            <span className={clsx("text-[9px] px-1.5 py-0.5 rounded border", ratingBg(pt.rating))}>
+            <span className={clsx("text-[19px] px-1.5 py-0.5 rounded border", ratingBg(pt.rating))}>
               {pt.rating}
             </span>
           </p>
@@ -239,6 +239,7 @@ function TargetPriceWalk({
           tickLine={false}
           tickFormatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
           width={72}
+          domain={["auto", "auto"]}
         />
         <Tooltip content={<CustomTooltip />} />
         {/* Historical market price — steel blue, no dots */}
@@ -319,7 +320,7 @@ function OverviewTab({
             highlight: !!entry.latestRating,
             className: entry.latestRating
               ? ratingBg(entry.latestRating)
-              : "text-muted",
+              : "text-[#8890A4]",
           },
           {
             label: "Price Target",
@@ -340,8 +341,8 @@ function OverviewTab({
             className:
               upside !== null
                 ? parseFloat(upside) >= 0
-                  ? "text-teal"
-                  : "text-danger"
+                  ? "text-[#00C9A7]"
+                  : "text-[#E84040]"
                 : "",
           },
           {
@@ -353,7 +354,7 @@ function OverviewTab({
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-[#0C0E14] border border-border rounded-lg p-3"
+            className="bg-surface border border-border rounded-lg p-3"
           >
             <p className="text-[9px] font-mono text-muted uppercase tracking-wider mb-1.5">
               {s.label}
@@ -383,7 +384,7 @@ function OverviewTab({
             return (
               <div
                 key={a}
-                className="flex items-center gap-2 bg-[#0C0E14] border border-border rounded-lg px-3 py-2"
+                className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2"
               >
                 <div className="w-5 h-5 rounded-full bg-amber/20 text-amber flex items-center justify-center text-[9px] font-mono font-bold">
                   {a.charAt(0).toUpperCase()}
@@ -410,13 +411,34 @@ function OverviewTab({
       {hasTPData && (
         <div className="flex-1 min-h-[200px]">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[9px] font-mono text-muted uppercase tracking-wider">
-              Price Target Walk{" "}
-              <span className="text-muted/50 normal-case">
-                (amber = target, dashed = CMP at issue
-                {prices && prices.length > 0 ? ", blue = market price" : ""})
-              </span>
-            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="text-[9px] font-mono text-muted uppercase tracking-wider">
+                Price Target Walk
+              </p>
+              {/* Visual legend */}
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-[9px] font-mono text-amber">
+                  <svg width="16" height="8" viewBox="0 0 16 8" fill="none">
+                    <line x1="0" y1="4" x2="16" y2="4" stroke="#F5820D" strokeWidth="2" />
+                  </svg>
+                  Price Target
+                </span>
+                <span className="flex items-center gap-1.5 text-[9px] font-mono text-muted">
+                  <svg width="16" height="8" viewBox="0 0 16 8" fill="none">
+                    <line x1="0" y1="4" x2="16" y2="4" stroke="#6B7280" strokeWidth="1.5" strokeDasharray="4 2" />
+                  </svg>
+                  CMP at Issue
+                </span>
+                {prices && prices.length > 0 && (
+                  <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: "#3D7CAD" }}>
+                    <svg width="16" height="8" viewBox="0 0 16 8" fill="none">
+                      <line x1="0" y1="4" x2="16" y2="4" stroke="#3D7CAD" strokeWidth="1.5" />
+                    </svg>
+                    Market Price
+                  </span>
+                )}
+              </div>
+            </div>
             {!breezeLoggedIn && (
               <a
                 href={breezeLoginUrl}
@@ -433,7 +455,7 @@ function OverviewTab({
               </span>
             )}
           </div>
-          <div className="h-[200px]">
+          <div className="h-[300px]">
             <TargetPriceWalk
               reports={entry.reports}
               prices={prices ?? undefined}
@@ -464,7 +486,7 @@ function ReportsTab({ entry }: { entry: CoverageEntry }) {
               "border rounded-xl p-4 transition-colors",
               isLatest
                 ? "border-amber/20 bg-amber/[0.04]"
-                : "border-border bg-[#0C0E14]"
+                : "border-border bg-surface"
             )}
           >
             <div className="flex items-start justify-between gap-3">
@@ -960,7 +982,7 @@ export function CoverageIntelligence() {
     fetch("/api/breeze/auth")
       .then((r) => r.json() as Promise<{ loggedIn: boolean; loginUrl: string }>)
       .then((d) => { setBreezeLoggedIn(d.loggedIn); setBreezeLoginUrl(d.loginUrl); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Lazy-load historical prices when overview is active + Breeze connected

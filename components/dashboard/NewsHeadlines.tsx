@@ -61,7 +61,7 @@ function getSourceAbbrev(source: string): string {
   return SOURCE_ABBREV[source] ?? source.substring(0, 4).toUpperCase();
 }
 
-const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
 export function NewsHeadlines() {
   const [news, setNews] = useState<NewsItem[]>([]);

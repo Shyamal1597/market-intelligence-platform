@@ -16,7 +16,8 @@ import {
   BookMarked,
   Sigma,
   Layers,
-  Settings
+  Settings,
+  Target,
 } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/sectors", label: "Sectors", icon: LayoutGrid },
   { href: "/flows", label: "Flows", icon: Activity },
   { href: "/results", label: "Results", icon: BarChart2 },
+  { href: "/intel", label: "Intel", icon: Target },
   { href: "/derivatives", label: "Derivatives", icon: Sigma },
   { href: "/deals", label: "Bulk & Block Deals", icon: Layers },
   { href: "/links", label: "Quick Links", icon: BookMarked },

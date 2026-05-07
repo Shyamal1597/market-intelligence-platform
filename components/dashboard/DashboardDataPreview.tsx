@@ -60,7 +60,7 @@ export function DashboardDataPreview() {
                                 <span className="text-muted text-xs font-mono uppercase tracking-widest">DII Equity</span>
                                 <span className={clsx("font-mono font-semibold", flows.diiEquityNet >= 0 ? "text-teal" : "text-danger")}>
                                     {flows.diiEquityNet > 0 ? "+" : ""}
-                                    {formatNumber(flows.diiEquityNet)} <span className="text-[10px] text-muted font-normal uppercase opacity-70">Cr</span>
+                                    {formatNumber(flows.diiEquityNet)} <span className="text-[20px] text-muted font-normal uppercase opacity-70">Cr</span>
                                 </span>
                             </div>
                             <div className="flex justify-between items-center opacity-60">
@@ -130,7 +130,7 @@ export function DashboardDataPreview() {
                 </div>
                 <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex justify-between items-center text-xs font-mono text-muted uppercase tracking-widest group-hover:text-amber transition-colors">
                     <span>Full Calendar</span>
-                    <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
                 </div>
             </Link>
 

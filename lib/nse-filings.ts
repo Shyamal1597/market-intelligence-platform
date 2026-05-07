@@ -29,33 +29,41 @@ type NSEFeedKey =
   | "insiderTrading"
   | "offerDocuments"
   | "announcements"
-  | "corporateAction";
+  | "corporateAction"
+  | "annualReports"
+  | "investorComplaints";
 
 const NSE_FEEDS: Record<NSEFeedKey, string> = {
-  financialResults: "https://nsearchives.nseindia.com/content/RSS/Financial_Results.xml",
-  boardMeetings:    "https://nsearchives.nseindia.com/content/RSS/Board_Meetings.xml",
-  insiderTrading:   "https://nsearchives.nseindia.com/content/RSS/Insider_Trading.xml",
-  offerDocuments:   "https://nsearchives.nseindia.com/content/RSS/Offer_Documents.xml",
-  announcements:    "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml",
-  corporateAction:  "https://nsearchives.nseindia.com/content/RSS/Corporate_action.xml",
+  financialResults:   "https://nsearchives.nseindia.com/content/RSS/Financial_Results.xml",
+  boardMeetings:      "https://nsearchives.nseindia.com/content/RSS/Board_Meetings.xml",
+  insiderTrading:     "https://nsearchives.nseindia.com/content/RSS/Insider_Trading.xml",
+  offerDocuments:     "https://nsearchives.nseindia.com/content/RSS/Offer_Documents.xml",
+  announcements:      "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml",
+  corporateAction:    "https://nsearchives.nseindia.com/content/RSS/Corporate_action.xml",
+  annualReports:      "https://nsearchives.nseindia.com/content/RSS/Annual_Report.xml",
+  investorComplaints: "https://nsearchives.nseindia.com/content/RSS/Investor_Complaints.xml",
 };
 
 const FEED_CATEGORY: Record<NSEFeedKey, FilingCategory> = {
-  financialResults: "results",
-  boardMeetings:    "board-meeting",
-  insiderTrading:   "insider-trade",
-  offerDocuments:   "ipo-drhp",
-  announcements:    "general",
-  corporateAction:  "general",
+  financialResults:   "results",
+  boardMeetings:      "board-meeting",
+  insiderTrading:     "insider-trade",
+  offerDocuments:     "ipo-drhp",
+  announcements:      "general",
+  corporateAction:    "corporate-action",
+  annualReports:      "annual-report",
+  investorComplaints: "investor-complaint",
 };
 
 const FEED_LABEL: Record<NSEFeedKey, string> = {
-  financialResults: "Financial Results",
-  boardMeetings:    "Board Meeting",
-  insiderTrading:   "Insider Trading",
-  offerDocuments:   "Offer Document",
-  announcements:    "Announcement",
-  corporateAction:  "Corporate Action",
+  financialResults:   "Financial Results",
+  boardMeetings:      "Board Meeting",
+  insiderTrading:     "Insider Trading",
+  offerDocuments:     "Offer Document",
+  announcements:      "Announcement",
+  corporateAction:    "Corporate Action",
+  annualReports:      "Annual Report",
+  investorComplaints: "Investor Complaint",
 };
 
 /**

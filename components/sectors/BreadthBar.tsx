@@ -23,8 +23,8 @@ export function BreadthBar({ advancing, declining }: BreadthBarProps) {
         <div className="bg-danger" style={{ width: `${decPct}%` }} />
       </div>
       <div className="flex justify-between">
-        <span className="font-mono text-xs text-teal">{advancing} UP</span>
-        <span className="font-mono text-xs text-danger">{declining} DOWN</span>
+        <span className="font-mono text-15px text-teal">{advancing} UP</span>
+        <span className="font-mono text-25px text-danger">{declining} DOWN</span>
       </div>
     </div>
   );

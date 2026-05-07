@@ -2,16 +2,9 @@
 
 import { useState, useMemo } from "react";
 import {
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  ReferenceLine,
-  Label,
+  ComposedChart, AreaChart, Bar, Line, Area,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Cell, ReferenceLine,
 } from "recharts";
 import type { FiiDiiEntry } from "@/lib/nse-flows";
 
@@ -22,13 +15,9 @@ interface FlowChartProps {
 }
 
 function ToggleBtn({
-  label,
-  active,
-  onClick,
+  label, active, onClick,
 }: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
+  label: string; active: boolean; onClick: () => void;
 }) {
   return (
     <button
@@ -36,7 +25,7 @@ function ToggleBtn({
       className={`px-3 py-1 text-xs font-mono rounded transition-colors ${
         active
           ? "bg-amber/20 text-amber border border-amber/30"
-          : "text-muted border border-[#1E2235] hover:text-primary hover:border-[#2E3250]"
+          : "text-muted border border-border hover:text-primary"
       }`}
     >
       {label}
@@ -50,24 +39,22 @@ interface TooltipPayloadItem {
   color: string;
 }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
+function ChartTooltip({
+  active, payload, label,
 }: {
   active?: boolean;
   payload?: TooltipPayloadItem[];
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-
-  // Format date nicely
   const dateStr = label
     ? new Date(label).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : label;
-
   return (
-    <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-3 text-xs font-mono shadow-xl min-w-[180px]">
+    <div
+      className="rounded-lg p-3 text-xs font-mono shadow-xl min-w-[180px] border border-border"
+      style={{ background: "var(--color-surface)" }}
+    >
       <p className="text-primary mb-2 font-semibold">{dateStr}</p>
       {payload.map((p) =>
         p.value !== null && p.value !== undefined ? (
@@ -84,257 +71,226 @@ function CustomTooltip({
 }
 
 function crLabel(v: number): string {
+  if (Math.abs(v) >= 100000) return `${(v / 1000).toFixed(0)}k`;
   if (Math.abs(v) >= 10000) return `${(v / 1000).toFixed(0)}k`;
   if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(1)}k`;
   return String(Math.round(v));
 }
 
-export function FlowChart({ entries }: FlowChartProps) {  // nifty overlay removed — scaled overlay was misleading
+const TEAL   = "#00C9A7";
+const DANGER = "#E84040";
+const AMBER  = "#F5820D";
+const MUTED  = "rgba(240,237,232,0.55)";
+
+export function FlowChart({ entries }: FlowChartProps) {
   const [entity, setEntity] = useState<Entity>("fii");
 
-  const chartData = useMemo(() => {
-    return entries.map((e) => ({
-      date: e.date,
-      fiiNet:    e.fiiEquityNet,
-      diiNet:    e.diiEquityNet,
-      cumulFii:  e.cumulativeFiiEquityNet  ?? null,
-      cumulDii:  e.cumulativeDiiEquityNet  ?? null,
-      rollingFii: e.rollingAvg20FiiEquity  ?? null,
-      rollingDii: e.rollingAvg20DiiEquity  ?? null,
-    }));
-  }, [entries]);
+  const chartData = useMemo(() => entries.map((e) => ({
+    date:        e.date,
+    fiiNet:      e.fiiEquityNet,
+    diiNet:      e.diiEquityNet,
+    cumulFii:    e.cumulativeFiiEquityNet ?? null,
+    cumulDii:    e.cumulativeDiiEquityNet ?? null,
+    rollingFii:  e.rollingAvg20FiiEquity ?? null,
+    rollingDii:  e.rollingAvg20DiiEquity ?? null,
+  })), [entries]);
 
-  // Adaptive ticks: daily labels when < 45 days of data, weekly when < 6 months, monthly otherwise
+  // Adaptive ticks: evenly-spaced indices into chartData, guaranteeing the
+  // last data point is always a tick (no blank space on the right edge).
+  // Format flips to "Mon YY" only for very long spans (>10 months).
   const { ticks: xTicks, tickFormat } = useMemo(() => {
-    if (chartData.length === 0) return { ticks: [], tickFormat: "month" as const };
+    if (chartData.length === 0) return { ticks: [] as string[], tickFormat: "day" as const };
 
     const spanDays =
       (new Date(chartData[chartData.length - 1].date).getTime() -
-        new Date(chartData[0].date).getTime()) /
-      86_400_000;
+        new Date(chartData[0].date).getTime()) / 86_400_000;
+    const tickFormat: "day" | "month" = spanDays > 300 ? "month" : "day";
 
-    if (spanDays <= 45) {
-      // Show every data point
-      return {
-        ticks: chartData.map((d) => d.date),
-        tickFormat: "day" as const,
-      };
+    const TARGET = 8;
+    if (chartData.length <= TARGET) {
+      return { ticks: chartData.map((d) => d.date), tickFormat };
     }
 
-    if (spanDays <= 180) {
-      // Weekly — first date of each ISO week
-      const seen = new Set<string>();
-      return {
-        ticks: chartData
-          .filter((d) => {
-            const dt = new Date(d.date);
-            const week = `${dt.getFullYear()}-W${Math.ceil(dt.getDate() / 7)}`;
-            if (seen.has(week)) return false;
-            seen.add(week);
-            return true;
-          })
-          .map((d) => d.date),
-        tickFormat: "week" as const,
-      };
+    const step = (chartData.length - 1) / (TARGET - 1);
+    const ticks: string[] = [];
+    for (let i = 0; i < TARGET; i++) {
+      ticks.push(chartData[Math.round(i * step)].date);
     }
-
-    // Monthly
-    const seen = new Set<string>();
-    return {
-      ticks: chartData
-        .filter((d) => {
-          const month = d.date.slice(0, 7);
-          if (seen.has(month)) return false;
-          seen.add(month);
-          return true;
-        })
-        .map((d) => d.date),
-      tickFormat: "month" as const,
-    };
+    // Defensive: ensure last data point is a tick even if rounding skipped it
+    const lastDate = chartData[chartData.length - 1].date;
+    if (ticks[ticks.length - 1] !== lastDate) ticks.push(lastDate);
+    return { ticks, tickFormat };
   }, [chartData]);
 
   function formatXTick(v: string): string {
     const dt = new Date(v);
-    if (tickFormat === "day")
-      return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-    if (tickFormat === "week")
-      return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-    return dt.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    if (tickFormat === "month")
+      return dt.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+    return dt.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   }
 
-  const showFii = entity === "fii" || entity === "both";
-  const showDii = entity === "dii" || entity === "both";
-  const showLines = entity !== "both";
+  const isCompare = entity === "both";
+  const dailyKey   = entity === "dii" ? "diiNet"     : "fiiNet";
+  const cumulKey   = entity === "dii" ? "cumulDii"   : "cumulFii";
+  const rollingKey = entity === "dii" ? "rollingDii" : "rollingFii";
+  const entityLabel = entity === "dii" ? "DII" : "FII";
 
   return (
     <div>
       {/* Controls */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div>
-          <p className="text-xs font-mono text-muted uppercase tracking-widest mb-1">
-            Equity Flows · Daily net + {showLines ? "cumulative & 20D avg" : "FII vs DII"}
-          </p>
-        </div>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <p className="text-xs font-mono text-muted uppercase tracking-widest">
+          Equity Flows · {isCompare ? "FII vs DII" : `${entityLabel} daily + cumulative`}
+        </p>
         <div className="flex gap-1.5">
-          <ToggleBtn label="FII" active={entity === "fii"} onClick={() => setEntity("fii")} />
-          <ToggleBtn label="DII" active={entity === "dii"} onClick={() => setEntity("dii")} />
+          <ToggleBtn label="FII"        active={entity === "fii"}  onClick={() => setEntity("fii")} />
+          <ToggleBtn label="DII"        active={entity === "dii"}  onClick={() => setEntity("dii")} />
           <ToggleBtn label="FII vs DII" active={entity === "both"} onClick={() => setEntity("both")} />
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-5 mb-4 flex-wrap">
-        {showFii && (
-          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-            <span className="w-3 h-2 rounded-sm bg-teal/80 inline-block" />
-            {entity === "both" ? "FII" : ""} Daily net (+)
-          </span>
-        )}
-        <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-          <span className="w-3 h-2 rounded-sm bg-danger/80 inline-block" />
-          Daily net (−)
+      {/* ── Chart 1: Daily net ─────────────────────────────────────────── */}
+      <div className="mb-2 flex items-center gap-5 flex-wrap">
+        <span className="font-mono text-[10px] text-muted uppercase tracking-wider">
+          {isCompare ? "Daily Net · FII vs DII" : `Daily Net · ${entityLabel}`}
         </span>
-        {showDii && entity === "both" && (
+        <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: TEAL }} />
+          Net buy
+        </span>
+        <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: DANGER }} />
+          Net sell
+        </span>
+        {!isCompare && (
           <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-            <span className="w-3 h-2 rounded-sm bg-teal/40 inline-block" />
-            DII Daily net (+)
+            <span className="inline-block w-5 border-t-[1.5px] border-dashed" style={{ borderColor: MUTED }} />
+            20D avg
           </span>
         )}
-        {showLines && (
+        {isCompare && (
           <>
             <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-              <span className="inline-block w-5" style={{ height: 2, background: "#F5820D" }} />
-              Cumulative (right axis)
+              <span className="inline-block w-3 h-2 rounded-sm" style={{ background: TEAL, opacity: 0.9 }} />
+              FII
             </span>
             <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
-              <span className="inline-block w-5" style={{ height: 1.5, background: "rgba(240,237,232,0.5)", borderTop: "1.5px dashed rgba(240,237,232,0.5)" }} />
-              20D moving avg
+              <span className="inline-block w-3 h-2 rounded-sm" style={{ background: TEAL, opacity: 0.45 }} />
+              DII
             </span>
           </>
         )}
       </div>
 
-      <ResponsiveContainer width="100%" height={380}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 60, left: 8, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={isCompare ? 380 : 260}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
           <XAxis
             dataKey="date"
             ticks={xTicks}
             tickFormatter={formatXTick}
-            tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
-            axisLine={{ stroke: "#1E2235" }}
+            tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", fill: "var(--color-muted)" }}
+            axisLine={{ stroke: "var(--color-border)" }}
             tickLine={false}
           />
-
-          {/* Left Y: daily bars + 20D avg */}
           <YAxis
-            yAxisId="left"
             tickFormatter={crLabel}
-            tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#6B7280" }}
+            tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", fill: "var(--color-muted)" }}
             axisLine={false}
             tickLine={false}
-            width={48}
-          >
-            <Label
-              value="₹ Cr (daily)"
-              angle={-90}
-              position="insideLeft"
-              offset={14}
-              style={{ fontSize: 9, fill: "#4B5563", fontFamily: "JetBrains Mono, monospace" }}
-            />
-          </YAxis>
+            width={52}
+          />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(245,130,13,0.05)" }} />
+          <ReferenceLine y={0} stroke="var(--color-border)" strokeWidth={1} />
 
-          {/* Right Y: cumulative — only rendered when single entity selected */}
-          {showLines && (
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tickFormatter={crLabel}
-              tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", fill: "#F5820D" }}
-              axisLine={false}
-              tickLine={false}
-              width={52}
-            >
-              <Label
-                value="Cumulative ₹ Cr"
-                angle={90}
-                position="insideRight"
-                offset={16}
-                style={{ fontSize: 9, fill: "#F5820D", fontFamily: "JetBrains Mono, monospace" }}
+          {!isCompare ? (
+            <>
+              <Bar dataKey={dailyKey} name={`${entityLabel} Daily`} isAnimationActive={false} maxBarSize={8}>
+                {chartData.map((d, i) => {
+                  const v = d[dailyKey] ?? 0;
+                  return <Cell key={i} fill={v >= 0 ? TEAL : DANGER} />;
+                })}
+              </Bar>
+              <Line
+                type="monotone"
+                dataKey={rollingKey}
+                name="20D Avg"
+                stroke={MUTED}
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
               />
-            </YAxis>
-          )}
-
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine yAxisId="left" y={0} stroke="#2A2F47" strokeWidth={1} />
-
-          {/* FII daily bars */}
-          {showFii && (
-            <Bar
-              yAxisId="left"
-              dataKey="fiiNet"
-              name={entity === "both" ? "FII Daily" : "Daily Net"}
-              isAnimationActive={false}
-              maxBarSize={entity === "both" ? 5 : 8}
-            >
-              {chartData.map((d, i) => (
-                <Cell
-                  key={i}
-                  fill={(d.fiiNet ?? 0) >= 0 ? "#00C9A7" : "#E84040"}
-                  opacity={entity === "both" ? 0.9 : 1}
-                />
-              ))}
-            </Bar>
-          )}
-
-          {/* DII daily bars (only in both mode) */}
-          {showDii && entity === "both" && (
-            <Bar
-              yAxisId="left"
-              dataKey="diiNet"
-              name="DII Daily"
-              isAnimationActive={false}
-              maxBarSize={5}
-            >
-              {chartData.map((d, i) => (
-                <Cell
-                  key={i}
-                  fill={(d.diiNet ?? 0) >= 0 ? "#00C9A7" : "#E84040"}
-                  opacity={0.45}
-                />
-              ))}
-            </Bar>
-          )}
-
-          {/* Cumulative line — right axis */}
-          {showLines && (
-            <Line
-              yAxisId="right"
-              dataKey={entity === "fii" ? "cumulFii" : "cumulDii"}
-              name="Cumulative"
-              stroke="#F5820D"
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
-              connectNulls
-            />
-          )}
-
-          {/* 20-day rolling average — left axis */}
-          {showLines && (
-            <Line
-              yAxisId="left"
-              dataKey={entity === "fii" ? "rollingFii" : "rollingDii"}
-              name="20D Avg"
-              stroke="rgba(240,237,232,0.55)"
-              strokeWidth={1.5}
-              dot={false}
-              isAnimationActive={false}
-              connectNulls
-              strokeDasharray="4 2"
-            />
+            </>
+          ) : (
+            <>
+              <Bar dataKey="fiiNet" name="FII Daily" isAnimationActive={false} maxBarSize={5}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={(d.fiiNet ?? 0) >= 0 ? TEAL : DANGER} opacity={0.9} />
+                ))}
+              </Bar>
+              <Bar dataKey="diiNet" name="DII Daily" isAnimationActive={false} maxBarSize={5}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={(d.diiNet ?? 0) >= 0 ? TEAL : DANGER} opacity={0.45} />
+                ))}
+              </Bar>
+            </>
           )}
         </ComposedChart>
       </ResponsiveContainer>
+
+      {/* ── Chart 2: Cumulative — only for single entity ────────────────── */}
+      {!isCompare && (
+        <>
+          <div className="mt-5 mb-2 flex items-center gap-5 flex-wrap">
+            <span className="font-mono text-[10px] text-muted uppercase tracking-wider">
+              Cumulative · {entityLabel} (₹ Cr)
+            </span>
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+              <span className="inline-block w-5 h-[2px]" style={{ background: AMBER }} />
+              Running total since start of series
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={140}>
+            <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`cumulGrad-${entity}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor={AMBER} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={AMBER} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="date"
+                ticks={xTicks}
+                tickFormatter={formatXTick}
+                tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", fill: "var(--color-muted)" }}
+                axisLine={{ stroke: "var(--color-border)" }}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={crLabel}
+                tick={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", fill: "var(--color-muted)" }}
+                axisLine={false}
+                tickLine={false}
+                width={52}
+              />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: AMBER, strokeWidth: 1, strokeDasharray: "3 3" }} />
+              <ReferenceLine y={0} stroke="var(--color-border)" strokeWidth={1} />
+              <Area
+                type="monotone"
+                dataKey={cumulKey}
+                name="Cumulative"
+                stroke={AMBER}
+                strokeWidth={2}
+                fill={`url(#cumulGrad-${entity})`}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
+      )}
     </div>
   );
 }

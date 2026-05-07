@@ -8,7 +8,7 @@ export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-6">
       <div>
-        <h2 className="font-display text-3xl font-semibold text-primary tracking-tight">
+        <h2 className="font-display text-2xl font-semibold text-primary tracking-tight">
           {title}
         </h2>
         {subtitle && (

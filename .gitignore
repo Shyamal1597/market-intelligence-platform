@@ -46,3 +46,17 @@ next-env.d.ts
 # Breeze API session + price cache (sensitive / auto-generated)
 data/breeze-session.json
 data/breeze-cache/
+
+# SQLite databases (auto-generated)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Backup files
+*.bak
+
+# Debug routes
+app/api/deals-debug/
+
+# Exports (generated)
+exports/

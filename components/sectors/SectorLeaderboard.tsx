@@ -12,7 +12,7 @@ export function SectorLeaderboard({ quotes }: SectorLeaderboardProps) {
   const sorted = [...quotes].sort((a, b) => b.changePercent - a.changePercent);
 
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-25px">
       {sorted.map((q, i) => (
         <span key={q.symbol} className="flex items-center gap-1">
           <span className="text-muted/50">{i + 1}.</span>

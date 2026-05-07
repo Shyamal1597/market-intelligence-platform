@@ -99,7 +99,13 @@ function findAtmStrike(chain: OptionRow[], spot: number): number {
 }
 
 const cache = new Map<string, { data: DerivativesData; ts: number }>();
-const CACHE_TTL = 30 * 1000;
+
+function getCacheTTL(): number {
+  const ist = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const mins = ist.getHours() * 60 + ist.getMinutes();
+  const open = mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30;
+  return open ? 30_000 : 5 * 60_000; // 30s live, 5min EOD
+}
 
 const INDICES = new Set(["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"]);
 
@@ -109,7 +115,7 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
   // Fast path: if explicit expiry given, check cache first
   if (expiry) {
     const cached = cache.get(`${sym}:${expiry}`);
-    if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+    if (cached && Date.now() - cached.ts < getCacheTTL()) return cached.data;
   }
 
   const cookie = await getNseSession();
@@ -127,7 +133,7 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
   // Always use resolved expiry as cache key
   const cacheKey = `${sym}:${selectedExpiry}`;
   const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  if (cached && Date.now() - cached.ts < getCacheTTL()) return cached.data;
 
   const chainType = INDICES.has(sym) ? "Indices" : "Equity";
   const url = `${NSE_BASE}/api/option-chain-v3?type=${chainType}&symbol=${sym}&expiry=${encodeURIComponent(selectedExpiry)}`;

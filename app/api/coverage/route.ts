@@ -61,6 +61,10 @@ export async function GET() {
     for (const [symbol, reports] of grouped) {
       // rows already sorted date DESC per symbol
       const latest = reports[0];
+      // Fall back to the most recent report that actually carries the data
+      // (latest report may be a note with no rating/TP)
+      const latestWithRating = reports.find((r) => r.rating) ?? latest;
+      const latestWithTP = reports.find((r) => r.targetPrice > 0) ?? latest;
       const analysts = [
         ...new Set(reports.map((r) => r.analyst).filter(Boolean)),
       ];
@@ -69,9 +73,9 @@ export async function GET() {
         symbol,
         company: latest.company,
         analysts,
-        latestRating: latest.rating,
-        latestTarget: latest.targetPrice,
-        latestCmp: latest.cmp,
+        latestRating: latestWithRating.rating,
+        latestTarget: latestWithTP.targetPrice,
+        latestCmp: latestWithTP.cmp,
         reportCount: reports.length,
         latestDate: latest.date,
         firstDate: reports[reports.length - 1].date,
