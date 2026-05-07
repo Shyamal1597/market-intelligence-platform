@@ -2,32 +2,30 @@
  * UI formatting helpers for the Intel Dashboard.
  * Pure functions — no React deps — safe to import in both server and client contexts.
  */
-import type { CheckStatus } from "./types";
+import type { Verdict } from "./types";
 
-// ── Status display ────────────────────────────────────────────────────────────
+// ── Verdict display ───────────────────────────────────────────────────────────
 
-export const STATUS_LABEL: Record<CheckStatus, string> = {
-  hit:       "Hit",
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  met:       "Met",
+  moving:    "Moving",
   miss:      "Miss",
-  partial:   "Partial",
   pending:   "Pending",
-  "no-data": "No Data",
   ambiguous: "Ambiguous",
 };
 
-export const STATUS_COLOR: Record<CheckStatus, string> = {
-  hit:       "text-teal",
+export const VERDICT_COLOR: Record<Verdict, string> = {
+  met:       "text-teal",
+  moving:    "text-amber",
   miss:      "text-danger",
-  partial:   "text-amber",
   pending:   "text-muted",
-  "no-data": "text-muted",
   ambiguous: "text-muted",
 };
 
-/** Compute hit-rate percentage string from raw counts. */
-export function hitRateDisplay(hits: number, checked: number): string {
-  if (checked === 0) return "—";
-  return `${Math.round((hits / checked) * 100)}%`;
+/** Compute on-track percentage string: (met + moving) / decisive. */
+export function onTrackDisplay(met: number, moving: number, decisive: number): string {
+  if (decisive === 0) return "—";
+  return `${Math.round(((met + moving) / decisive) * 100)}%`;
 }
 
 // ── Value formatting ──────────────────────────────────────────────────────────

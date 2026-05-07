@@ -1,18 +1,17 @@
 "use client";
 
-import type { CheckStatus } from "@/lib/intel/types";
+import type { Verdict } from "@/lib/intel/types";
 
 interface Props {
-  status: CheckStatus | "unknown";
+  status: Verdict | "unknown";
   size?: "sm" | "md";
 }
 
-const CONFIG: Record<CheckStatus | "unknown", { label: string; classes: string }> = {
-  hit:       { label: "HIT",       classes: "bg-teal/10 text-teal border-teal/25" },
+const CONFIG: Record<Verdict | "unknown", { label: string; classes: string }> = {
+  met:       { label: "MET",       classes: "bg-teal/10 text-teal border-teal/25" },
+  moving:    { label: "MOVING",    classes: "bg-amber/10 text-amber border-amber/25" },
   miss:      { label: "MISS",      classes: "bg-danger/10 text-danger border-danger/25" },
-  partial:   { label: "PARTIAL",   classes: "bg-amber/10 text-amber border-amber/25" },
   pending:   { label: "PENDING",   classes: "bg-surface text-muted border-border" },
-  "no-data": { label: "NO DATA",   classes: "bg-surface text-muted border-border" },
   ambiguous: { label: "AMBIGUOUS", classes: "bg-surface text-muted border-border" },
   unknown:   { label: "?",         classes: "bg-surface text-muted border-border" },
 };

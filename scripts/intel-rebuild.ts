@@ -6,7 +6,7 @@
  *   npx tsx scripts/intel-rebuild.ts <SYMBOL> [options]
  *
  * Options:
- *   --stage=<1|2|3|4>   Run only the specified stage (1=parseExcel 2=transcripts 3=extractClaims 4=crossCheck)
+ *   --stage=<1|2|3|4>   Run only the specified stage (1=parseExcel [optional] 2=transcripts 3=extractClaims 4=crossCheck)
  *   --force             Re-run even if output is current
  *   --all               Run all symbols (BAJAJFINSV + HDFCBANK)
  *   --only=<Q1-FY26>    Process only this quarter (stage 3 & 4)
@@ -33,13 +33,13 @@ try {
 
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 import { loadRegistry, registryHash } from "@/lib/intel/registry";
-import { parseExcel, writeFundamentals, fundamentalsHash } from "@/lib/intel/parseExcel";
+import { parseExcel, writeFundamentals } from "@/lib/intel/parseExcel";
 import { ingestTranscripts } from "@/lib/intel/transcripts";
 import { extractClaimsForSymbol } from "@/lib/intel/extractClaims";
 import { crossCheckForSymbol } from "@/lib/intel/crossCheck";
 import { claimsHash } from "@/lib/intel/extractClaims";
 import { activeBackend, defaultExtractionModel, defaultVerificationModel } from "@/lib/intel/llm";
-import type { Fundamentals, ClaimsArtifact } from "@/lib/intel/types";
+import type { ClaimsArtifact } from "@/lib/intel/types";
 
 // ── CLI parsing ───────────────────────────────────────────────────────────────
 
@@ -104,14 +104,14 @@ function transcriptDir(symbol: string): string {
 
 // ── stage runners ─────────────────────────────────────────────────────────────
 
-async function runStage1(symbol: string, opts: ReturnType<typeof parseArgs>): Promise<Fundamentals | null> {
+async function runStage1(symbol: string, opts: ReturnType<typeof parseArgs>): Promise<import("@/lib/intel/types").Fundamentals | null> {
   const paths = dataPaths(symbol);
   const sector = SYMBOL_SECTOR[symbol];
   const reg = loadRegistry(sector);
 
   if (!opts.force && existsSync(paths.fundamentals)) {
     log(symbol, "stage1", "skip (output current, use --force to re-run)");
-    return JSON.parse(await fs.readFile(paths.fundamentals, "utf-8")) as Fundamentals;
+    return JSON.parse(await fs.readFile(paths.fundamentals, "utf-8")) as import("@/lib/intel/types").Fundamentals;
   }
 
   const xlsxFile = excelGlob(symbol);
@@ -222,8 +222,8 @@ async function runStage4(
     log(symbol, "stage4", "SKIP — run stage 3 first");
     return;
   }
-  if (!existsSync(paths.fundamentals)) {
-    log(symbol, "stage4", "SKIP — no fundamentals.json (run stage 1 first)");
+  if (!existsSync(paths.transcripts)) {
+    log(symbol, "stage4", "SKIP — run stage 2 first (no transcripts dir)");
     return;
   }
 
@@ -238,25 +238,25 @@ async function runStage4(
   }
 
   const claims: ClaimsArtifact = JSON.parse(await fs.readFile(paths.claims, "utf-8"));
-  const fund: Fundamentals = JSON.parse(await fs.readFile(paths.fundamentals, "utf-8"));
   const cHash = claimsHash(claims);
-  const fHash = fundamentalsHash(fund);
 
   log(symbol, "stage4", `cross-checking via ${activeBackend()}:${defaultVerificationModel()}…`);
   const r = await crossCheckForSymbol({
     symbol,
     claims,
-    fundamentals: fund,
+    transcriptsDir: paths.transcripts,
     registry: reg,
     outFile: paths.checks,
     claimsHashValue: cHash,
-    fundamentalsHashValue: fHash,
     onlyQuarters: opts.onlyQuarter ? [opts.onlyQuarter] : undefined,
   });
   totalCost.v += r.totalCostUsd;
 
-  const total = Object.values(r.artifact.byTargetQuarter).reduce((s, c) => s + c.length, 0);
-  log(symbol, "stage4", `${total} checks | cost ~$${r.totalCostUsd.toFixed(3)}`);
+  const all = Object.values(r.artifact.byTargetQuarter).flat();
+  const met  = all.filter((c) => c.verdict === "met").length;
+  const mov  = all.filter((c) => c.verdict === "moving").length;
+  const miss = all.filter((c) => c.verdict === "miss").length;
+  log(symbol, "stage4", `${all.length} checks | met ${met} moving ${mov} miss ${miss} | cost ~$${r.totalCostUsd.toFixed(3)}`);
 }
 
 // ── logging ───────────────────────────────────────────────────────────────────
