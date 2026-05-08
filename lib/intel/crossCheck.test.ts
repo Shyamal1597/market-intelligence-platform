@@ -5,7 +5,7 @@ const sampleClaim = {
   claimId: "HDFCBANK-Q1-FY26-c1",
   metricLabel: "Net Interest Margin",
   metricUnit: "%",
-  quote: "We expect NIM to expand to ~4% over the next quarter",
+  managementStatement: "We expect NIM to expand to ~4% over the next quarter",
   direction: "value",
   value: 4.0,
   rangeMin: null,
