@@ -13,7 +13,7 @@ import { callJson, estimateCostUsd, defaultVerificationModel } from "./llm";
 import { resolveClaimTarget } from "./targetResolver";
 import { claimsHash } from "./extractClaims";
 
-export const STAGE4_PROMPT_VERSION = 2;
+export const STAGE4_PROMPT_VERSION = 3;
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,8 @@ interface ClaimForVerification {
   claimId: string;
   metricLabel: string;
   metricUnit: string;
-  quote: string;
+  /** Original statement from the source quarter — do NOT reuse as verification evidence. */
+  managementStatement: string;
   direction: string;
   value: number | null;
   rangeMin: number | null;
@@ -56,30 +57,37 @@ export function buildCrossCheckPrompt(
   claims: ClaimForVerification[],
   transcript: string,
 ): { system: string; user: string } {
-  const system = `You are verifying whether company management delivered on forward-looking promises made during earnings calls.
+  const system = `You are verifying whether company management delivered on forward-looking promises from earnings calls.
 
-For each claim, classify as exactly one of:
-- "met":       management clearly achieved the stated target or guided direction
-- "moving":    trending in the right direction but the guided level is not yet fully reached
-- "miss":      clear failure — opposite direction, significantly below target, or explicitly acknowledged as a miss
-- "ambiguous": this specific metric or topic was not discussed in the transcript; insufficient information to judge
+CLASSIFICATION RULES (apply in order):
+1. "met"       — the specific metric was explicitly discussed and management clearly achieved the stated target or guided direction
+2. "moving"    — the specific metric was explicitly discussed and is trending in the right direction but the full target is not yet reached
+3. "miss"      — the specific metric was explicitly discussed and clearly failed: opposite direction, significantly below target, or management acknowledged missing it
+4. "ambiguous" — the specific metric was NOT explicitly named or discussed in this transcript; do NOT infer from adjacent or general statements
 
-OUTPUT: a JSON object { "results": [ Result, ... ] } where Result is:
+STRICT EVIDENCE RULES:
+- A verdict of met/moving/miss REQUIRES the exact metric (or a clear synonym) to be explicitly named in the transcript
+- Do NOT infer combined ratio from GWP growth, loss ratio from underwriting commentary, or any other proxy
+- Each claimId must have its OWN quote from the transcript — never use the same verbatim sentence for two different claimIds unless the transcript literally covers both metrics in that exact sentence
+- The "quote" field MUST be taken verbatim from the TARGET TRANSCRIPT provided below — it is NEVER the managementStatement from the source quarter
+- If you cannot find explicit evidence for a claim, return "ambiguous" with quote: null
+
+OUTPUT: { "results": [ Result, ... ] } where each Result is:
 {
   "claimId": string,
   "verdict": "met" | "moving" | "miss" | "ambiguous",
-  "actualText": string | null,   // what management said about the actual outcome (1-2 sentences)
-  "quote": string | null,        // verbatim from transcript, ≤200 chars; null if ambiguous
-  "reasoning": string            // 1-2 sentences explaining the verdict
+  "actualText": string | null,   // 1-2 sentences summarising what management reported for this specific metric (null if ambiguous)
+  "quote": string | null,        // verbatim from the TARGET TRANSCRIPT only, ≤200 chars; null if ambiguous
+  "reasoning": string            // 1 sentence explaining why this verdict was chosen
 }`;
 
-  const user = `CLAIMS MADE IN ${sourceQuarter} (verify against ${targetQuarter} results):
+  const user = `FORWARD-LOOKING CLAIMS MADE IN ${sourceQuarter} — verify each against the ${targetQuarter} transcript below:
 ${JSON.stringify(claims, null, 2)}
 
 ${targetQuarter} EARNINGS TRANSCRIPT:
 ${transcript}
 
-Return ONLY the JSON object with "results" array.`;
+Return ONLY the JSON object with "results" array. Every claimId must appear exactly once.`;
 
   return { system, user };
 }
@@ -205,7 +213,7 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
         claimId: claim.id,
         metricLabel: m?.label ?? claim.metricKey,
         metricUnit: m?.unit ?? "",
-        quote: claim.quote,
+        managementStatement: claim.quote,
         direction: claim.direction,
         value: claim.value,
         rangeMin: claim.rangeMin,

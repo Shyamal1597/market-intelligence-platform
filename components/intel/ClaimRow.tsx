@@ -121,10 +121,11 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
         </span>
       </button>
 
-      {/* ── Expanded detail ── */}
+      {/* ── Expanded audit trail ── */}
       {open && (
-        <div className="pl-5 pr-4 pb-4 pt-2 space-y-3 border-t border-border/40 bg-base/20">
-          {/* Metadata strip */}
+        <div className="pl-5 pr-4 pb-4 pt-3 space-y-4 border-t border-border/40 bg-base/20">
+
+          {/* ① Metadata strip */}
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] font-mono text-muted">
             <span>
               Target: <span className="text-primary">{claim.targetText}</span>
@@ -142,34 +143,45 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
             )}
           </div>
 
-          {/* Original management quote */}
-          <blockquote className="border-l-2 border-amber/30 pl-3 text-xs text-muted font-sans italic leading-relaxed">
-            &ldquo;{claim.quote}&rdquo;
-            {claim.speaker && (
-              <span className="not-italic text-primary ml-2">— {claim.speaker}</span>
-            )}
-          </blockquote>
+          {/* ② Source quarter — original management promise */}
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-mono font-bold text-amber/70 uppercase tracking-wider">
+                {sourceQuarter}
+              </span>
+              <span className="text-[10px] font-mono text-muted">Management statement</span>
+            </div>
+            <blockquote className="border-l-2 border-amber/30 pl-3 text-xs text-muted font-sans italic leading-relaxed">
+              &ldquo;{claim.quote}&rdquo;
+              {claim.speaker && (
+                <span className="not-italic text-primary ml-2">— {claim.speaker}</span>
+              )}
+            </blockquote>
+          </div>
 
-          {/* Verification result block */}
+          {/* ③ Target quarter — verification evidence */}
           {claim.check && (
             <div className="rounded border border-border bg-base p-3 space-y-2.5">
-              {/* Header */}
+              {/* Header row */}
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
-                  Verified in{" "}
-                  <span className="text-primary">{claim.check.verifiedInQuarter}</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-primary/70 uppercase tracking-wider">
+                    {claim.check.verifiedInQuarter}
+                  </span>
+                  <span className="text-[10px] font-mono text-muted">Reported actuals</span>
+                </div>
                 <StatusBadge status={verdict} size="md" />
               </div>
 
-              {/* Verbatim transcript quote */}
-              {claim.check.quote && (
-                <blockquote className="border-l-2 border-teal/30 pl-3 text-xs text-primary/80 font-sans italic leading-relaxed">
-                  &ldquo;{claim.check.quote}&rdquo;
-                </blockquote>
-              )}
+              {/* Verbatim quote from target transcript (only if different from the original claim quote) */}
+              {claim.check.quote &&
+                claim.check.quote.trim() !== claim.quote.trim() && (
+                  <blockquote className="border-l-2 border-teal/30 pl-3 text-xs text-primary/80 font-sans italic leading-relaxed">
+                    &ldquo;{claim.check.quote}&rdquo;
+                  </blockquote>
+                )}
 
-              {/* LLM reasoning */}
+              {/* Reasoning */}
               {claim.check.reasoning && (
                 <p className="text-[11px] text-muted font-sans leading-relaxed border-t border-border/60 pt-2">
                   {claim.check.reasoning}
