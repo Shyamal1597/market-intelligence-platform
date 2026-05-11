@@ -69,4 +69,22 @@ describe("buildCrossCheckPrompt", () => {
     expect(system).toContain("actualText");
     expect(system).toContain("reasoning");
   });
+
+  test("system prompt contains company brief", () => {
+    const customBrief = "Company: HDFCBANK\nSegments and metrics being tracked:\n  - Banking: NIM";
+    const { system } = buildCrossCheckPrompt(
+      "Q1-FY26", "Q2-FY26", [sampleClaim], "...", customBrief,
+    );
+    expect(system).toContain("HDFCBANK");
+    expect(system).toContain("NIM");
+  });
+
+  test("output schema describes speaker and section", () => {
+    const { system } = buildCrossCheckPrompt(
+      "Q1-FY26", "Q2-FY26", [sampleClaim], "...", "Company: HDFCBANK",
+    );
+    expect(system).toContain("speaker");
+    expect(system).toContain("section");
+    expect(system).toContain("prepared remarks");
+  });
 });
