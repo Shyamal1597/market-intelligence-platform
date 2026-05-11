@@ -87,7 +87,7 @@ export interface ClaimCheck {
   reasoning: string;
   context: string | null;   // ±500 chars around quote in target transcript (display only)
   speaker: string | null;   // who said it in target transcript
-  section: string | null;   // "prepared remarks" | "Q&A" | null
+  section: "prepared remarks" | "Q&A" | null;
 }
 
 export interface ChecksArtifact {
