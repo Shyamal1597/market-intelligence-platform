@@ -291,7 +291,7 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
         reasoning: (r as { reasoning?: string })?.reasoning ?? "",
         context: (r as { context?: string | null })?.context ?? null,
         speaker: (r as { speaker?: string | null })?.speaker ?? null,
-        section: (r as { section?: string | null })?.section ?? null,
+        section: ((r as { section?: string | null })?.section ?? null) as "prepared remarks" | "Q&A" | null,
       };
       byTargetQuarter[targetQuarter] = [...(byTargetQuarter[targetQuarter] ?? []), check];
     }
