@@ -85,6 +85,9 @@ export interface ClaimCheck {
   /** Verbatim quote from the target transcript (≤200 chars). */
   quote: string | null;
   reasoning: string;
+  context: string | null;   // ±500 chars around quote in target transcript (display only)
+  speaker: string | null;   // who said it in target transcript
+  section: string | null;   // "prepared remarks" | "Q&A" | null
 }
 
 export interface ChecksArtifact {
@@ -95,6 +98,26 @@ export interface ChecksArtifact {
   claimsHash: string;
   byTargetQuarter: { [targetQuarter: string]: ClaimCheck[] };
   warnings: string[];
+}
+
+export interface QuarterSummary {
+  symbol: string;
+  sourceQuarter: string;
+  verifiedInQuarter: string;
+  generatedAt: string;
+  model: string;
+  /** 2-3 sentence analyst-note headline. */
+  headline: string;
+  /** Segment key → 1-2 sentence performance note. */
+  segments: Record<string, string>;
+  /** 2-4 key themes / watchpoints. */
+  keyThemes: string[];
+  verdictCounts: {
+    met: number; moving: number; miss: number;
+    pending: number; ambiguous: number;
+  };
+  /** (met + moving) / (met + moving + miss) × 100 */
+  onTrackPct: number;
 }
 
 // ── Symbol → sector ─────────────────────────────────────────────────────────

@@ -162,6 +162,9 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
           actualText: null,
           quote: null,
           reasoning: `Transcript for ${targetQ} not yet available.`,
+          context: null,
+          speaker: null,
+          section: null,
         };
         byTargetQuarter[targetQ] = [...(byTargetQuarter[targetQ] ?? []), check];
         continue;
@@ -182,6 +185,9 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
             actualText: null,
             quote: null,
             reasoning: "No subsequent transcript available to verify this claim.",
+            context: null,
+            speaker: null,
+            section: null,
           };
           byTargetQuarter["unknown"] = [...(byTargetQuarter["unknown"] ?? []), check];
           continue;
@@ -254,6 +260,9 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
           actualText: null,
           quote: null,
           reasoning: "LLM verification failed.",
+          context: null,
+          speaker: null,
+          section: null,
         };
         byTargetQuarter[targetQuarter] = [...(byTargetQuarter[targetQuarter] ?? []), check];
       }
@@ -280,6 +289,9 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
         actualText: (r as { actualText?: string | null })?.actualText ?? null,
         quote: (r as { quote?: string | null })?.quote ?? null,
         reasoning: (r as { reasoning?: string })?.reasoning ?? "",
+        context: (r as { context?: string | null })?.context ?? null,
+        speaker: (r as { speaker?: string | null })?.speaker ?? null,
+        section: (r as { section?: string | null })?.section ?? null,
       };
       byTargetQuarter[targetQuarter] = [...(byTargetQuarter[targetQuarter] ?? []), check];
     }
