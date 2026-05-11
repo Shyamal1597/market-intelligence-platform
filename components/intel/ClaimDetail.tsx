@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
-import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
+import { quarterDisplay } from "@/lib/intel/uiHelpers";
 import type { Verdict } from "@/lib/intel/types";
 import type { EnrichedClaim } from "./ClaimRow";
 
