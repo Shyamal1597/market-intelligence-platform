@@ -13,7 +13,7 @@ import { callJson, estimateCostUsd, defaultVerificationModel } from "./llm";
 import { resolveClaimTarget } from "./targetResolver";
 import { claimsHash } from "./extractClaims";
 
-export const STAGE4_PROMPT_VERSION = 3;
+export const STAGE4_PROMPT_VERSION = 4;
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -56,8 +56,12 @@ export function buildCrossCheckPrompt(
   targetQuarter: string,
   claims: ClaimForVerification[],
   transcript: string,
+  companyBrief: string,
 ): { system: string; user: string } {
   const system = `You are verifying whether company management delivered on forward-looking promises from earnings calls.
+
+COMPANY CONTEXT:
+${companyBrief}
 
 CLASSIFICATION RULES (apply in order):
 1. "met"       — the specific metric was explicitly discussed and management clearly achieved the stated target or guided direction
@@ -78,6 +82,8 @@ OUTPUT: { "results": [ Result, ... ] } where each Result is:
   "verdict": "met" | "moving" | "miss" | "ambiguous",
   "actualText": string | null,   // 1-2 sentences summarising what management reported for this specific metric (null if ambiguous)
   "quote": string | null,        // verbatim from the TARGET TRANSCRIPT only, ≤200 chars; null if ambiguous
+  "speaker": string | null,      // name and title of speaker who said the quote in the target transcript; null if ambiguous
+  "section": "prepared remarks" | "Q&A" | null,  // which part of the call the quote came from
   "reasoning": string            // 1 sentence explaining why this verdict was chosen
 }`;
 
@@ -103,6 +109,40 @@ function compareQuarters(a: string, b: string): number {
     return parseInt(m[2]) * 10 + parseInt(m[1]);
   };
   return parse(a) - parse(b);
+}
+
+/** Build a short company context brief from the registry, grouped by segment. */
+function buildCompanyBrief(symbol: string, registry: SectorRegistry): string {
+  const bySegment = new Map<string, string[]>();
+  for (const m of registry.metrics) {
+    if (!bySegment.has(m.segment)) bySegment.set(m.segment, []);
+    bySegment.get(m.segment)!.push(m.label);
+  }
+  const lines = [...bySegment.entries()]
+    .map(([seg, labels]) => `  - ${seg}: ${labels.join(", ")}`)
+    .join("\n");
+  return `Company: ${symbol}\nSegments and metrics being tracked:\n${lines}`;
+}
+
+/**
+ * After the LLM returns a quote, find it in the full transcript and extract
+ * ±radius characters of surrounding context (for display in the audit trail).
+ * Returns null if the quote cannot be located.
+ */
+function extractContext(transcript: string, quote: string | null, radius = 500): string | null {
+  if (!quote) return null;
+  // Try exact match first, then normalised whitespace
+  let idx = transcript.indexOf(quote);
+  if (idx === -1) {
+    const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+    const normTranscript = norm(transcript);
+    const normQuote = norm(quote);
+    idx = normTranscript.indexOf(normQuote);
+    if (idx === -1) return null;
+  }
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(transcript.length, idx + quote.length + radius);
+  return transcript.slice(start, end);
 }
 
 // ── main driver ───────────────────────────────────────────────────────────────
@@ -230,11 +270,13 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
       };
     });
 
+    const companyBrief = buildCompanyBrief(args.symbol, args.registry);
     const { system, user } = buildCrossCheckPrompt(
       sourceQuarter,
       verifiedInQuarter,
       claimsForPrompt,
       transcript,
+      companyBrief,
     );
 
     let result: Awaited<ReturnType<typeof callJson<{ results: Array<Partial<ClaimCheck> & { verdict?: Verdict }> }>>>;
@@ -289,7 +331,7 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
         actualText: (r as { actualText?: string | null })?.actualText ?? null,
         quote: (r as { quote?: string | null })?.quote ?? null,
         reasoning: (r as { reasoning?: string })?.reasoning ?? "",
-        context: (r as { context?: string | null })?.context ?? null,
+        context: extractContext(transcript, (r as { quote?: string | null })?.quote ?? null),
         speaker: (r as { speaker?: string | null })?.speaker ?? null,
         section: ((r as { section?: string | null })?.section ?? null) as "prepared remarks" | "Q&A" | null,
       };
