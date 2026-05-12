@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import type { ClaimsArtifact, ExtractedClaim, SectorRegistry, ClaimDirection, Confidence } from "./types";
 import { callJson, estimateCostUsd, defaultExtractionModel } from "./llm";
 
-export const STAGE3_PROMPT_VERSION = 1;
+export const STAGE3_PROMPT_VERSION = 2;
 
 interface BuildPromptArgs {
   symbol: string;
@@ -14,49 +14,50 @@ interface BuildPromptArgs {
 }
 
 export function buildExtractPrompt(a: BuildPromptArgs): { system: string; user: string } {
-  const system = `You are a senior equity research analyst extracting forward-looking management guidance from earnings concall transcripts. You work with extreme precision: only extract claims that are explicit, quantifiable, and tied to a specific tracked metric. Reject vague platitudes.
+  const system = `You are a senior equity research analyst extracting forward-looking management guidance from earnings call transcripts.
 
-WHAT COUNTS AS A CLAIM:
-- Forward-looking: refers to future performance (next quarter, this fiscal year, near-term, etc.). Past performance is NOT a claim.
-- Quantifiable: a specific number/range OR a clear directional statement (increase / decrease / maintain).
-- Tied to a tracked metric: must map to one of the registered metrics provided in the user message.
+A CLAIM is only valid when ALL THREE conditions are met:
+1. FORWARD-LOOKING — management is committing to a future outcome. The target period must be AFTER this quarter. Statements describing what already happened this quarter are NOT claims, even if they mention a metric.
+2. SPECIFIC — there is at least one operational anchor: a direction with a qualifier ("compress slightly", "normalize from current levels"), an explicit number or range, or a named future period. Pure sentiment ("we feel good", "we remain confident", "we are well-positioned") is NOT a claim.
+3. METRIC-MAPPED — maps to exactly one key in the registered metrics list.
 
-WHAT DOES NOT COUNT:
-- Pure historical commentary ("we grew 18% this quarter").
-- Vague optimism ("we feel good about prospects", "we are excited").
-- Industry/macro commentary not specific to the company.
-- Q&A clarifications about already-reported numbers.
+REJECT these — they are NOT claims:
+- Current-quarter results reported as facts: "NIM was 3.5% this quarter", "PAT grew 22%"
+- Vague reassurance with no operational content: "we are optimistic", "momentum is strong"
+- Industry/macro commentary not specific to this company
+- Any statement where the only supporting evidence is about a DIFFERENT metric
 
-OUTPUT: a JSON object: { "claims": [Claim, ...] } where Claim is:
-{
-  "metricKey": string (MUST be exactly one of the keys provided),
-  "quote": string (verbatim from transcript, <= 300 chars),
-  "speaker": string | null (best inference from preceding paragraph; null if unclear),
-  "direction": "value" | "range" | "up" | "down" | "stable",
-  "value": number | null,
-  "rangeMin": number | null,
-  "rangeMax": number | null,
-  "qualitativeText": string | null,
-  "targetQuarter": string | null,
-  "targetText": string,
-  "confidence": "high" | "medium" | "low",
-  "conditional": string | null
-}
+DEDUPLICATION — one claim per (metricKey × target period):
+If management mentions the same metric for the same target period more than once, extract the SINGLE most specific instance. Prefer a quote with an explicit number over one that is purely directional. Do not emit duplicate (metricKey, targetQuarter) pairs.
 
-If a claim references something not in the registry, do NOT extract it. Do not invent metricKeys.`;
+CONFIDENCE:
+- "high"   — explicit number or range target ("NIM will be ~3.5%", "credit cost below 2%")
+- "medium" — directional with a specific qualifier ("compress slightly next quarter", "normalize from elevated levels")
+- "low"    — bare directional with no qualifier ("will improve", "expected to grow") — only extract if no better evidence exists for this metric in this call
+
+FIELD RULES:
+- quote      : verbatim from transcript, ≤300 chars, must be the sentence(s) that directly state the forward guidance for THIS metric — not a nearby sentence about a different metric
+- targetText : ≤60-char synthesis of what management is specifically committing to for this metric (e.g. "below 2% by Q2 FY26", "stable next 2 quarters", "ROE above 22% this FY") — NOT a copy of the quote
+- value      : the explicit FUTURE target number management is committing to — null if no number stated. DO NOT use the current quarter's reported actual number.
+- rangeMin/rangeMax : use when management gives a range target; null otherwise
+- direction  : "value" if a specific number, "range" if a range, "up"/"down"/"stable" for directional — reflects the GUIDED direction, not what happened this quarter
+- targetQuarter : resolve to "Q{n}-FY{yy}" if determinable (e.g. "next quarter" from Q1-FY26 → "Q2-FY26"); null for multi-quarter or fiscal-year targets
+- conditional : capture the condition if guidance is explicitly contingent ("if rate cuts materialise")
+
+OUTPUT: a JSON object { "claims": [Claim, ...] }`;
 
   const registryJson = JSON.stringify(
     a.registry.metrics.map((m) => ({
       key: m.key, label: m.label, unit: m.unit, segment: m.segment,
-      aliases: m.aliases, description: m.description,
+      direction: m.direction, aliases: m.aliases, description: m.description,
     })),
     null, 2,
   );
 
   const user = `COMPANY: ${a.symbol}
-QUARTER (when this call took place — use this as the source quarter for any "next quarter" target inference): ${a.quarter}
+SOURCE QUARTER (when this call took place — all claims must target a period AFTER this quarter): ${a.quarter}
 
-TRACKED METRICS (only extract claims about these — match by aliases or description):
+TRACKED METRICS (only extract claims about these — match by key, label, aliases, or description):
 ${registryJson}
 
 TRANSCRIPT:
@@ -74,7 +75,38 @@ export function validateClaim(
   }
   if (!raw.quote || raw.quote.length === 0) return { valid: false, reason: "missing quote" };
   if (!raw.direction) return { valid: false, reason: "missing direction" };
+  if (!raw.targetText || raw.targetText.trim().length === 0) {
+    return { valid: false, reason: "missing targetText" };
+  }
   return { valid: true };
+}
+
+/** Numeric score for claim specificity — used for deduplication. Higher = keep. */
+function specificityScore(c: Partial<ExtractedClaim>): number {
+  if (c.direction === "value" || c.direction === "range") return 3;
+  if (c.confidence === "high") return 2;
+  if (c.confidence === "medium") return 1;
+  return 0;
+}
+
+/**
+ * Deduplicate claims at the (metricKey × targetQuarter) level.
+ * Within each bucket, keep the single most specific claim.
+ */
+export function deduplicateClaims(claims: Partial<ExtractedClaim>[]): Partial<ExtractedClaim>[] {
+  const groups = new Map<string, Partial<ExtractedClaim>[]>();
+  for (const c of claims) {
+    const key = `${c.metricKey}::${c.targetQuarter ?? "__null__"}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(c);
+  }
+  const result: Partial<ExtractedClaim>[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) { result.push(group[0]); continue; }
+    const best = group.slice().sort((a, b) => specificityScore(b) - specificityScore(a))[0];
+    result.push(best);
+  }
+  return result;
 }
 
 export interface ExtractClaimsArgs {
@@ -133,9 +165,12 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
     }
     totalCost += estimateCostUsd(model, result);
 
+    // Deduplicate before validation
+    const deduped = deduplicateClaims(result.data.claims ?? []);
+
     const accepted: ExtractedClaim[] = [];
     let n = 0;
-    for (const raw of result.data.claims ?? []) {
+    for (const raw of deduped) {
       const v = validateClaim(raw, args.registry);
       if (!v.valid) { warnings.push(`${quarter}: ${v.reason}`); continue; }
       accepted.push({
@@ -155,6 +190,7 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
       });
     }
     byQuarter[quarter] = accepted;
+    console.log(`  ${quarter}: ${accepted.length} claims (${deduped.length - accepted.length} rejected)`);
   }
 
   const artifact: ClaimsArtifact = {
