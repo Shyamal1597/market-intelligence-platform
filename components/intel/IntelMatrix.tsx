@@ -25,10 +25,10 @@ function proseToBullets(text: string): string[] {
 
 function VerdictChips({ counts }: { counts: QuarterSummary["verdictCounts"] }) {
   return (
-    <div className="flex items-center gap-2 flex-wrap mt-1">
-      {counts.met    > 0 && <span className="text-[10px] font-mono text-teal">{counts.met} met</span>}
-      {counts.moving > 0 && <span className="text-[10px] font-mono text-amber">{counts.moving} moving</span>}
-      {counts.miss   > 0 && <span className="text-[10px] font-mono text-danger">{counts.miss} miss</span>}
+    <div className="flex items-center gap-3 flex-wrap mt-1.5">
+      {counts.met    > 0 && <span className="text-xs font-mono text-teal">{counts.met} met</span>}
+      {counts.moving > 0 && <span className="text-xs font-mono text-amber">{counts.moving} moving</span>}
+      {counts.miss   > 0 && <span className="text-xs font-mono text-danger">{counts.miss} miss</span>}
     </div>
   );
 }
@@ -46,14 +46,14 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
       <div className="overflow-x-auto">
         <table
           className="border-collapse"
-          style={{ minWidth: `${180 + quarters.length * 260}px`, width: "100%" }}
+          style={{ minWidth: `${220 + quarters.length * 320}px`, width: "100%" }}
         >
           {/* ── Column headers ── */}
           <thead>
             <tr className="border-b border-border bg-surface">
               {/* Sticky corner */}
-              <th className="sticky left-0 z-20 bg-surface border-r border-border w-36 min-w-36 px-4 py-3 text-left">
-                <span className="text-[10px] font-mono text-muted uppercase tracking-wider">Segments</span>
+              <th className="sticky left-0 z-20 bg-surface border-r border-border w-52 min-w-52 px-5 py-4 text-left">
+                <span className="text-xs font-mono text-muted uppercase tracking-wider">Segments</span>
               </th>
 
               {quarters.map((q) => {
@@ -61,16 +61,21 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                 return (
                   <th
                     key={q}
-                    className="px-4 py-3 text-left border-r border-border/60 last:border-r-0 align-top bg-surface"
-                    style={{ width: 260, minWidth: 200 }}
+                    className="px-5 py-4 text-left border-r border-border/60 last:border-r-0 align-top bg-surface"
+                    style={{ width: 320, minWidth: 260 }}
                   >
-                    <span className="text-xs font-mono font-bold text-amber block">
+                    <span className="text-sm font-mono font-bold text-amber block tracking-wide">
                       {quarterDisplay(q)}
                     </span>
                     {s ? (
-                      <VerdictChips counts={s.verdictCounts} />
+                      <>
+                        <span className={`text-xs font-mono font-semibold mt-0.5 block ${
+                          s.onTrackPct >= 70 ? "text-teal" : s.onTrackPct >= 40 ? "text-amber" : "text-danger"
+                        }`}>{s.onTrackPct}% on track</span>
+                        <VerdictChips counts={s.verdictCounts} />
+                      </>
                     ) : (
-                      <span className="text-[10px] font-mono text-muted/40 mt-1 block">—</span>
+                      <span className="text-xs font-mono text-muted/40 mt-1 block">—</span>
                     )}
                   </th>
                 );
@@ -88,8 +93,8 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                   {/* Data row */}
                   <tr className="border-b border-border/50">
                     {/* Segment label — sticky */}
-                    <td className="sticky left-0 z-10 bg-surface border-r border-border px-4 py-4 align-top">
-                      <span className="text-xs font-mono font-bold text-primary uppercase tracking-wide">
+                    <td className="sticky left-0 z-10 bg-surface border-r border-border px-5 py-5 align-top">
+                      <span className="text-sm font-mono font-bold text-amber uppercase tracking-wider">
                         {seg}
                       </span>
                     </td>
@@ -106,35 +111,35 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                           onClick={() =>
                             setExpandedCell(isCellActive ? null : { seg, quarter: q })
                           }
-                          className={`px-4 py-4 border-r border-border/40 last:border-r-0 align-top cursor-pointer transition-colors ${
+                          className={`px-5 py-5 border-r border-border/40 last:border-r-0 align-top cursor-pointer transition-colors ${
                             isCellActive ? "bg-amber/[0.06]" : "hover:bg-surface/60"
                           }`}
                         >
                           {note ? (
-                            <div className="space-y-1.5">
+                            <div className="space-y-2.5">
                               {proseToBullets(note).map((bullet, i) => (
-                                <div key={i} className="flex gap-2">
-                                  <span className="text-amber shrink-0 leading-relaxed text-[11px]">
+                                <div key={i} className="flex gap-2.5">
+                                  <span className="text-amber shrink-0 leading-relaxed text-sm mt-px">
                                     •
                                   </span>
-                                  <span className="text-[11px] font-sans text-primary/90 leading-relaxed">
+                                  <span className="text-sm font-sans text-primary/90 leading-relaxed">
                                     {bullet}
                                   </span>
                                 </div>
                               ))}
                               {claims.length > 0 && (
-                                <div className="flex items-center gap-1.5 pt-2 mt-1 border-t border-border/30">
-                                  <span className="text-[10px] font-mono text-muted">
+                                <div className="flex items-center gap-2 pt-2.5 mt-1.5 border-t border-border/30">
+                                  <span className="text-xs font-mono text-muted">
                                     {claims.length} claim{claims.length !== 1 ? "s" : ""}
                                   </span>
-                                  <span className="text-amber/50 text-[9px]">
+                                  <span className="text-amber/60 text-[10px]">
                                     {isCellActive ? "▲" : "▸"}
                                   </span>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted/30 text-[10px] font-mono">—</span>
+                            <span className="text-muted/30 text-xs font-mono">—</span>
                           )}
                         </td>
                       );
