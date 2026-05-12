@@ -1,0 +1,26 @@
+{
+  "symbol": "HDFCBANK",
+  "sourceQuarter": "Q1-FY26",
+  "verifiedInQuarter": "Q4-FY26",
+  "generatedAt": "2026-05-12T05:48:00.908Z",
+  "model": "qwen2.5:7b",
+  "headline": "HDFCBANK delivered on advance growth expectations for Q1-FY26, with credit cost remaining stable and asset quality maintaining its healthy position.",
+  "segments": {
+    "Whole Bank": "Credit costs remained stable excluding agriculture, as guided, but NPA levels showed a slight increase from the previous quarter. Advance growth was in line with guidance at 12%, higher than the system growth rate of 5.4% to 10.5%. CASA ratio and deposit growth were strong, reflecting management's focus on granular deposits.",
+    "Retail": "Retail share of advances increased, contributing to overall growth momentum."
+  },
+  "keyThemes": [
+    "Stable credit costs excluding agriculture",
+    "Healthy asset quality with continued focus on granular deposits",
+    "Strong advance growth above system growth rate",
+    "Increased retail share of advances"
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 2,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 10
+  },
+  "onTrackPct": 100
+}

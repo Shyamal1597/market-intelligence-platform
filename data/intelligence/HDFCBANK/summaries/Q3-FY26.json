@@ -1,0 +1,26 @@
+{
+  "symbol": "HDFCBANK",
+  "sourceQuarter": "Q3-FY26",
+  "verifiedInQuarter": "Q4-FY26",
+  "generatedAt": "2026-05-12T05:48:43.492Z",
+  "model": "qwen2.5:7b",
+  "headline": "HDFCBANK delivered on most of its guidance for Whole Bank and Retail segments, with some mixed results on advance growth expectations.",
+  "segments": {
+    "Whole Bank": "Advance growth (YoY) fell short of strong ambitions but is expected to improve in the next quarter. Cost-to-Income Ratio and CASA Ratio were under control as productivity improvements brought in efficiencies.",
+    "Retail": "Retail share of advances grew, contributing to overall growth momentum."
+  },
+  "keyThemes": [
+    "Sustained retail growth",
+    "Focus on granular deposits",
+    "Maintaining cost efficiency",
+    "Positive outlook for loan growth"
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 0,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 14
+  },
+  "onTrackPct": 0
+}

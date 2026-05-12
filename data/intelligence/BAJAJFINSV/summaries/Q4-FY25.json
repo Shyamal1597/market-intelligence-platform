@@ -1,0 +1,26 @@
+{
+  "symbol": "BAJAJFINSV",
+  "sourceQuarter": "Q4-FY25",
+  "verifiedInQuarter": "Q1-FY26",
+  "generatedAt": "2026-05-12T05:47:23.941Z",
+  "model": "qwen2.5:7b",
+  "headline": "BAJAJFINSV delivered decent results across major segments despite market constraints, with BAGIC and BALIC showing mixed performance against guidance.",
+  "segments": {
+    "BAGIC": "Despite higher than expected combined ratio due to accounting anomalies, BAGIC maintained strong profitability metrics and showed growth in core business lines. However, the expense ratio was higher than guided due to realized gains on investments.",
+    "BALIC": "VNB margin met expectations with a 39% increase, but GWP growth was lower than guided. Persistency dipped slightly as expected, and AUM increased significantly."
+  },
+  "keyThemes": [
+    "Accounting anomalies impacted BAGIC's combined ratio",
+    "Strong profitability metrics maintained in core business lines for BAGIC",
+    "VNB margin growth on track for BALIC despite top-line growth being lower than guided",
+    "Solvency ratios remain strong, indicating resilience to external pressures"
+  ],
+  "verdictCounts": {
+    "met": 2,
+    "moving": 1,
+    "miss": 4,
+    "pending": 0,
+    "ambiguous": 2
+  },
+  "onTrackPct": 43
+}

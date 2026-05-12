@@ -1,0 +1,28 @@
+{
+  "symbol": "BAJAJFINSV",
+  "sourceQuarter": "Q1-FY26",
+  "verifiedInQuarter": "Q2-FY26",
+  "generatedAt": "2026-05-12T05:45:08.667Z",
+  "model": "qwen2.5:7b",
+  "headline": "BAGIC and BALIC delivered strong growth but missed some guidance targets, while BFL showed resilience in NII and AUM growth.",
+  "segments": {
+    "BAGIC": "Despite missing some guidance targets for combined ratio and expense ratio, BAGIC maintained a healthy GWP growth of 9% and saw an increase in PAT by 5%. The company's focus on profitable commercial lines contributed positively to the results.",
+    "BALIC": "BALIC reported strong VNB growth of 39%, with NBM expanding by 4.2%. However, AUM guidance was not met, remaining unchanged from the previous quarter.",
+    "BFL": "BFL showed resilience in net interest income (NII) and AUM growth, both up by 22% and 24% respectively. Gross non-performing asset (GNPA) continued to be amongst the lowest in the industry at 1.03%. PAT grew by 22%, driven by higher NII.",
+    "Consolidated": "The consolidated revenue grew by 11% to INR 37,400 crores, while PAT increased by 8% to INR 2,244 crores. Excluding MTM movements from insurance subsidiaries, the growth would be a healthy 12%. BAGIC and BALIC solvency ratios remain strong at 339% and 346%, respectively."
+  },
+  "keyThemes": [
+    "Sustainable growth in core business lines",
+    "Resilience in NII and AUM for BFL",
+    "Strong profitability metrics despite market constraints",
+    "Focus on customer-centric strategies"
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 9,
+    "miss": 1,
+    "pending": 0,
+    "ambiguous": 1
+  },
+  "onTrackPct": 90
+}

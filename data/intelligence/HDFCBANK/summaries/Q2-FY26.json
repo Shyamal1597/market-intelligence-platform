@@ -1,0 +1,26 @@
+{
+  "symbol": "HDFCBANK",
+  "sourceQuarter": "Q2-FY26",
+  "verifiedInQuarter": "Q3-FY26",
+  "generatedAt": "2026-05-12T05:48:22.860Z",
+  "model": "qwen2.5:7b",
+  "headline": "Overall guidance delivery was largely in line with expectations for Whole Bank and Retail segments, though some claims were moving or ambiguous.",
+  "segments": {
+    "Whole Bank": "Net Interest Margin moved as expected, while Cost-to-Income Ratio and Advance Growth remained ambiguous. Credit Quality indicators such as Net NPA % and Credit Cost showed improvement, aligning with guidance.",
+    "Retail": "Retail Share of Advances improved, moving in line with expectations."
+  },
+  "keyThemes": [
+    "Stable credit growth and improving asset quality",
+    "Focus on deposit growth to maintain LDR below 90%",
+    "Positive outlook for loan growth driven by favorable macroeconomic conditions",
+    "Continued investment in technology and distribution"
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 5,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 4
+  },
+  "onTrackPct": 100
+}

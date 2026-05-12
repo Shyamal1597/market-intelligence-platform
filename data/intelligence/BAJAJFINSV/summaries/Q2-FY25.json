@@ -1,0 +1,26 @@
+{
+  "symbol": "BAJAJFINSV",
+  "sourceQuarter": "Q2-FY25",
+  "verifiedInQuarter": "Q3-FY25",
+  "generatedAt": "2026-05-12T05:45:35.777Z",
+  "model": "qwen2.5:7b",
+  "headline": "BAJAJFINSV met its guidance for consolidated revenue growth but saw mixed performance in BAGIC and BALIC segments with some metrics moving towards stabilization as per management's statements.",
+  "segments": {
+    "BAGIC": "BAGIC's gross written premium (GWP) growth was predominantly down due to a large order spill over, while the combined ratio continued to be good despite NATCAT claims. Profit after tax increased by 39% and ROE stood at 14%.",
+    "BALIC": "BALIC saw muted new business value growth but recorded a significant increase in profit after tax of 106%, aided by a tax reversal, reflecting efforts to adjust the product mix."
+  },
+  "keyThemes": [
+    "Stabilization of GWP growth metrics moving towards improvement",
+    "Solvency ratios remain strong at over 300%",
+    "Focus on profitability and quality insurance book in BAGIC",
+    "Strategic changes in product mix for BALIC to improve profitability"
+  ],
+  "verdictCounts": {
+    "met": 2,
+    "moving": 4,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 3
+  },
+  "onTrackPct": 100
+}

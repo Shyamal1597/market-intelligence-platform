@@ -1,0 +1,29 @@
+{
+  "symbol": "BAJAJFINSV",
+  "sourceQuarter": "Q2-FY26",
+  "verifiedInQuarter": "Q3-FY26",
+  "generatedAt": "2026-05-12T05:46:26.856Z",
+  "model": "qwen2.5:7b",
+  "headline": "Bajaj Finserv delivered strong performance across all major segments, outperforming market expectations on top and bottom lines. However, there are some mixed signals from guidance delivery, particularly in BAGIC's combined ratio and expense ratio.",
+  "segments": {
+    "BAGIC": "Despite the healthy GWP growth of 11.5%, the combined ratio for Bajaj General Insurance stood at a very healthy 97.9% for Q3-FY26, outperforming expectations. The adjusted PAT before the impact of new Labor Code grew by 8%. AUM increased by almost 12%.",
+    "BALIC": "Bajaj Life Insurance saw significant growth in VNB and NBM margins, with a 59% increase in VNB to INR 405 crores. The GWP for the quarter grew at a healthy 23.5%. AUM increased by about 13.1%.",
+    "BFL": "Bajaj Finance reported robust performance across business volumes, AUM, and profitability. AUM growth was strong at 22.1%, with net total income growing by 19%. The profit after tax before the impact of new labor codes grew by 23.3%.",
+    "Consolidated": "The consolidated revenue grew by 24% to INR 39,708 crores versus INR 32,042 crores for the same quarter last year. The consolidated profit after tax before accelerated ECL provision of BFL and one-time charge of new Labor Code grew by 32% to about INR 2,936 crores.",
+    "Other": "Bajaj Finserv Health saw a healthy revenue growth of 22%. Bajaj Markets experienced a planned de-growth in top line due to software migration but is expected to resume growth from Q4 onwards."
+  },
+  "keyThemes": [
+    "Strong performance across all major segments",
+    "Mixed signals on guidance delivery, particularly in BAGIC's combined ratio and expense ratio",
+    "Sustainable and profitable growth trajectory for Bajaj Life Insurance",
+    "Robust AUM growth and profitability for Bajaj Finance"
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 3,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 5
+  },
+  "onTrackPct": 100
+}

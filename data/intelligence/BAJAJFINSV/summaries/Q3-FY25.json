@@ -1,0 +1,26 @@
+{
+  "symbol": "BAJAJFINSV",
+  "sourceQuarter": "Q3-FY25",
+  "verifiedInQuarter": "Q3-FY26",
+  "generatedAt": "2026-05-12T05:46:57.491Z",
+  "model": "qwen2.5:7b",
+  "headline": "BAJAJFINSV delivered strong performance across segments, with BAGIC and BALIC showing resilience despite industry pressures.",
+  "segments": {
+    "BAGIC": "BAGIC's combined ratio improved to 101.1% from 102.9%, moving down from the previous quarter and excluding one-time impacts, COR stood at 100.2%. GWP growth was 6% excluding volatile businesses.",
+    "BALIC": "BALIC saw VNB margin improve significantly with a 59% increase to INR405 crores, and NBM up to 19%. Renewal premium grew by 24%, leading to GWP growth of 16%."
+  },
+  "keyThemes": [
+    "Solvency ratios remain strong at over 300% for both insurance subsidiaries.",
+    "Focus on sustainable and profitable growth in BALIC with changes in product mix and distribution arrangements.",
+    "Robust performance from BFL, with AUM up by 26%, net income up by 26%, and ROE of 19.08%.",
+    "Long-term commitment to maintaining disciplined underwriting and risk selection across all segments."
+  ],
+  "verdictCounts": {
+    "met": 0,
+    "moving": 7,
+    "miss": 0,
+    "pending": 0,
+    "ambiguous": 0
+  },
+  "onTrackPct": 100
+}
