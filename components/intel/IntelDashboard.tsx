@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { sortQuarters } from "@/lib/intel/uiHelpers";
+import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
 import type { EnrichedClaim } from "./ClaimRow";
@@ -20,6 +20,7 @@ interface IntelData {
 }
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
+const MAX_COLUMNS = 4;
 
 export function IntelDashboard() {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
@@ -29,6 +30,7 @@ export function IntelDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, QuarterSummary | null>>({});
   const [summariesLoading, setSummariesLoading] = useState(false);
+  const [selectedQuarters, setSelectedQuarters] = useState<string[]>([]);
 
   // Load company list
   useEffect(() => {
@@ -44,6 +46,7 @@ export function IntelDashboard() {
     setError(null);
     setData(null);
     setSummaries({});
+    setSelectedQuarters([]); // reset; auto-picked once quarters load
 
     fetch(`/api/intel/${sym}`)
       .then(async (r) => {
@@ -79,11 +82,34 @@ export function IntelDashboard() {
 
   useEffect(() => { loadSymbol(selectedSymbol); }, [selectedSymbol, loadSymbol]);
 
-  // Quarters sorted newest-first (matrix columns left → right)
+  // Quarters sorted newest-first
   const sortedQuarters = useMemo(() => {
     if (!data) return [];
     return [...sortQuarters(Object.keys(data.byQuarter))].reverse();
   }, [data]);
+
+  // Auto-select 2 most recent once quarters are available (after a symbol switch)
+  useEffect(() => {
+    setSelectedQuarters((current) =>
+      current.length === 0 && sortedQuarters.length > 0
+        ? sortedQuarters.slice(0, 2)
+        : current
+    );
+  }, [sortedQuarters]);
+
+  const toggleQuarter = (q: string) => {
+    setSelectedQuarters((prev) => {
+      if (prev.includes(q)) {
+        // Always keep at least 1 column selected
+        return prev.length > 1 ? prev.filter((x) => x !== q) : prev;
+      }
+      if (prev.length >= MAX_COLUMNS) return prev; // cap reached
+      // Maintain newest-first order
+      return [...prev, q].sort(
+        (a, b) => sortedQuarters.indexOf(a) - sortedQuarters.indexOf(b)
+      );
+    });
+  };
 
   // Unique segments in appearance order
   const segments = useMemo(() => {
@@ -100,8 +126,9 @@ export function IntelDashboard() {
   }, [data]);
 
   return (
-    <div className="space-y-5">
-      {/* Company selector */}
+    <div className="space-y-4">
+
+      {/* ── Company selector ── */}
       <div className="flex flex-wrap gap-2">
         {companies.map((c) => {
           const isSelected = c.symbol === selectedSymbol;
@@ -127,7 +154,7 @@ export function IntelDashboard() {
               )}
               {onTrackPct !== null && (
                 <span className={`text-[10px] font-bold ${
-                  isSelected     ? "text-teal"
+                  isSelected        ? "text-teal"
                   : onTrackPct >= 70 ? "text-teal"
                   : onTrackPct >= 40 ? "text-amber"
                   : "text-danger"
@@ -157,16 +184,55 @@ export function IntelDashboard() {
 
       {!loading && !error && data && (
         <>
+          {/* ── Quarter picker ── */}
+          <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-border/40">
+            <span className="text-[10px] font-mono text-muted uppercase tracking-widest shrink-0">
+              Compare
+            </span>
+
+            {sortedQuarters.map((q) => {
+              const isActive = selectedQuarters.includes(q);
+              const atMax = !isActive && selectedQuarters.length >= MAX_COLUMNS;
+              return (
+                <button
+                  key={q}
+                  onClick={() => toggleQuarter(q)}
+                  disabled={atMax}
+                  title={atMax ? `Max ${MAX_COLUMNS} columns` : undefined}
+                  className={`px-2.5 py-1 rounded border text-xs font-mono transition-colors ${
+                    isActive
+                      ? "border-amber/50 bg-amber/10 text-amber"
+                      : atMax
+                      ? "border-border/20 text-muted/25 cursor-not-allowed"
+                      : "border-border bg-surface text-muted hover:text-primary hover:border-amber/30"
+                  }`}
+                >
+                  {quarterDisplay(q)}
+                </button>
+              );
+            })}
+
+            <span className="text-[10px] font-mono text-muted/40 ml-1">
+              {selectedQuarters.length}/{MAX_COLUMNS} shown
+            </span>
+
+            {summariesLoading && (
+              <span className="text-[10px] font-mono text-amber/50 ml-auto">
+                loading summaries…
+              </span>
+            )}
+          </div>
+
+          {/* ── Meta line ── */}
           <div className="flex flex-wrap gap-3 text-[10px] font-mono text-muted">
             <span>{data.model}</span>
-            {summariesLoading && <span className="text-amber/60">loading summaries…</span>}
             {!data.hasChecks && (
               <><span>·</span><span className="text-amber">cross-checks pending</span></>
             )}
           </div>
 
           <IntelMatrix
-            quarters={sortedQuarters}
+            quarters={selectedQuarters}
             summaries={summaries}
             segments={segments}
             byQuarter={data.byQuarter}
