@@ -16,6 +16,7 @@ interface Props {
   byQuarter: Record<string, EnrichedClaim[]>;
   sourceQuarter: string;
   registry: Array<{ key: string; label: string; unit: string; segment: string }>;
+  defaultOpen?: boolean;
 }
 
 function VerdictPills({ claims }: { claims: EnrichedClaim[] }) {
@@ -36,8 +37,8 @@ function VerdictPills({ claims }: { claims: EnrichedClaim[] }) {
   );
 }
 
-export function SegmentCard({ segment, note, claims, byQuarter, sourceQuarter, registry }: Props) {
-  const [open, setOpen] = useState(false);
+export function SegmentCard({ segment, note, claims, byQuarter, sourceQuarter, registry, defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [filters, setFilters] = useState<IntelFilters>({
     quarter: null, status: "all", segment: null, metric: null, search: "",
   });
