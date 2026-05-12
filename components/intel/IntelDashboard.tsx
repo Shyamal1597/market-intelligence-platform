@@ -14,6 +14,7 @@ interface IntelData {
   generatedAt: string;
   hasChecks: boolean;
   registry: Array<{ key: string; label: string; unit: string; segment: string }>;
+  segmentDescriptions: Record<string, string>;
   byQuarter: Record<string, EnrichedClaim[]>;
   warnings: string[];
 }
@@ -170,6 +171,7 @@ export function IntelDashboard() {
             segments={segments}
             byQuarter={data.byQuarter}
             registry={data.registry}
+            segmentDescriptions={data.segmentDescriptions}
           />
 
           {data.warnings.length > 0 && (

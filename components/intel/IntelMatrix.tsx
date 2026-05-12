@@ -13,6 +13,8 @@ interface Props {
   segments: string[];
   byQuarter: Record<string, EnrichedClaim[]>;
   registry: Array<{ key: string; label: string; unit: string; segment: string }>;
+  /** Maps short segment key (e.g. "BAGIC") to full human-readable name. */
+  segmentDescriptions?: Record<string, string>;
 }
 
 /** Split LLM prose into bullet sentences for display. */
@@ -33,7 +35,7 @@ function VerdictChips({ counts }: { counts: QuarterSummary["verdictCounts"] }) {
   );
 }
 
-export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry }: Props) {
+export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry, segmentDescriptions }: Props) {
   const [expandedCell, setExpandedCell] = useState<{ seg: string; quarter: string } | null>(null);
 
   const getSegClaims = (q: string, seg: string) =>
@@ -94,9 +96,14 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                   <tr className="border-b border-border/50">
                     {/* Segment label — sticky */}
                     <td className="sticky left-0 z-10 bg-surface border-r border-border px-5 py-5 align-top">
-                      <span className="text-sm font-mono font-bold text-amber uppercase tracking-wider">
-                        {seg}
+                      <span className="text-sm font-sans font-bold text-primary block leading-snug">
+                        {segmentDescriptions?.[seg] ?? seg}
                       </span>
+                      {segmentDescriptions?.[seg] && (
+                        <span className="text-[10px] font-mono text-muted mt-0.5 block uppercase tracking-wider">
+                          {seg}
+                        </span>
+                      )}
                     </td>
 
                     {/* Per-quarter cells */}
