@@ -63,9 +63,9 @@ export function quarterDisplay(q: string): string {
 /** Sort quarter labels chronologically. */
 export function sortQuarters(quarters: string[]): string[] {
   return [...quarters].sort((a, b) => {
-    // Parse Q{n}-FY{yy}
-    const [aq, afy] = [parseInt(a[1]), parseInt(a.slice(4))];
-    const [bq, bfy] = [parseInt(b[1]), parseInt(b.slice(4))];
+    // Parse Q{n}-FY{yy} → a[1] = quarter digit, a.slice(5) = year digits
+    const [aq, afy] = [parseInt(a[1]), parseInt(a.slice(5))];
+    const [bq, bfy] = [parseInt(b[1]), parseInt(b.slice(5))];
     return afy !== bfy ? afy - bfy : aq - bq;
   });
 }
