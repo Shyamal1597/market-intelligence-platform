@@ -1,5 +1,9 @@
 {
   "sector": "bank",
+  "segmentDescriptions": {
+    "Whole Bank": "HDFC Bank — Overall",
+    "Retail": "Retail Banking"
+  },
   "metrics": [
     {
       "key": "nim",
@@ -180,6 +184,36 @@
       "excel": { "sheet": "Supplemental", "rowLabelMatch": ["branches", "branch count"] },
       "aliases": ["branches", "branch network", "outlets"],
       "description": "Total number of bank branches at quarter-end."
+    },
+    {
+      "key": "cd_ratio",
+      "label": "Credit-to-Deposit Ratio",
+      "unit": "%",
+      "direction": "lower-is-better",
+      "segment": "Whole Bank",
+      "excel": { "sheet": "Supplemental", "rowLabelMatch": ["credit deposit", "CD ratio", "loan deposit"] },
+      "aliases": ["CD ratio", "credit-deposit ratio", "loan-to-deposit ratio", "LDR"],
+      "description": "Gross advances as a share of total deposits. HDFC has been actively guiding this ratio down post-merger."
+    },
+    {
+      "key": "lcr",
+      "label": "Liquidity Coverage Ratio",
+      "unit": "%",
+      "direction": "higher-is-better",
+      "segment": "Whole Bank",
+      "excel": { "sheet": "Supplemental", "rowLabelMatch": ["liquidity coverage", "LCR"] },
+      "aliases": ["LCR", "liquidity coverage ratio"],
+      "description": "High-quality liquid assets as a multiple of net cash outflows over 30 days. Regulatory minimum is 100%."
+    },
+    {
+      "key": "contingent_provisions",
+      "label": "Contingent Provisions",
+      "unit": "Cr",
+      "direction": "neutral",
+      "segment": "Whole Bank",
+      "excel": { "sheet": "Supplemental", "rowLabelMatch": ["contingent provision", "floating provision", "buffer provision"] },
+      "aliases": ["contingent provisions", "floating provisions", "buffer provisions", "management overlay"],
+      "description": "Discretionary provisions held above minimum regulatory requirements as a risk buffer. Management guides on build/release decisions."
     }
   ]
 }

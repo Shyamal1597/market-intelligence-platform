@@ -1,5 +1,12 @@
 {
   "sector": "insurance-holding",
+  "segmentDescriptions": {
+    "BAGIC": "Bajaj Allianz General Insurance",
+    "BALIC": "Bajaj Allianz Life Insurance",
+    "BFL": "Bajaj Finance",
+    "Consolidated": "Bajaj Finserv (Consolidated)",
+    "Other": "Other"
+  },
   "metrics": [
     {
       "key": "bagic_combined_ratio",
@@ -52,6 +59,16 @@
       "description": "Profit after tax for Bajaj Allianz General Insurance."
     },
     {
+      "key": "bagic_roe",
+      "label": "BAGIC Return on Equity",
+      "unit": "%",
+      "direction": "higher-is-better",
+      "segment": "BAGIC",
+      "excel": { "sheet": "Ratios", "rowLabelMatch": ["BAGIC ROE", "return on equity"] },
+      "aliases": ["BAGIC ROE", "general insurance ROE", "return on equity"],
+      "description": "Return on equity for Bajaj Allianz General Insurance. Management explicitly targets ROE above 22%."
+    },
+    {
       "key": "balic_nbp_growth",
       "label": "BALIC New Business Premium Growth",
       "unit": "%",
@@ -90,6 +107,16 @@
       "excel": { "sheet": "Supplemental", "rowLabelMatch": ["persistency 61", "61 month persistency"] },
       "aliases": ["61-month persistency", "61M persistency", "5-year persistency"],
       "description": "Share of policies still in force 61 months after issuance."
+    },
+    {
+      "key": "balic_pat",
+      "label": "BALIC Profit After Tax",
+      "unit": "Cr",
+      "direction": "higher-is-better",
+      "segment": "BALIC",
+      "excel": { "sheet": "Segments", "rowLabelMatch": ["BALIC PAT", "BALIC profit", "life insurance profit"] },
+      "aliases": ["BALIC PAT", "BALIC profit", "life insurance PAT"],
+      "description": "Profit after tax for Bajaj Allianz Life Insurance."
     },
     {
       "key": "balic_aum",
@@ -140,6 +167,56 @@
       "excel": { "sheet": "Supplemental", "rowLabelMatch": ["gross NPA", "GNPA"] },
       "aliases": ["GNPA", "gross NPA", "gross non-performing assets"],
       "description": "Gross non-performing assets as a share of total advances at BFL."
+    },
+    {
+      "key": "bfl_net_npa",
+      "label": "BFL Net NPA",
+      "unit": "%",
+      "direction": "lower-is-better",
+      "segment": "BFL",
+      "excel": { "sheet": "Supplemental", "rowLabelMatch": ["net NPA", "NNPA"] },
+      "aliases": ["NNPA", "net NPA", "net non-performing assets"],
+      "description": "Net non-performing assets after provisions, as a share of net advances at BFL."
+    },
+    {
+      "key": "bfl_pat",
+      "label": "BFL Profit After Tax",
+      "unit": "Cr",
+      "direction": "higher-is-better",
+      "segment": "BFL",
+      "excel": { "sheet": "Segments", "rowLabelMatch": ["BFL PAT", "BFL profit", "Bajaj Finance PAT"] },
+      "aliases": ["BFL PAT", "Bajaj Finance profit", "BFL net profit"],
+      "description": "Profit after tax for Bajaj Finance Limited."
+    },
+    {
+      "key": "bfl_roa",
+      "label": "BFL Return on Assets",
+      "unit": "%",
+      "direction": "higher-is-better",
+      "segment": "BFL",
+      "excel": { "sheet": "Ratios", "rowLabelMatch": ["BFL ROA", "return on assets"] },
+      "aliases": ["BFL ROA", "return on assets", "ROA"],
+      "description": "Annualised net profit as a share of average total assets at BFL."
+    },
+    {
+      "key": "bfl_roe",
+      "label": "BFL Return on Equity",
+      "unit": "%",
+      "direction": "higher-is-better",
+      "segment": "BFL",
+      "excel": { "sheet": "Ratios", "rowLabelMatch": ["BFL ROE", "return on equity"] },
+      "aliases": ["BFL ROE", "return on equity", "ROE"],
+      "description": "Annualised net profit as a share of average shareholders' equity at BFL."
+    },
+    {
+      "key": "bfl_cost_to_income",
+      "label": "BFL Cost-to-Income",
+      "unit": "%",
+      "direction": "lower-is-better",
+      "segment": "BFL",
+      "excel": { "sheet": "Ratios", "rowLabelMatch": ["cost to income", "opex ratio"] },
+      "aliases": ["cost to income", "C/I ratio", "opex ratio", "operating efficiency"],
+      "description": "Operating expenses as a share of net total income at BFL."
     },
     {
       "key": "consol_revenue",
