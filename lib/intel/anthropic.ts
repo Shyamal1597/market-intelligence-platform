@@ -69,8 +69,12 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
   if (!block || block.type !== "text") throw new Error("Anthropic response had no text block");
   let parsed: T;
   try {
-    // Strip markdown code fences if the model wraps its JSON in them
-    const raw = block.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    // Extract JSON object from response — strip preamble text, markdown fences
+    let raw = block.text.trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    // If model wrote text before the JSON, find the first '{'
+    const jsonStart = raw.indexOf("{");
+    if (jsonStart > 0) raw = raw.slice(jsonStart);
     parsed = JSON.parse(raw) as T;
   } catch {
     throw new Error(`Anthropic returned non-JSON: ${block.text.slice(0, 200)}...`);

@@ -20,6 +20,8 @@ export interface RegistryMetric {
 export interface SectorRegistry {
   sector: SectorKey;
   metrics: RegistryMetric[];
+  /** Human-readable full names for each segment key, e.g. "BAGIC" → "Bajaj Allianz General Insurance" */
+  segmentDescriptions?: Record<string, string>;
 }
 
 // ── Fundamentals (Stage 1 output) ───────────────────────────────────────────

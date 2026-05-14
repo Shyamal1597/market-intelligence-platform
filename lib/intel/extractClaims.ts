@@ -44,7 +44,8 @@ FIELD RULES:
 - targetQuarter : resolve to "Q{n}-FY{yy}" if determinable (e.g. "next quarter" from Q1-FY26 → "Q2-FY26"); null for multi-quarter or fiscal-year targets
 - conditional : capture the condition if guidance is explicitly contingent ("if rate cuts materialise")
 
-OUTPUT: a JSON object { "claims": [Claim, ...] }`;
+OUTPUT: Respond ONLY with the JSON object below — no preamble, no explanation, no markdown fences.
+{ "claims": [Claim, ...] }`;
 
   const registryJson = JSON.stringify(
     a.registry.metrics.map((m) => ({
@@ -165,8 +166,14 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
     }
     totalCost += estimateCostUsd(model, result);
 
+    // Normalize: LLM may return "key" instead of "metricKey"
+    const rawClaims = (result.data.claims ?? []).map((c: any) => {
+      if (!c.metricKey && c.key) { c.metricKey = c.key; delete c.key; }
+      return c;
+    });
+
     // Deduplicate before validation
-    const deduped = deduplicateClaims(result.data.claims ?? []);
+    const deduped = deduplicateClaims(rawClaims);
 
     const accepted: ExtractedClaim[] = [];
     let n = 0;

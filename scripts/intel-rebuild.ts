@@ -62,7 +62,7 @@ function parseArgs() {
     stage: flags.stage ? parseInt(flags.stage as string) : null,
     force: flags.force === true,
     all: flags.all === true,
-    onlyQuarter: flags.only as string | undefined,
+    onlyQuarters: flags.only ? (flags.only as string).split(",") : undefined,
     costCap: flags["cost-cap"] ? parseFloat(flags["cost-cap"] as string) : 10,
     dryRun: flags["dry-run"] === true,
   };
@@ -196,7 +196,7 @@ async function runStage3(
     transcriptsDir: paths.transcripts,
     outFile: paths.claims,
     registryHash: registryHash(reg),
-    onlyQuarters: opts.onlyQuarter ? [opts.onlyQuarter] : undefined,
+    onlyQuarters: opts.onlyQuarters,
   });
   totalCost.v += r.totalCostUsd;
 
@@ -248,7 +248,7 @@ async function runStage4(
     registry: reg,
     outFile: paths.checks,
     claimsHashValue: cHash,
-    onlyQuarters: opts.onlyQuarter ? [opts.onlyQuarter] : undefined,
+    onlyQuarters: opts.onlyQuarters,
   });
   totalCost.v += r.totalCostUsd;
 
