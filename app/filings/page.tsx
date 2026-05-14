@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { ExternalLink, FileText } from "lucide-react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { ExternalLink, FileText, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { expandSearch } from "@/lib/nse-aliases";
 import type { FilingCategory } from "@/lib/nse-filings";
 
 interface Filing {
@@ -36,6 +37,7 @@ const CATEGORIES = [
 export default function FilingsPage() {
   const [filings, setFilings] = useState<Filing[]>([]);
   const [filter, setFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const prevIds = useRef<Set<string>>(new Set());
@@ -74,8 +76,18 @@ export default function FilingsPage() {
     return () => clearTimeout(t);
   }, [newIds]);
 
-  const visible =
-    filter === "all" ? filings : filings.filter((f) => f.category === filter);
+  // Search filter — uses alias expansion for ticker → company name matching
+  const searchFiltered = useMemo(() => {
+    if (!searchTerm.trim()) return null;
+    const terms = expandSearch(searchTerm);
+    return filings.filter((f) => {
+      const haystack = (f.company + " " + f.scripCode + " " + f.description + " " + f.filingType).toLowerCase();
+      return terms.some((t) => haystack.includes(t));
+    });
+  }, [searchTerm, filings]);
+
+  // When searching, show search results; otherwise apply category filter
+  const visible = searchFiltered ?? (filter === "all" ? filings : filings.filter((f) => f.category === filter));
 
   return (
     <div className="p-6">
@@ -95,22 +107,57 @@ export default function FilingsPage() {
         </p>
       </div>
 
-      {/* Category filters */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        {CATEGORIES.map((c) => (
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+        <input
+          type="text"
+          placeholder="Search by company name or ticker — e.g. Reliance, SBI, INFY…"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-10 py-2.5 bg-surface border border-border rounded-lg text-sm text-primary placeholder:text-muted focus:outline-none focus:border-amber/40 transition-colors"
+        />
+        {searchTerm && (
           <button
-            key={c.key}
-            onClick={() => setFilter(c.key)}
-            className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
-              filter === c.key
-                ? "bg-amber/10 text-amber border-amber/40"
-                : "bg-surface text-muted border-[#1E2235] hover:text-primary hover:border-[#2A2D42]"
-            }`}
+            onClick={() => setSearchTerm("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors"
           >
-            {c.label.toUpperCase()}
+            <X className="w-4 h-4" />
           </button>
-        ))}
+        )}
       </div>
+
+      {/* Search results header or category filters */}
+      {searchFiltered !== null ? (
+        <div className="flex items-center gap-3 mb-6">
+          <p className="text-sm text-muted font-sans">
+            <span className="text-primary font-medium">{searchFiltered.length}</span> results for{" "}
+            <span className="text-amber font-mono">&ldquo;{searchTerm}&rdquo;</span>
+          </p>
+          <button
+            onClick={() => setSearchTerm("")}
+            className="text-xs font-mono text-muted hover:text-amber transition-colors underline underline-offset-2"
+          >
+            Clear search
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2 mb-8">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setFilter(c.key)}
+              className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
+                filter === c.key
+                  ? "bg-amber/10 text-amber border-amber/40"
+                  : "bg-surface text-muted border-[#1E2235] hover:text-primary hover:border-[#2A2D42]"
+              }`}
+            >
+              {c.label.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filings list */}
       {loading ? (

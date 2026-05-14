@@ -12,7 +12,7 @@ export default function PortfolioPage() {
   const effectiveName   = searchFocused ? null : (selected?.name   ?? null);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-base fixed inset-0 z-10">
+    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-base">
       <PortfolioSidebar
         selected={selected?.symbol ?? null}
         onSelect={(symbol, name) => setSelected({ symbol, name })}

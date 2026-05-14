@@ -95,7 +95,7 @@ export default function NewsPage() {
             Market News
           </h1>
           <p className="text-muted text-sm mt-1 font-mono">
-            {filtered.length} stories · auto-refreshes every 30 min
+            {filtered.length} stories · auto-refreshes every 10 min
           </p>
         </div>
         <button
