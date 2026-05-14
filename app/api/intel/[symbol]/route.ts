@@ -94,6 +94,7 @@ export async function GET(
     registry:     registry.metrics.map((m) => ({
       key: m.key, label: m.label, unit: m.unit, segment: m.segment,
     })),
+    segmentDescriptions: registry.segmentDescriptions ?? {},
     byQuarter:    enriched,
     warnings:     [
       ...claims.warnings,

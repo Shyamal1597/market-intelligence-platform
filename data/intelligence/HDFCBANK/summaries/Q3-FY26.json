@@ -2,25 +2,24 @@
   "symbol": "HDFCBANK",
   "sourceQuarter": "Q3-FY26",
   "verifiedInQuarter": "Q4-FY26",
-  "generatedAt": "2026-05-12T05:48:43.492Z",
-  "model": "qwen2.5:7b",
-  "headline": "HDFCBANK delivered on most of its guidance for Whole Bank and Retail segments, with some mixed results on advance growth expectations.",
+  "generatedAt": "2026-05-14T06:56:27.905Z",
+  "model": "claude-sonnet-4-6",
+  "headline": "HDFC Bank delivered on its FY26 CD ratio glide path with deposit growth of 14.4% outpacing credit growth of 12%, and management has explicitly declared the loan-deposit ratio is no longer a binding constraint. NIM improvement remains a work-in-progress as cost-of-funds repricing tailwinds were offset by faster asset yield transmission, while the LCR guidance outcome is inconclusive given absence of explicit commentary on the new April 2026 regulatory guidelines.",
   "segments": {
-    "Whole Bank": "Advance growth (YoY) fell short of strong ambitions but is expected to improve in the next quarter. Cost-to-Income Ratio and CASA Ratio were under control as productivity improvements brought in efficiencies.",
-    "Retail": "Retail share of advances grew, contributing to overall growth momentum."
+    "Whole Bank": "CD ratio guidance met: deposit growth (14.4%) exceeded credit growth (12%) for FY26, consistent with the guided 90–96% range, and management confirmed the downward glide path toward 85–90% for FY27 remains intact with LDR explicitly called out as 'not a constraint.' NIM guidance is still moving in the right direction — residual time deposit repricing (5–6 quarter lag) continues to flow through — but full NIM recovery has not materialized as asset yield transmission ran faster than liability repricing, keeping NIM range-bound. LCR sits at 114%, within management's stated 110–120% operating band, but the impact of the April 2026 revised LCR guidelines was not addressed on the call, leaving the 'no material change' Q3 guidance unverified. Advance growth guidance of 'a couple of percentage points above system' for FY27 remains pending, with FY26 actual of 12% landing broadly in line with system (13.5–13.9% per RBI data) rather than ahead of it."
   },
   "keyThemes": [
-    "Sustained retail growth",
-    "Focus on granular deposits",
-    "Maintaining cost efficiency",
-    "Positive outlook for loan growth"
+    "NIM trajectory: residual time deposit repricing still flowing through but pace of NIM recovery contingent on rate cycle direction and asset yield stabilization — watch Q1-FY27 NIM for inflection",
+    "Advance growth execution: FY26 credit growth of 12% was in line with, not ahead of, system; management must demonstrate the promised above-system growth in FY27 amid geopolitical headwinds",
+    "LCR regulatory risk: new April 2026 LCR guidelines were not addressed on the Q4 call — any adverse impact on the 110–120% operating band needs clarification in Q1-FY27",
+    "Deposit franchise quality: granular retail time deposits (<INR 3 crore) rose from 31% to 47% of net incremental deposits — sustaining this mix improvement is critical to funding cost and LDR glide path credibility"
   ],
   "verdictCounts": {
-    "met": 0,
-    "moving": 0,
+    "met": 1,
+    "moving": 1,
     "miss": 0,
-    "pending": 0,
-    "ambiguous": 14
+    "pending": 1,
+    "ambiguous": 1
   },
-  "onTrackPct": 0
+  "onTrackPct": 100
 }

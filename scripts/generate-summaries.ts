@@ -43,7 +43,7 @@ function parseArgs() {
     symbol: positional[0] ?? null,
     force: flags.force === true,
     all: flags.all === true,
-    onlyQuarter: flags.only as string | undefined,
+    onlyQuarters: flags.only ? (flags.only as string).split(",") : undefined,
   };
 }
 
@@ -109,7 +109,7 @@ function primaryVerifiedQuarter(
     const quarters = Object.keys(claims.byQuarter).sort();
 
     for (const sourceQ of quarters) {
-      if (opts.onlyQuarter && opts.onlyQuarter !== sourceQ) continue;
+      if (opts.onlyQuarters && !opts.onlyQuarters.includes(sourceQ)) continue;
 
       const outFile = path.join(summariesDir, `${sourceQ}.json`);
       if (!opts.force && existsSync(outFile)) {

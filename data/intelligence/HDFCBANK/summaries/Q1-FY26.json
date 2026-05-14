@@ -1,26 +1,25 @@
 {
   "symbol": "HDFCBANK",
   "sourceQuarter": "Q1-FY26",
-  "verifiedInQuarter": "Q4-FY26",
-  "generatedAt": "2026-05-12T05:48:00.908Z",
-  "model": "qwen2.5:7b",
-  "headline": "HDFCBANK delivered on advance growth expectations for Q1-FY26, with credit cost remaining stable and asset quality maintaining its healthy position.",
+  "verifiedInQuarter": "Q2-FY26",
+  "generatedAt": "2026-05-14T06:55:53.080Z",
+  "model": "claude-sonnet-4-6",
+  "headline": "HDFC Bank delivered mixed guidance outcomes in Q2-FY26: contingent provisions were built as directed (+Rs.1,600 crores), but NIM compressed a further 8 bps rather than stabilizing, advance growth of 12% in FY26 came in below the system rate of ~13.5-13.9%, and cost-to-income improvement remains a forward commitment without confirmed execution. The CD ratio glide path and FY27 above-system growth targets remain live but unresolved.",
   "segments": {
-    "Whole Bank": "Credit costs remained stable excluding agriculture, as guided, but NPA levels showed a slight increase from the previous quarter. Advance growth was in line with guidance at 12%, higher than the system growth rate of 5.4% to 10.5%. CASA ratio and deposit growth were strong, reflecting management's focus on granular deposits.",
-    "Retail": "Retail share of advances increased, contributing to overall growth momentum."
+    "Whole Bank": "Contingent provisions were increased to above 57 bps of loans (guidance: met), but NIM compressed 8 bps due to front-loaded rate cuts on assets — management now guides exit NIM to move up over the next 4-5 quarters as deposit repricing tailwinds play out (guidance: moving). Advance growth of 12% in FY26 fell short of the guided system-rate target (~13.5-13.9%), though management reaffirmed above-system growth ambition for FY27 with caveats on geopolitical uncertainty (guidance: moving). Cost-to-income improvement was described as a medium-to-long-term operating leverage story with no confirmed ratio reduction this quarter (guidance: moving). CD ratio target of 85-90 in the medium term remains pending with no Q2-FY27 data available."
   },
   "keyThemes": [
-    "Stable credit costs excluding agriculture",
-    "Healthy asset quality with continued focus on granular deposits",
-    "Strong advance growth above system growth rate",
-    "Increased retail share of advances"
+    "NIM trajectory: deposit repricing tailwind has 4-5 quarters to run; any additional RBI rate cuts would reset the clock and pressure exit NIM guidance",
+    "Loan growth execution: FY27 above-system growth commitment is the key credibility test — watch Q1-FY27 disbursals across retail, MSME, and corporate segments for early confirmation",
+    "CD ratio management: incremental credit demand in Q2-FY26 pushed LDR higher sequentially; management must balance growth acceleration against the 85-90 medium-term CD ratio target",
+    "Contingent provision buffer and capital deployment: CET1 is elevated, contingent provisions are at record levels — capital allocation optionality (buybacks, accelerated growth, M&A) will be a recurring investor focus in FY27"
   ],
   "verdictCounts": {
-    "met": 0,
-    "moving": 2,
+    "met": 1,
+    "moving": 3,
     "miss": 0,
-    "pending": 0,
-    "ambiguous": 10
+    "pending": 1,
+    "ambiguous": 0
   },
   "onTrackPct": 100
 }
