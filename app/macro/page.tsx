@@ -14,15 +14,9 @@ interface Quote {
 }
 
 const INDIA_MACRO = [
-  { label: "RBI Repo Rate", value: "6.50%", note: "As of Feb 2025" },
-  { label: "CPI Inflation", value: "5.22%", note: "Jan 2026" },
-  { label: "IIP Growth", value: "3.8%", note: "Nov 2025" },
-];
-
-const GLOBAL_MACRO = [
-  { label: "US 10Y Yield", value: "4.42%", note: "Approx — check FRED" },
-  { label: "DXY (Dollar Index)", value: "107.2", note: "Approx — check Bloomberg" },
-  { label: "CBOE VIX", value: "16.8", note: "Approx — check CBOE" },
+  { label: "RBI Repo Rate", value: "5.50%", note: "As of May 2026" },
+  { label: "CPI Inflation", value: "3.16%", note: "Apr 2026 (verify MOSPI)" },
+  { label: "IIP Growth", value: "4.2%", note: "Mar 2026 (verify MOSPI)" },
 ];
 
 // ── Groups for the live terminal ───────────────────────────────────────────────
@@ -30,11 +24,13 @@ const LIVE_GROUPS: Record<string, string[]> = {
   India:       ["^NSEI", "^BSESN", "^NSEBANK", "^INDIAVIX"],
   Commodities: ["BZ=F", "GOLD_INR", "SILVER_INR"],
   FX:          ["INR=X"],
+  Global:      ["^TNX", "DX-Y.NYB", "^VIX"],
 };
 
 function fmtPrice(price: number, symbol: string): string {
   if (symbol === "INR=X") return price.toFixed(4);
-  if (symbol === "^INDIAVIX") return price.toFixed(2);
+  if (symbol === "^INDIAVIX" || symbol === "^VIX" || symbol === "^TNX") return price.toFixed(2);
+  if (symbol === "DX-Y.NYB") return price.toFixed(2);
   if (symbol === "BZ=F") return "$" + price.toFixed(2);
   if (["GOLD_INR", "SILVER_INR"].includes(symbol))
     return "\u20B9" + Math.round(price).toLocaleString("en-IN");
@@ -188,20 +184,7 @@ export default function MacroPage() {
           </div>
         </div>
 
-        <div className="bg-surface-raised border border-[#1E2235] rounded-xl p-6">
-          <h2 className="font-display text-xl font-semibold text-primary mb-5">Global Indicators</h2>
-          <div className="divide-y divide-[#1E2235]">
-            {GLOBAL_MACRO.map((m) => (
-              <div key={m.label} className="flex items-center justify-between py-4">
-                <div>
-                  <p className="text-sm text-primary font-sans">{m.label}</p>
-                  <p className="text-xs text-muted font-mono mt-0.5">{m.note}</p>
-                </div>
-                <span className="font-mono text-xl font-semibold text-teal">{m.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Global indicators (US 10Y, DXY, VIX) now in the live terminal above */}
       </div>
     </div>
   );

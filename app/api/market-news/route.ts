@@ -146,8 +146,16 @@ export async function GET(request: NextRequest) {
 
     const newsData = await getNews();
 
-    // Auto-populate if store is nearly empty — fire-and-forget, don't block response
-    if (newsData.news.length < 50) {
+    // Auto-refresh if store is stale (>10 min) or nearly empty — fire-and-forget
+    let shouldRefresh = newsData.news.length < 50;
+    if (!shouldRefresh) {
+      try {
+        const { stat } = await import("fs/promises");
+        const s = await stat(NEWS_FILE);
+        shouldRefresh = Date.now() - s.mtimeMs > 10 * 60 * 1000;
+      } catch {}
+    }
+    if (shouldRefresh) {
       fetch(`${request.nextUrl.origin}/api/fetch-market-news`).catch(() => {});
     }
 

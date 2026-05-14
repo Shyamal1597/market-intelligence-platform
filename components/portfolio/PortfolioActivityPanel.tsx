@@ -54,24 +54,26 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string | null
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filingsTab, setFilingsTab] = useState("all");
   const [dealsTab, setDealsTab] = useState("all");
 
   useEffect(() => {
-    setActivity(null); setQuote(null); setLoading(true);
+    setActivity(null); setQuote(null); setLoading(true); setError(null);
     if (symbol) {
       Promise.all([
-        fetch(`/api/portfolio/${symbol}/activity`).then((r) => r.json()),
+        fetch(`/api/portfolio/${symbol}/activity`).then((r) => { if (!r.ok) throw new Error("Failed to load activity"); return r.json(); }),
         fetch(`/api/quote/${symbol}`).then((r) => (r.ok ? r.json() : null)),
       ]).then(([activityData, quoteData]) => {
         setActivity(activityData as ActivityData);
         setQuote(quoteData as Quote | null);
         setLoading(false);
-      });
+      }).catch((e) => { setError((e as Error).message); setLoading(false); });
     } else {
-      fetch("/api/portfolio/general/activity").then((r) => r.json()).then((data) => {
-        setActivity(data as ActivityData); setLoading(false);
-      });
+      fetch("/api/portfolio/general/activity")
+        .then((r) => { if (!r.ok) throw new Error("Failed to load activity feed"); return r.json(); })
+        .then((data) => { setActivity(data as ActivityData); setLoading(false); })
+        .catch((e) => { setError((e as Error).message); setLoading(false); });
     }
   }, [symbol]);
 
@@ -90,6 +92,18 @@ export function PortfolioActivityPanel({ symbol, name }: { symbol: string | null
     dealsTab === "SHORT" ? shortDeals :
     [...bulkDeals, ...blockDeals, ...shortDeals];
   const totalDealsCount = bulkDeals.length + blockDeals.length + shortDeals.length;
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-danger text-sm font-mono mb-2">Failed to load</p>
+          <p className="text-muted text-xs">{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 text-xs text-amber hover:underline font-mono">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">

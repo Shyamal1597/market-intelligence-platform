@@ -4,15 +4,12 @@ import { DashboardFilings } from "@/components/dashboard/DashboardFilings";
 import { DashboardDataPreview } from "@/components/dashboard/DashboardDataPreview";
 import { SectorLeadersPreview } from "@/components/dashboard/SectorLeadersPreview";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { SmartMoneyWidget } from "@/components/dashboard/SmartMoneyWidget";
-
 export default function DashboardPage() {
   return (
     <div className="p-2 pt-8">
       <DashboardShell>
         {{
           metrics:    <MetricsRow />,
-          smartmoney: <SmartMoneyWidget />,
           news:       <NewsHeadlines />,
           filings:    <DashboardFilings />,
           sectors:    <SectorLeadersPreview />,

@@ -18,6 +18,9 @@ const SYMBOLS: Record<string, string> = {
   "GC=F": "Gold",
   "SI=F": "Silver",
   "INR=X": "USD/INR",
+  "^TNX": "US 10Y Yield",
+  "DX-Y.NYB": "Dollar Index (DXY)",
+  "^VIX": "CBOE VIX",
 };
 
 // ── Global market index symbols ───────────────────────────────────────────────
