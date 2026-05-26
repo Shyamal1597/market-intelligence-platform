@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
           return `${header}\n${h.text}`;
         }).join("\n---\n");
 
-        const systemPrompt = `You are an equity research analyst assistant at Sunidhi Capital.
+        const systemPrompt = `You are an equity research analyst assistant.
 Answer questions based ONLY on the research reports provided below.
 If the answer is not in the reports, say so clearly.
 Be concise. Cite the company and analyst name when referencing a report.

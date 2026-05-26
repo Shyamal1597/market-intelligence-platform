@@ -1,8 +1,8 @@
-# Sunidhi Research Intelligence Platform — Detailed Project Documentation
+# Market Intelligence Platform — Detailed Project Documentation
 
 ## Overview
 
-An internal financial research intelligence platform built for Sunidhi Capital's ~15-person equity research team. Consolidates live market data, derivatives analytics, BSE filing monitoring, AI-powered earnings transcript analysis, and portfolio coverage tracking into a single Bloomberg-style dark terminal interface.
+An internal financial research intelligence platform built for a ~15-person equity research team. Consolidates live market data, derivatives analytics, BSE filing monitoring, AI-powered earnings transcript analysis, and portfolio coverage tracking into a single Bloomberg-style dark terminal interface.
 
 **Built as a solo full-stack developer.** Runs on an internal network with no authentication — designed for air-gapped deployment on a private server managed by IT.
 
@@ -464,7 +464,7 @@ The Intel Dashboard is scaling from 2 stocks to ~100 (NIFTY 50 + NIFTY Next 50) 
 ## Deployment
 
 - **Current:** Dev server on `localhost:3001` via Next.js dev mode
-- **Target:** Private server on Sunidhi Capital's internal network, managed by IT team
+- **Target:** Private server on internal network, managed by IT team
 - **Production build:** `npx next build` generates static + server output
 - **No Docker required** — standard Node.js deployment
 - **Environment:** `.env.local` with `BREEZE_API_KEY`, `BREEZE_SECRET_KEY`, `ANTHROPIC_API_KEY`

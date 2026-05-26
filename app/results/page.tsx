@@ -10,7 +10,7 @@ export default function ResultsPage() {
           Earnings Intelligence
         </h1>
         <p className="text-muted text-sm font-sans mt-1">
-          Sunidhi coverage universe · report history · target price walk · quarterly P&amp;L
+          Coverage universe · report history · target price walk · quarterly P&amp;L
         </p>
       </div>
       <CoverageIntelligence />

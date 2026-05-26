@@ -125,7 +125,7 @@ function applyTheme(state: ThemeState) {
 }
 
 // ── Persistence ────────────────────────────────────────────────────────────────
-const STORAGE_KEY = "sunidhi-theme-v1";
+const STORAGE_KEY = "mip-theme-v1";
 
 type Persisted = Pick<ThemeState, "mode" | "fontSize" | "custom">;
 

@@ -1,14 +1,14 @@
 /**
  * PDF Financials Parser
  *
- * Extracts structured financial data from Sunidhi Research PDF text chunks.
+ * Extracts structured financial data from equity research PDF text chunks.
  * Reports contain 4 parseable table types:
  *  1. Annual P&L rows  — FY\d\d label with values (mid-line due to 2-column PDF layout)
  *  2. Quarterly table  — line containing 3+ Q[1-4]FY\d\d quarter labels
  *  3. Valuations table — "Year End-March" header with FY columns
  *  4. Balance Sheet    — interleaved on same lines as Valuations (last N numbers per line)
  *
- * Note: Sunidhi Research reports use "EBIDTA" (typo) instead of "EBITDA" in places.
+ * Note: Some research reports use "EBIDTA" (typo) instead of "EBITDA" in places.
  */
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ function normFY(base: string, estChar?: string): string {
 
 // ── Annual table ──────────────────────────────────────────────────────────────
 //
-// In Sunidhi Research ICs the annual summary block on the cover page looks like:
+// In research ICs the annual summary block on the cover page looks like:
 //
 //   Financials    Revenues   EBIDTA   PAT   A-EPS   P/E   EV/EBIDTA   RoAE
 //   (mn)          (mn)       (mn)     (₹)   (x)     (x)   (%)

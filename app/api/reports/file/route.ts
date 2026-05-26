@@ -4,7 +4,7 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const REPORTS_BASE = path.resolve("D:\\Sunidhi Intranet\\Research Reports");
+const REPORTS_BASE = path.resolve(process.env.REPORTS_BASE || path.join(process.cwd(), "research-reports"));
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

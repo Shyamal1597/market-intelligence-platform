@@ -14,7 +14,7 @@ export default function ReportsPage() {
         <h1 className="text-2xl font-display text-primary">Research Reports</h1>
         <p className="text-xs font-mono text-muted mt-1">
           RAG search over{" "}
-          <span className="text-amber">161 Sunidhi Capital research PDFs</span>
+          <span className="text-amber">161 research PDFs</span>
           {" "}· powered by llama3.1:8b
         </p>
       </div>

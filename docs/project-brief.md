@@ -1,4 +1,4 @@
-# Sunidhi Research Intelligence Platform — Project Brief
+# Market Intelligence Platform — Project Brief
 
 ## One-Liner
 Real-time internal research intelligence platform for an equity research team, combining live market data, derivatives analytics, BSE filing monitoring, earnings transcript analysis, and portfolio coverage tracking into a single Bloomberg-style dark terminal interface.

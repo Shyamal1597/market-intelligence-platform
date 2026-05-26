@@ -9,7 +9,7 @@ import type { ReportMeta, Chunk } from "./reportTypes";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const REPORTS_BASE = "D:\\Sunidhi Intranet\\Research Reports";
+const REPORTS_BASE = process.env.REPORTS_BASE || path.join(process.cwd(), "research-reports");
 const DATA_DIR = path.join(process.cwd(), "data", "reports");
 const METADATA_PATH = path.join(DATA_DIR, "metadata.json");
 const CHUNKS_PATH = path.join(DATA_DIR, "chunks.json");
@@ -48,8 +48,8 @@ function parseFilename(filename: string, analystFolder: string): Partial<ReportM
 
   const company = typeIdx > 0 ? parts.slice(0, typeIdx).join(" ") : parts[0];
 
-  // Parse date from last segment (e.g. "SunidhiAug25" or "SunidhiQ1FY26")
-  const datePart = parts[parts.length - 1].replace(/^Sunidhi/i, "");
+  // Parse date from last segment (e.g. "Aug25" or "Q1FY26")
+  const datePart = parts[parts.length - 1].replace(/^[A-Za-z]+(?=\w{3}\d{2}$)/i, "");
   let date = "";
   const monthMatch = datePart.match(/([A-Za-z]{3})(\d{2})$/);
   if (monthMatch) {
