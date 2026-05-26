@@ -74,7 +74,11 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
             </>
           ) : (
             <span className="text-xs font-mono text-muted italic self-center mt-2">
-              {verdict === "pending" ? "Awaiting next quarter's results" : "Not discussed in transcript"}
+              {verdict === "pending"
+                ? claim.check?.verifiedInQuarter === "unknown" || !claim.resolvedTargetQuarter
+                  ? "Forward guidance — no target quarter yet"
+                  : "Awaiting next quarter's results"
+                : "Not discussed in transcript"}
             </span>
           )}
         </div>
@@ -118,8 +122,14 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-primary/70 uppercase tracking-wider">{claim.check.verifiedInQuarter}</span>
-                    <span className="text-[10px] font-mono text-muted">Reported actuals</span>
+                    {claim.check.verifiedInQuarter && claim.check.verifiedInQuarter !== "unknown" ? (
+                      <>
+                        <span className="text-[10px] font-mono font-bold text-primary/70 uppercase tracking-wider">{claim.check.verifiedInQuarter}</span>
+                        <span className="text-[10px] font-mono text-muted">Reported actuals</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] font-mono text-muted">Verification pending</span>
+                    )}
                   </div>
                   <StatusBadge status={verdict} size="md" />
                 </div>

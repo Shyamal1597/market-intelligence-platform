@@ -68,7 +68,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#13151E] border border-[#1E2235] rounded-lg p-2.5 text-xs font-mono shadow-xl min-w-[160px]">
+    <div className="bg-[#13151E] border border-border rounded-lg p-2.5 text-xs font-mono shadow-xl min-w-[160px]">
       <p className="text-[#F0EDE8] font-semibold mb-1.5">{label}</p>
       {payload.map((p) => (
         <div key={p.name} className="flex justify-between gap-4 leading-5">
@@ -188,7 +188,7 @@ function AnnualSection({ rows }: { rows: AnnualRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <thead>
-            <tr className="border-b border-[#1E2235]">
+            <tr className="border-b border-border">
               {["FY", "Revenue", "EBITDA", "EBITDA%", "PAT", "EPS", "P/E", "EV/EBITDA", "ROE%"].map(
                 (h) => (
                   <th
@@ -206,7 +206,7 @@ function AnnualSection({ rows }: { rows: AnnualRow[] }) {
               <tr
                 key={r.fy}
                 className={clsx(
-                  "border-b border-[#1E2235]/50 transition-colors hover:bg-white/[0.02]",
+                  "border-b border-border/50 transition-colors hover:bg-white/[0.02]",
                   r.isEstimate ? "text-[#F5820D]" : "text-[#F0EDE8]"
                 )}
               >
@@ -333,7 +333,7 @@ function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
       <div className="overflow-x-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <thead>
-            <tr className="border-b border-[#1E2235]">
+            <tr className="border-b border-border">
               {["Quarter", "Revenue", "EBITDA", "EBITDA%", "Net Profit", "PAT%"].map(
                 (h) => (
                   <th
@@ -355,7 +355,7 @@ function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
               return (
                 <tr
                   key={r.quarter}
-                  className="border-b border-[#1E2235]/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
+                  className="border-b border-border/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
                 >
                   <td className="px-2 py-1.5 font-semibold text-[#F5820D]">
                     {r.quarter}
@@ -500,7 +500,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
       <div className="overflow-x-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <thead>
-            <tr className="border-b border-[#1E2235]">
+            <tr className="border-b border-border">
               <th className="px-2 py-1.5 text-left text-[9px] uppercase tracking-wider text-[#6B7280] font-normal">
                 Metric
               </th>
@@ -521,7 +521,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
             {metricRows.map((row) => (
               <tr
                 key={row.label}
-                className="border-b border-[#1E2235]/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
+                className="border-b border-border/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
               >
                 <td className="px-2 py-1.5 text-[#6B7280]">{row.label}</td>
                 {row.values.map((v, i) => (
@@ -549,7 +549,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
           </p>
           <table className="w-full text-[11px] font-mono border-collapse">
             <thead>
-              <tr className="border-b border-[#1E2235]">
+              <tr className="border-b border-border">
                 <th className="px-2 py-1.5 text-left text-[9px] uppercase tracking-wider text-[#6B7280] font-normal">
                   Item
                 </th>
@@ -574,7 +574,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
               ].map((row) => (
                 <tr
                   key={row.label}
-                  className="border-b border-[#1E2235]/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
+                  className="border-b border-border/50 hover:bg-white/[0.02] transition-colors text-[#F0EDE8]"
                 >
                   <td className="px-2 py-1.5 text-[#6B7280]">{row.label}</td>
                   {row.values.map((v, i) => (
@@ -620,7 +620,7 @@ export function FinancialsPanel({ snapshot, reportType, date, analyst }: Props) 
         <span className="text-[9px] font-mono text-[#6B7280] uppercase tracking-wider">
           Parsed from
         </span>
-        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-[#1E2235] bg-[#F5820D]/10 text-[#F5820D]">
+        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-border bg-[#F5820D]/10 text-[#F5820D]">
           {reportType ?? snapshot.source}
         </span>
         {date && (
@@ -636,7 +636,7 @@ export function FinancialsPanel({ snapshot, reportType, date, analyst }: Props) 
       </div>
 
       {/* Sub-tab nav */}
-      <div className="flex gap-1 border-b border-[#1E2235] shrink-0">
+      <div className="flex gap-1 border-b border-border shrink-0">
         {tabs.map((t) => (
           <button
             key={t.id}

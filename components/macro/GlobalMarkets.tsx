@@ -33,8 +33,8 @@ function fmtChange(val: number, symbol: string): string {
 function IndexRow({ q }: { q: GlobalQuote }) {
   const up = q.changePercent >= 0;
   return (
-    <div className="flex items-center gap-2 py-[5px] border-b border-[#1E2235]/60 last:border-0 group hover:bg-white/[0.02] transition-colors px-2 rounded">
-      <span className="flex-1 text-[15px] font-mono text-[#C8C4BC] tracking-wide truncate group-hover:text-primary transition-colors">
+    <div className="flex items-center gap-2 py-[5px] border-b border-border/60 last:border-0 group hover:bg-white/[0.02] transition-colors px-2 rounded">
+      <span className="flex-1 text-[15px] font-mono text-muted tracking-wide truncate group-hover:text-primary transition-colors">
         {q.label}
       </span>
       <span className="w-[80px] text-right text-[15px] font-mono text-primary font-medium tabular-nums">
@@ -52,11 +52,11 @@ function IndexRow({ q }: { q: GlobalQuote }) {
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center gap-2 py-[5px] border-b border-[#1E2235]/60 last:border-0 px-2">
-      <div className="flex-1 h-3 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[80px] h-3 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[58px] h-3 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[52px] h-3 bg-[#1E2235] rounded animate-pulse" />
+    <div className="flex items-center gap-2 py-[5px] border-b border-border/60 last:border-0 px-2">
+      <div className="flex-1 h-3 bg-border rounded animate-pulse" />
+      <div className="w-[80px] h-3 bg-border rounded animate-pulse" />
+      <div className="w-[58px] h-3 bg-border rounded animate-pulse" />
+      <div className="w-[52px] h-3 bg-border rounded animate-pulse" />
     </div>
   );
 }
@@ -67,7 +67,7 @@ function RegionBlock({ region, quotes, loading }: { region: string; quotes: Glob
     <div>
       <div className="flex items-center gap-2 px-2 pt-3 pb-1.5">
         <span className="text-[15px] font-mono font-bold tracking-[0.15em] uppercase text-muted">{region}</span>
-        <div className="flex-1 h-px bg-[#1E2235]" />
+        <div className="flex-1 h-px bg-border" />
       </div>
       {loading
         ? Array.from({ length: region === "Asia Pacific" ? 10 : region === "Others" ? 7 : 3 }).map((_, i) => (
@@ -108,7 +108,7 @@ export function GlobalMarkets() {
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E2235]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Globe className="w-3.5 h-3.5 text-amber" />
           <span className="text-xl font-mono font-semibold text-primary uppercase tracking-widest">Global Markets</span>
@@ -128,7 +128,7 @@ export function GlobalMarkets() {
       </div>
 
       {/* Content: 3-column layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#1E2235]">
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
 
         {/* Col 1: Others + US + Latin America */}
         <div className="p-2">

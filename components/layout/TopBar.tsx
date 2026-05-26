@@ -53,7 +53,7 @@ export function TopBar() {
       : "bg-danger";
 
   return (
-    <div className="h-12 flex items-center justify-between px-6 border-b border-[#1E2235] bg-surface/90 backdrop-blur-sm shrink-0">
+    <div className="h-12 flex items-center justify-between px-6 border-b border-border bg-surface/90 backdrop-blur-sm shrink-0">
       <h1 className="font-mono text-[11px] font-medium tracking-[0.18em] uppercase flex items-center gap-2.5">
         <span className="w-1.5 h-1.5 rounded-full bg-amber opacity-80" />
         <span className="text-amber/75">Sunidhi</span>

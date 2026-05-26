@@ -32,7 +32,7 @@ export function MacroTiles() {
     return (
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="animate-pulse h-12 bg-[#1E2235] rounded-lg" />
+          <div key={i} className="animate-pulse h-12 bg-border rounded-lg" />
         ))}
       </div>
     );
@@ -45,7 +45,7 @@ export function MacroTiles() {
         return (
           <div
             key={q.symbol}
-            className="flex items-center justify-between p-3 rounded-lg bg-base/60 border border-[#1E2235] hover:border-[#2A2D42] transition-colors"
+            className="flex items-center justify-between p-3 rounded-lg bg-base/60 border border-border hover:border-border-strong transition-colors"
           >
             <span className="text-xs text-muted font-sans uppercase tracking-wider">
               {q.label}

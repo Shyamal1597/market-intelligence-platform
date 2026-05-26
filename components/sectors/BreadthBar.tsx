@@ -18,7 +18,7 @@ export function BreadthBar({ advancing, declining }: BreadthBarProps) {
       <div className="flex w-full h-2 rounded-full overflow-hidden">
         <div className="bg-teal" style={{ width: `${advPct}%` }} />
         {neutralPct > 0 && (
-          <div className="bg-[#1E2235]" style={{ width: `${neutralPct}%` }} />
+          <div className="bg-border" style={{ width: `${neutralPct}%` }} />
         )}
         <div className="bg-danger" style={{ width: `${decPct}%` }} />
       </div>

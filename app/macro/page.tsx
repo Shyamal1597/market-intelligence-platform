@@ -49,8 +49,8 @@ function fmtChange(val: number, symbol: string): string {
 function LiveRow({ q }: { q: Quote }) {
   const up = q.changePercent >= 0;
   return (
-    <div className="flex items-center gap-2 py-[5px] border-b border-[#1E2235]/60 last:border-0 group hover:bg-white/[0.02] transition-colors px-2 rounded">
-      <span className="flex-1 text-[11px] font-mono text-[#C8C4BC] tracking-wide truncate group-hover:text-primary transition-colors">
+    <div className="flex items-center gap-2 py-[5px] border-b border-border/60 last:border-0 group hover:bg-white/[0.02] transition-colors px-2 rounded">
+      <span className="flex-1 text-[11px] font-mono text-muted tracking-wide truncate group-hover:text-primary transition-colors">
         {q.label}
       </span>
       <span className="w-[100px] text-right text-[11px] font-mono text-primary font-medium tabular-nums">
@@ -68,11 +68,11 @@ function LiveRow({ q }: { q: Quote }) {
 
 function LiveSkeleton() {
   return (
-    <div className="flex items-center gap-2 py-[5px] border-b border-[#1E2235]/60 last:border-0 px-2">
-      <div className="flex-1 h-2.5 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[100px] h-2.5 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[70px] h-2.5 bg-[#1E2235] rounded animate-pulse" />
-      <div className="w-[54px] h-2.5 bg-[#1E2235] rounded animate-pulse" />
+    <div className="flex items-center gap-2 py-[5px] border-b border-border/60 last:border-0 px-2">
+      <div className="flex-1 h-2.5 bg-border rounded animate-pulse" />
+      <div className="w-[100px] h-2.5 bg-border rounded animate-pulse" />
+      <div className="w-[70px] h-2.5 bg-border rounded animate-pulse" />
+      <div className="w-[54px] h-2.5 bg-border rounded animate-pulse" />
     </div>
   );
 }
@@ -121,7 +121,7 @@ export default function MacroPage() {
         <button
           onClick={() => { setRefreshing(true); load(); }}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 border border-[#1E2235] rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
@@ -142,7 +142,7 @@ export default function MacroPage() {
               <div key={group} className="p-2">
                 <div className="flex items-center gap-2 px-2 pt-3 pb-1.5">
                   <span className="text-[9px] font-mono font-bold tracking-[0.15em] uppercase text-muted">{group}</span>
-                  <div className="flex-1 h-px bg-[#1E2235]" />
+                  <div className="flex-1 h-px bg-border" />
                 </div>
                 {loading
                   ? symbols.map((_, i) => <LiveSkeleton key={i} />)
@@ -169,7 +169,7 @@ export default function MacroPage() {
 
       {/* Static Macro Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-surface-raised border border-[#1E2235] rounded-xl p-6">
+        <div className="bg-surface-raised border border-border rounded-xl p-6">
           <h2 className="font-display text-xl font-semibold text-primary mb-5">India Macro</h2>
           <div className="divide-y divide-[#1E2235]">
             {INDIA_MACRO.map((m) => (

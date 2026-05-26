@@ -37,13 +37,17 @@ function enrichClaims(
       const resolved = resolveClaimTarget(claim.targetQuarter, claim.targetText, sourceQ);
       const check = checkById[claim.id] ?? null;
       const metric = registry.metrics.find((m) => m.key === claim.metricKey);
+      // If the claim was "verified" against its own source quarter transcript,
+      // that's a self-referencing check — treat it as pending (no real verification).
+      const isSelfRef = check && check.verifiedInQuarter === sourceQ;
+
       return {
         ...claim,
         resolvedTargetQuarter: resolved.quarter,
         targetResolutionConfidence: resolved.confidence,
         metricLabel: metric?.label ?? claim.metricKey,
         metricUnit: metric?.unit ?? "",
-        check: check
+        check: check && !isSelfRef
           ? {
               verdict:          check.verdict,
               verifiedInQuarter: check.verifiedInQuarter,

@@ -107,11 +107,11 @@ function MetricTile({ quote }: { quote: Quote }) {
 
 function SkeletonTile() {
   return (
-    <div className="glass-panel rounded-xl p-4 border-l-2 border-l-[#1E2235] flex flex-col gap-2 animate-pulse">
-      <div className="h-2.5 bg-[#1E2235] rounded w-2/3" />
-      <div className="h-5 bg-[#1E2235] rounded w-1/2 mt-1" />
-      <div className="h-2 bg-[#1E2235] rounded w-1/3" />
-      <div className="h-8 bg-[#1E2235] rounded mt-1" />
+    <div className="glass-panel rounded-xl p-4 border-l-2 border-l-border flex flex-col gap-2 animate-pulse">
+      <div className="h-2.5 bg-border rounded w-2/3" />
+      <div className="h-5 bg-border rounded w-1/2 mt-1" />
+      <div className="h-2 bg-border rounded w-1/3" />
+      <div className="h-8 bg-border rounded mt-1" />
     </div>
   );
 }

@@ -60,3 +60,25 @@ app/api/deals-debug/
 
 # Exports (generated)
 exports/
+
+# Intelligence data (transcripts, claims, checks — large + regenerable)
+data/intelligence/
+data/earnings/
+
+# Breeze scrip map (auto-generated)
+data/breeze-scrip-map.json
+
+# Market data caches (auto-generated)
+data/market-news.json
+data/fii-dii-history.json
+data/smart-money-cache.json
+data/watchlist.json
+
+# Reports PDFs (user-uploaded, large)
+data/reports/
+
+# Concall PDFs (large, source data)
+Concall Data/
+
+# Docs/plans (local working docs)
+docs/plans/

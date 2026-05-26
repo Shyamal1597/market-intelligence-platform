@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
@@ -21,6 +23,97 @@ interface IntelData {
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
 const MAX_COLUMNS = 4;
+
+// ── Latest Guidance (unverified forward-looking claims) ──────────────────────
+
+function LatestGuidanceSection({
+  quarters,
+  byQuarter,
+  registry,
+}: {
+  quarters: string[];
+  byQuarter: Record<string, EnrichedClaim[]>;
+  registry: Array<{ key: string; label: string; unit: string; segment: string }>;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="rounded border border-border/60 overflow-hidden">
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="w-full flex items-center gap-3 px-5 py-3 bg-surface hover:bg-surface/70 text-left transition-colors"
+      >
+        <Clock className="w-3.5 h-3.5 text-amber/70 shrink-0" />
+        <span className="text-xs font-mono font-bold text-primary uppercase tracking-wider">
+          Latest Guidance
+        </span>
+        <span className="text-[10px] font-mono text-muted">
+          {quarters.map((q) => quarterDisplay(q)).join(", ")}
+        </span>
+        <span className="ml-auto text-muted">
+          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-border/40">
+          {/* Explanation */}
+          <div className="px-5 py-3 bg-amber/[0.03] border-b border-border/30">
+            <p className="text-xs font-sans text-muted leading-relaxed">
+              Forward-looking statements from the most recent earnings call.
+              These claims have no target quarter yet — verification begins once the
+              next quarter&apos;s transcript is available and cross-checked.
+            </p>
+          </div>
+
+          {/* Claims grouped by quarter */}
+          {quarters.map((q) => {
+            const claims = byQuarter[q] ?? [];
+            if (claims.length === 0) return null;
+            return (
+              <div key={q} className="px-5 py-4 border-b border-border/30 last:border-b-0">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-mono font-bold text-amber tracking-wide">
+                    {quarterDisplay(q)}
+                  </span>
+                  <span className="text-[10px] font-mono text-muted">
+                    {claims.length} claim{claims.length !== 1 ? "s" : ""} · all pending verification
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {claims.map((c) => {
+                    const metric = registry.find((r) => r.key === c.metricKey);
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex items-start gap-4 py-2 border-l-2 border-border pl-3"
+                      >
+                        <span className="shrink-0 text-[11px] font-mono text-amber/80 w-36 truncate" title={metric?.label}>
+                          {metric?.label ?? c.metricKey}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-sans text-primary/80 leading-relaxed line-clamp-2">
+                            &ldquo;{c.quote}&rdquo;
+                          </p>
+                          {c.speaker && (
+                            <span className="text-[10px] font-mono text-muted mt-0.5 block">— {c.speaker}</span>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[10px] font-mono text-muted/60 border border-border/50 px-1.5 py-0.5 rounded">
+                          PENDING
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function IntelDashboard() {
   const [companies, setCompanies] = useState<CompanySummary[]>([]);
@@ -82,10 +175,19 @@ export function IntelDashboard() {
 
   useEffect(() => { loadSymbol(selectedSymbol); }, [selectedSymbol, loadSymbol]);
 
-  // Quarters sorted newest-first
+  // Quarters sorted newest-first, excluding quarters with no verified claims
   const sortedQuarters = useMemo(() => {
     if (!data) return [];
-    return [...sortQuarters(Object.keys(data.byQuarter))].reverse();
+    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse();
+    // Hide quarters where every claim is unverified (pending/ambiguous/null check)
+    return all.filter((q) => {
+      const claims = data.byQuarter[q] ?? [];
+      if (claims.length === 0) return false;
+      return claims.some((c) => {
+        const v = c.check?.verdict;
+        return v && v !== "pending" && v !== "ambiguous";
+      });
+    });
   }, [data]);
 
   // Auto-select 2 most recent once quarters are available (after a symbol switch)
@@ -111,6 +213,21 @@ export function IntelDashboard() {
     });
   };
 
+  // Quarters with claims but no verified data (forward-looking only)
+  const pendingQuarters = useMemo(() => {
+    if (!data) return [];
+    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse();
+    return all.filter((q) => {
+      const claims = data.byQuarter[q] ?? [];
+      if (claims.length === 0) return false;
+      // Quarter is "pending" if NO claim has a decisive verdict
+      return !claims.some((c) => {
+        const v = c.check?.verdict;
+        return v && v !== "pending" && v !== "ambiguous";
+      });
+    });
+  }, [data]);
+
   // Unique segments in appearance order
   const segments = useMemo(() => {
     if (!data) return [];
@@ -128,8 +245,9 @@ export function IntelDashboard() {
   return (
     <div className="space-y-4">
 
-      {/* ── Company selector ── */}
-      <div className="flex flex-wrap gap-2">
+      {/* ── Company selector + Upload ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
         {companies.map((c) => {
           const isSelected = c.symbol === selectedSymbol;
           const decisive = c.metCount + c.movingCount + c.missCount;
@@ -239,6 +357,15 @@ export function IntelDashboard() {
             registry={data.registry}
             segmentDescriptions={data.segmentDescriptions}
           />
+
+          {/* ── Latest guidance (unverified quarters) ── */}
+          {pendingQuarters.length > 0 && (
+            <LatestGuidanceSection
+              quarters={pendingQuarters}
+              byQuarter={data.byQuarter}
+              registry={data.registry}
+            />
+          )}
 
           {data.warnings.length > 0 && (
             <details className="text-[11px] font-mono text-muted">

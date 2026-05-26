@@ -605,6 +605,19 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
  */
 export function expandSearch(raw: string): string[] {
   const term = raw.trim().toLowerCase();
-  const aliases = COMPANY_ALIASES[term];
-  return aliases ? [...new Set([term, ...aliases])] : [term];
+  if (!term) return [];
+
+  // 1. Exact match on alias key
+  const exact = COMPANY_ALIASES[term];
+  if (exact) return [...new Set([term, ...exact])];
+
+  // 2. Substring match — if the user types "mta", match keys/values containing it
+  const results = new Set<string>([term]);
+  for (const [key, aliases] of Object.entries(COMPANY_ALIASES)) {
+    if (key.includes(term) || aliases.some((a) => a.includes(term))) {
+      results.add(key);
+      for (const a of aliases) results.add(a);
+    }
+  }
+  return [...results];
 }

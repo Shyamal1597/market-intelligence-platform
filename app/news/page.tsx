@@ -101,7 +101,7 @@ export default function NewsPage() {
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 border border-[#1E2235] rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all font-sans disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all font-sans disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Fetching…" : "Refresh"}
@@ -117,7 +117,7 @@ export default function NewsPage() {
             placeholder="Search stories…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 bg-surface border border-[#1E2235] rounded-lg text-sm text-primary placeholder-muted focus:outline-none focus:border-amber/50 font-sans w-64 transition-colors"
+            className="pl-9 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-primary placeholder-muted focus:outline-none focus:border-amber/50 font-sans w-64 transition-colors"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -128,7 +128,7 @@ export default function NewsPage() {
               className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
                 selectedSource === s
                   ? "bg-amber/10 text-amber border-amber/40"
-                  : "bg-surface text-muted border-[#1E2235] hover:text-primary hover:border-[#2A2D42]"
+                  : "bg-surface text-muted border-border hover:text-primary hover:border-border-strong"
               }`}
             >
               {s === "all" ? "ALL SOURCES" : s.toUpperCase()}
@@ -140,7 +140,7 @@ export default function NewsPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-[#1E2235] border-t-amber rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-border border-t-amber rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-24 text-muted">
@@ -163,7 +163,7 @@ export default function NewsPage() {
               href={top.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="group block border-t-2 border-t-amber border border-[#1E2235] bg-surface hover:bg-surface/80 p-8 mb-px transition-colors"
+              className="group block border-t-2 border-t-amber border border-border bg-surface hover:bg-surface/80 p-8 mb-px transition-colors"
             >
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-xs font-mono text-amber uppercase tracking-widest">
@@ -189,14 +189,14 @@ export default function NewsPage() {
 
           {/* Second row — 2 equal stories */}
           {secondRow.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 border-x border-b border-[#1E2235] mb-px">
+            <div className="grid grid-cols-1 md:grid-cols-2 border-x border-b border-border mb-px">
               {secondRow.map((item) => (
                 <a
                   key={item.id}
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group p-6 border-r last:border-r-0 border-[#1E2235] bg-surface hover:bg-surface/80 transition-colors"
+                  className="group p-6 border-r last:border-r-0 border-border bg-surface hover:bg-surface/80 transition-colors"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-mono text-amber/70 uppercase tracking-wider">
@@ -214,7 +214,7 @@ export default function NewsPage() {
 
           {/* Compact list */}
           {compact.length > 0 && (
-            <div className="border border-[#1E2235] divide-y divide-[#1E2235] bg-surface">
+            <div className="border border-border divide-y divide-border bg-surface">
               {compact.map((item) => (
                 <a
                   key={item.id}
