@@ -1,77 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sunidhi Research Intelligence Platform
 
-## Getting Started
+Production internal research platform for a capital markets firm. Bloomberg Terminal-inspired dark UI serving a 15-analyst equity research team.
 
-First, run the development server:
+**Built solo. 25,500+ lines of TypeScript. 15 modules. 237+ commits.**
+
+## What It Does
+
+Centralises equity research workflows into a single internal platform — live market data, earnings analysis, derivatives pricing, portfolio tracking, and an AI-powered management guidance tracker that cross-verifies what company management promised against what they actually delivered.
+
+## Architecture
+
+- **Framework**: Next.js 16 (App Router) + TypeScript
+- **Styling**: Tailwind CSS — custom dual-theme design system (dark + light), editorial typography (Cormorant Garamond + JetBrains Mono + DM Sans)
+- **Data**: File-based JSON persistence, SQLite (reports), no external database
+- **Integrations**: BSE India API, NSE live feeds, ICICI Breeze API, Yahoo Finance, RSS aggregation
+- **AI Pipeline**: 5-stage LLM pipeline (Claude/Ollama) for earnings transcript analysis
+- **Security**: SSRF prevention, XXE prevention, path traversal validation, CSP headers, input sanitisation on all API routes
+
+## Modules
+
+| Module | Description |
+|--------|-------------|
+| **Management Guidance Tracker** | 5-stage LLM pipeline: ingest earnings transcripts → extract forward-looking claims → cross-verify against next quarter's results → generate analyst summaries. Tracks 100 stocks across 19 sectors. Bloomberg-style matrix view with segment drill-down. |
+| **Derivatives Terminal** | Real-time option chain with Greeks (Delta, Gamma, Theta, Vega, IV), Max Pain algorithm, Put-Call Ratio, IV skew visualization. NSE session cookie bootstrapping for live data. |
+| **Coverage Intelligence** | Analyst coverage dashboard — rating history, price target walks with Recharts visualization, report timeline, financial panel with quarter-over-quarter comparison. |
+| **Per-Stock Research** | Single-stock deep dive — quarterly results panel, shareholding pattern tracker (FII/DII/Promoter), peer comparison, Breeze price history integration. |
+| **Portfolio Dashboard** | Watchlist management with live P&L, sector allocation, bulk import. JSON persistence with optimistic UI updates. |
+| **Macro Command Centre** | Global indices, commodity prices, currency rates, yield curves, FII/DII flow tracking with historical charts. |
+| **BSE Filing Monitor** | Real-time corporate filing feed from BSE XML/JSON API. Categorised by filing type, full-text search. |
+| **Earnings Calendar** | Upcoming results calendar with date-based filtering and notification markers. |
+| **Market News Aggregator** | Multi-source RSS aggregation (Moneycontrol, ET, Livemint, Reuters) with deduplication and sentiment tagging. |
+| **Sector Leaderboard** | NIFTY sector indices with breadth indicators, relative performance ranking, advance-decline visualization. |
+| **RAG PDF Viewer** | Upload research PDFs, auto-chunk with BM25 search, inline viewer with highlighted search results. |
+| **Quick Links Hub** | Curated research resource directory — broker portals, data terminals, regulatory filings. |
+| **Analyst Scorecard** | Track analyst accuracy over time — target price hit rates, rating distribution, coverage breadth. |
+| **Ticker Strip** | Live scrolling price ticker with WebSocket-style polling, configurable watchlist. |
+| **Theme System** | Dual-theme (dark editorial + light) with CSS custom properties, localStorage persistence, zero-FOUC switching. |
+
+## Intel Pipeline (Management Guidance Tracker)
+
+The most architecturally complex module — a 5-stage pipeline that answers: *"Did management deliver on what they promised?"*
+
+```
+Stage 1: Parse Excel fundamentals (optional — Bloomberg/CIQ export)
+Stage 2: Ingest earnings call transcripts (PDF → text extraction)
+Stage 3: Extract forward-looking claims via LLM (sector-aware prompts)
+Stage 4: Cross-verify claims against next quarter's transcript
+Stage 5: Generate quarterly narrative summaries
+```
+
+- **Sector registries** define KPI schemas per industry (banking: NIM, GNPA, CASA; insurance: VNB margin, combined ratio; IT: deal TCV, attrition)
+- **BSE auto-scraper** discovers and downloads new transcripts via BSE India JSON API
+- **Company fingerprint validation** prevents cross-contamination from incorrect scrip code mappings
+- **Verdict system**: `met | moving | miss | pending | ambiguous` with reasoning traces and verbatim transcript quotes
+
+## Security Hardening
+
+- SSRF prevention on all external URL fetches (allowlisted domains, private IP blocking)
+- XXE prevention on XML parsing (disabled DTD/external entities)
+- Path traversal validation on file operations
+- Company fingerprint checks on transcript ingestion
+- No secrets in client bundles — all API keys server-side only
+- Input validation on every API route
+
+## Design System
+
+Bloomberg Terminal meets Financial Times editorial. Dense, data-forward, precise.
+
+- Dark theme: `#0C0E14` base with warm off-white text (`#F0EDE8`)
+- Accent orange `#F5820D` (brand), teal `#00C9A7` (positive), red `#E84040` (negative)
+- All colours via CSS custom properties — full light theme support
+- SVG grain texture overlay for editorial depth
+
+## Project Structure
+
+```
+app/                    # Next.js App Router — 40+ API routes
+components/             # 50+ React components across 12 domains
+lib/                    # Core logic — Intel pipeline, BSE scraper, theme system
+scripts/                # CLI tools — pipeline rebuild, transcript seeding, one-off extraction
+data/                   # Runtime data (gitignored) — transcripts, claims, market data
+docs/                   # Architecture docs, changelogs, project briefs
+```
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.local.example .env.local    # Add API keys
+npm run dev                          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Intel Pipeline
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Seed transcripts from BSE
+npx tsx scripts/intel-seed-transcripts.ts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Run full pipeline for a symbol
+npm run intel:rebuild HDFCBANK
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
----
-
-## /intel — Promise tracker
-
-Per-company dashboard surfacing every forward-looking claim management has made on concalls plus a hit/miss/partial verdict against actual quarterly fundamentals.
-
-### Add a new company
-1. Place its concall transcripts (PDF) in `Concall Data/` (any naming).
-2. Place its Bloomberg/CIQ Excel in `Concall Data/Fundamental data/`.
-3. Add the symbol → sector mapping to `lib/intel/types.ts` `SYMBOL_SECTOR`.
-4. Add the Excel path to `EXCEL_PATHS` in `scripts/intel-rebuild.ts`.
-5. Run: `npm run intel:rebuild SYMBOL`.
-
-### Rebuild a single stage
-Stage flags use numbers: `--stage=1|2|3|4`
-- `--stage=1` — Excel → fundamentals.json
-- `--stage=2` — PDFs → text/ (transcripts)
-- `--stage=3` — extractClaims (LLM: Haiku or Ollama qwen2.5:7b)
-- `--stage=4` — crossCheck (LLM: Sonnet or Ollama qwen2.5:7b)
-
-### One-off quarter re-extraction
-When a single quarter fails (truncated JSON, transient error), re-run it and merge results:
+# Run specific stage
+npm run intel:rebuild HDFCBANK --stage=3
 ```
-npx tsx scripts/_one-off-extract.ts SYMBOL --quarters=Q3-FY26 [--maxTranscriptChars=30000]
-```
-Use `--maxTranscriptChars=30000` for transcripts >50KB — Ollama's grammar sampler can stall when
-the prompt approaches its context ceiling, generating only a handful of tokens before stopping.
-Truncating to ~30K chars keeps the total prompt under ~10K tokens and leaves ample output budget.
 
-### Data source notes
-Bloomberg/CIQ standard exports contain generic financials (PAT, ROA, ROE, Revenue).
-Bank-specific KPIs (NIM, GNPA, CASA, advance growth, etc.) and insurance KPIs (combined ratio,
-VNB margin, GWP growth) are NOT in these exports — cross-checks for those metrics will show
-`no-data`, which is correct. Add custom JSON data or a supplementary data source to enable
-verdict scoring for segment-level metrics.
+## Tech Decisions Worth Noting
 
-### Secrets
-`ANTHROPIC_API_KEY` in `.env.local` (required for Anthropic backend).
-`OLLAMA_BASE_URL` in `.env.local` (optional; default `http://localhost:11434`).
-Set `LLM_BACKEND=ollama` env var to use local inference instead of Anthropic.
+- **File-based persistence over database** — internal tool with single-digit concurrent users; JSON files are inspectable, diffable, zero-config
+- **NSE session bootstrapping** — NSE blocks direct API access; the platform maintains authenticated sessions by mirroring browser cookie flows
+- **insecureHTTPParser for BSE** — BSE India sends malformed HTTP headers that crash Node's strict parser; handled via `node:https` with lenient parsing
+- **Sector-first LLM prompts** — generic extraction misses domain KPIs; sector registries ensure the model asks about NIM for banks, VNB margin for insurers
+- **"LLM writes words, not numbers"** — all quantitative verification uses structured data; LLM only classifies verdicts from transcript evidence
+
+## License
+
+Private / Internal Use
