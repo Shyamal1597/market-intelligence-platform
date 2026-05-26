@@ -23,7 +23,7 @@ function formatPrice(price: number, symbol: string): string {
 function TickerItem({ quote }: { quote: Quote }) {
   const up = quote.change >= 0;
   return (
-    <div className="flex items-center gap-2 px-4 py-1 border-r border-[#1E2235] shrink-0">
+    <div className="flex items-center gap-2 px-4 py-1 border-r border-border shrink-0">
       <span className="text-xs text-muted font-sans">{quote.label}</span>
       <span className="text-sm font-mono text-primary font-medium">
         {formatPrice(quote.price, quote.symbol)}
@@ -68,9 +68,9 @@ export function TickerStrip() {
   if (quotes.length === 0) return null;
 
   return (
-    <div className="h-9 flex items-center overflow-x-auto bg-base border-b border-[#1E2235] no-scrollbar shrink-0">
+    <div className="h-9 flex items-center overflow-x-auto bg-base border-b border-border no-scrollbar shrink-0">
       {/* LIVE label */}
-      <div className="flex items-center gap-1.5 px-4 border-r border-[#1E2235] shrink-0 h-full">
+      <div className="flex items-center gap-1.5 px-4 border-r border-border shrink-0 h-full">
         <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />
         <span className="font-mono text-[9px] tracking-widest text-teal/80 uppercase font-medium">
           Live

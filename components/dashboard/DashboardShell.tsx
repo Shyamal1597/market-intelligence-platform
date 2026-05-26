@@ -236,9 +236,9 @@ function SettingsPanel({
     >
       <div
         ref={ref}
-        className="w-80 bg-[#13151E] border border-[#1E2235] rounded-xl shadow-2xl overflow-hidden"
+        className="w-80 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E2235]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-xs font-mono font-semibold text-primary uppercase tracking-widest">
             Dashboard Layout
           </span>
@@ -269,7 +269,7 @@ function SettingsPanel({
                 className={`text-[11px] font-mono px-2 py-0.5 rounded border transition-colors ${
                   w.width === "half"
                     ? "bg-amber/10 border-amber/30 text-amber"
-                    : "bg-[#1E2235] border-transparent text-muted hover:text-primary"
+                    : "bg-border border-transparent text-muted hover:text-primary"
                 }`}
               >
                 {widthLabel[w.width]}
@@ -278,7 +278,7 @@ function SettingsPanel({
               {/* Size cycle */}
               <button
                 onClick={() => onCycleSize(w.id)}
-                className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1E2235] text-muted hover:text-primary transition-colors"
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-border text-muted hover:text-primary transition-colors"
               >
                 {sizeLabel[w.size]}
               </button>
@@ -294,7 +294,7 @@ function SettingsPanel({
           ))}
         </div>
 
-        <div className="px-4 py-2 border-t border-[#1E2235]">
+        <div className="px-4 py-2 border-t border-border">
           <p className="text-[10px] font-mono text-muted">
             Drag handles appear in edit mode · ½ Width places widgets side-by-side · Saved automatically
           </p>
@@ -376,7 +376,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-all border ${
             isEditMode
               ? "bg-amber/10 border-amber/30 text-amber"
-              : "border-[#1E2235] text-muted hover:text-primary hover:border-[#2a2f47]"
+              : "border-border text-muted hover:text-primary hover:border-[#2a2f47]"
           }`}
         >
           {isEditMode ? (
@@ -387,7 +387,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </button>
         <button
           onClick={() => setShowSettings((v) => !v)}
-          className="p-1.5 rounded-lg border border-[#1E2235] text-muted hover:text-primary hover:border-[#2a2f47] transition-all"
+          className="p-1.5 rounded-lg border border-border text-muted hover:text-primary hover:border-[#2a2f47] transition-all"
           title="Widget settings"
         >
           <Settings className="w-3.5 h-3.5" />

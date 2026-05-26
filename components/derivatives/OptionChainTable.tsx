@@ -53,13 +53,13 @@ export function OptionChainTable({ data, barMode, columns }: Props) {
   // Calls: Greeks + core NSE cols + bar
   const callExtraCols = [
     columns.rho, columns.vega, columns.theta, columns.gamma, columns.delta,
-    columns.oi, columns.oiChange, columns.iv, columns.ltp, columns.chng,
+    columns.oi, columns.oiChange, columns.vol, columns.iv, columns.ltp, columns.chng,
     columns.bidQty, columns.bid, columns.ask, columns.askQty,
   ].filter(Boolean).length + 1; // +1 for bar
 
   const putExtraCols = [
     columns.askQty, columns.ask, columns.bid, columns.bidQty,
-    columns.chng, columns.ltp, columns.iv, columns.oiChange, columns.oi,
+    columns.chng, columns.ltp, columns.iv, columns.vol, columns.oiChange, columns.oi,
     columns.delta, columns.gamma, columns.theta, columns.vega, columns.rho,
   ].filter(Boolean).length + 1; // +1 for bar
 
@@ -100,6 +100,7 @@ export function OptionChainTable({ data, barMode, columns }: Props) {
             {columns.delta    && <ColH label="Delta" />}
             {columns.oi       && <ColH label="OI" />}
             {columns.oiChange && <ColH label="Chng OI" />}
+            {columns.vol      && <ColH label="Vol" />}
             {columns.iv       && <ColH label="IV" sub="%" />}
             {columns.ltp      && <ColH label="LTP" />}
             {columns.chng     && <ColH label="Chng" />}
@@ -124,6 +125,7 @@ export function OptionChainTable({ data, barMode, columns }: Props) {
             {columns.chng     && <ColH label="Chng" align="left" />}
             {columns.ltp      && <ColH label="LTP" align="left" />}
             {columns.iv       && <ColH label="IV" sub="%" align="left" />}
+            {columns.vol      && <ColH label="Vol" align="left" />}
             {columns.oiChange && <ColH label="Chng OI" align="left" />}
             {columns.oi       && <ColH label="OI" align="left" />}
             {columns.delta    && <ColH label="Delta" align="left" />}

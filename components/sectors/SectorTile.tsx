@@ -24,12 +24,12 @@ export function SectorTile({ quote }: SectorTileProps) {
     borderClass = "border-l-danger";
   } else {
     bgClass = "bg-surface-raised";
-    borderClass = "border-l-[#1E2235]";
+    borderClass = "border-l-border";
   }
 
   return (
     <div
-      className={`border border-[#1E2235] border-l-2 ${bgClass} ${borderClass} rounded-xl p-4 flex flex-col justify-between transition-all hover:bg-white/[0.05]`}
+      className={`border border-border border-l-2 ${bgClass} ${borderClass} rounded-xl p-4 flex flex-col justify-between transition-all hover:bg-white/[0.05]`}
     >
       <div>
         <p className="font-mono text-[15px] tracking-widest text-muted uppercase mb-1.5">

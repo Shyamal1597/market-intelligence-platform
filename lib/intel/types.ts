@@ -1,4 +1,23 @@
-export type SectorKey = "insurance-holding" | "bank";
+export type SectorKey =
+  | "bank"
+  | "insurance-holding"
+  | "nbfc"
+  | "insurance-life"
+  | "financial-services"
+  | "it-services"
+  | "pharma"
+  | "auto"
+  | "fmcg"
+  | "oil-gas-energy"
+  | "metals-mining"
+  | "power-utilities"
+  | "telecom"
+  | "cement-building"
+  | "capital-goods-infra"
+  | "defence"
+  | "consumer-retail"
+  | "aviation"
+  | "real-estate";
 
 export type Unit = "%" | "Cr" | "bps" | "x" | "ratio" | "count";
 export type Direction = "lower-is-better" | "higher-is-better" | "neutral";
@@ -123,7 +142,143 @@ export interface QuarterSummary {
 }
 
 // ── Symbol → sector ─────────────────────────────────────────────────────────
+// NIFTY 50 + NIFTY Next 50 universe (~100 stocks)
 export const SYMBOL_SECTOR: Record<string, SectorKey> = {
-  BAJAJFINSV: "insurance-holding",
-  HDFCBANK: "bank",
+  // ── Banking ───────────────────────────────────────────────────────────────
+  HDFCBANK:    "bank",
+  ICICIBANK:   "bank",
+  SBIN:        "bank",
+  AXISBANK:    "bank",
+  KOTAKBANK:   "bank",
+  BANKBARODA:  "bank",
+  UNIONBANK:   "bank",
+  PNB:         "bank",
+  CANBK:       "bank",
+
+  // ── Insurance — Holding / Diversified ─────────────────────────────────────
+  BAJAJFINSV:  "insurance-holding",
+
+  // ── Insurance — Life ──────────────────────────────────────────────────────
+  SBILIFE:     "insurance-life",
+  HDFCLIFE:    "insurance-life",
+  ICICIPRULI:  "insurance-life",
+
+  // ── NBFC / Lending ────────────────────────────────────────────────────────
+  BAJFINANCE:  "nbfc",
+  SHRIRAMFIN:  "nbfc",
+  CHOLAFIN:    "nbfc",
+  MUTHOOTFIN:  "nbfc",
+  PFC:         "nbfc",
+  RECLTD:      "nbfc",
+  IRFC:        "nbfc",
+  LICHSGFIN:   "nbfc",
+  "M&MFIN":    "nbfc",
+  PEL:         "nbfc",
+
+  // ── Financial Services (AMC / Holding / Diversified) ──────────────────────
+  JIOFIN:      "financial-services",
+  BAJAJHLDNG:  "financial-services",
+  HDFCAMC:     "financial-services",
+
+  // ── IT Services ───────────────────────────────────────────────────────────
+  TCS:         "it-services",
+  INFY:        "it-services",
+  HCLTECH:     "it-services",
+  WIPRO:       "it-services",
+  TECHM:       "it-services",
+
+  // ── Pharma & Healthcare ───────────────────────────────────────────────────
+  SUNPHARMA:   "pharma",
+  CIPLA:       "pharma",
+  DRREDDY:     "pharma",
+  APOLLOHOSP:  "pharma",
+  MAXHEALTH:   "pharma",
+  DIVISLAB:    "pharma",
+  TORNTPHARM:  "pharma",
+  ZYDUSLIFE:   "pharma",
+
+  // ── Auto & Ancillaries ────────────────────────────────────────────────────
+  MARUTI:      "auto",
+  "M&M":       "auto",
+  "BAJAJ-AUTO":"auto",
+  EICHERMOT:   "auto",
+  TATAMOTORS:  "auto",
+  TVSMOTOR:    "auto",
+  CUMMINSIND:  "auto",
+  HYUNDAI:     "auto",
+  MOTHERSON:   "auto",
+  BOSCHLTD:    "auto",
+  ASHOKLEY:    "auto",
+
+  // ── FMCG ──────────────────────────────────────────────────────────────────
+  HINDUNILVR:  "fmcg",
+  ITC:         "fmcg",
+  NESTLEIND:   "fmcg",
+  TATACONSUM:  "fmcg",
+  BRITANNIA:   "fmcg",
+  GODREJCP:    "fmcg",
+  VBL:         "fmcg",
+  UNITDSPR:    "fmcg",
+
+  // ── Oil, Gas & Energy ─────────────────────────────────────────────────────
+  RELIANCE:    "oil-gas-energy",
+  ONGC:        "oil-gas-energy",
+  COALINDIA:   "oil-gas-energy",
+  IOC:         "oil-gas-energy",
+  BPCL:        "oil-gas-energy",
+  GAIL:        "oil-gas-energy",
+  ADANIPOWER:  "oil-gas-energy",
+  TATAPOWER:   "oil-gas-energy",
+  ADANIENSOL:  "oil-gas-energy",
+  ADANIGREEN:  "oil-gas-energy",
+
+  // ── Metals & Mining ───────────────────────────────────────────────────────
+  JSWSTEEL:    "metals-mining",
+  TATASTEEL:   "metals-mining",
+  HINDALCO:    "metals-mining",
+  HINDZINC:    "metals-mining",
+  VEDL:        "metals-mining",
+  JINDALSTEL:  "metals-mining",
+
+  // ── Power & Utilities ─────────────────────────────────────────────────────
+  NTPC:        "power-utilities",
+  POWERGRID:   "power-utilities",
+
+  // ── Telecom ───────────────────────────────────────────────────────────────
+  BHARTIARTL:  "telecom",
+
+  // ── Cement & Building Materials ───────────────────────────────────────────
+  ULTRACEMCO:  "cement-building",
+  AMBUJACEM:   "cement-building",
+  SHREECEM:    "cement-building",
+  GRASIM:      "cement-building",
+  PIDILITIND:  "cement-building",
+
+  // ── Capital Goods & Infra ─────────────────────────────────────────────────
+  LT:          "capital-goods-infra",
+  ABB:         "capital-goods-infra",
+  SIEMENS:     "capital-goods-infra",
+  CGPOWER:     "capital-goods-infra",
+  ADANIPORTS:  "capital-goods-infra",
+  ADANIENT:    "capital-goods-infra",
+
+  // ── Defence ───────────────────────────────────────────────────────────────
+  BEL:         "defence",
+  HAL:         "defence",
+  MAZDOCK:     "defence",
+
+  // ── Consumer & Retail ─────────────────────────────────────────────────────
+  TITAN:       "consumer-retail",
+  ETERNAL:     "consumer-retail",
+  TRENT:       "consumer-retail",
+  DMART:       "consumer-retail",
+  ASIANPAINT:  "consumer-retail",
+  INDHOTEL:    "consumer-retail",
+
+  // ── Aviation ──────────────────────────────────────────────────────────────
+  INDIGO:      "aviation",
+
+  // ── Real Estate ───────────────────────────────────────────────────────────
+  DLF:         "real-estate",
+  LODHA:       "real-estate",
 };

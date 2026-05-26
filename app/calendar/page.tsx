@@ -136,7 +136,7 @@ export default function CalendarPage() {
             className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
               filter === tab.key
                 ? "bg-amber/10 text-amber border-amber/40"
-                : "bg-surface text-muted border-[#1E2235] hover:text-primary hover:border-[#2A2D42]"
+                : "bg-surface text-muted border-border hover:text-primary hover:border-border-strong"
             }`}
           >
             {tab.label.toUpperCase()}
@@ -162,7 +162,7 @@ export default function CalendarPage() {
                 {[0, 1, 2].map(r => (
                   <div
                     key={r}
-                    className="animate-pulse h-14 bg-surface rounded-xl border border-[#1E2235] mb-2"
+                    className="animate-pulse h-14 bg-surface rounded-xl border border-border mb-2"
                   />
                 ))}
               </div>
@@ -184,7 +184,7 @@ export default function CalendarPage() {
               <h2 className="font-mono text-xs tracking-widest uppercase text-muted">
                 {label}
               </h2>
-              <div className="flex-1 h-px bg-[#1E2235]" />
+              <div className="flex-1 h-px bg-border" />
               <span className="font-mono text-xs text-muted/50">
                 {groupEntries.length} event{groupEntries.length !== 1 ? "s" : ""}
               </span>

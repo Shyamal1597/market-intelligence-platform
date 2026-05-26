@@ -72,7 +72,9 @@ export function SegmentCard({ segment, note, claims, byQuarter, sourceQuarter, r
     });
   }, [claims, filters]);
 
-  const segmentMetrics = registry.filter((m) => m.segment === segment);
+  // Only show metrics that actually have claims in this segment/quarter
+  const claimMetricKeys = new Set(claims.map((c) => c.metricKey));
+  const segmentMetrics = registry.filter((m) => m.segment === segment && claimMetricKeys.has(m.key));
 
   return (
     <div className="rounded border border-border overflow-hidden">

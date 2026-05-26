@@ -150,7 +150,7 @@ export default function FilingsPage() {
               className={`px-3 py-1.5 rounded text-xs font-mono tracking-wide border transition-all ${
                 filter === c.key
                   ? "bg-amber/10 text-amber border-amber/40"
-                  : "bg-surface text-muted border-[#1E2235] hover:text-primary hover:border-[#2A2D42]"
+                  : "bg-surface text-muted border-border hover:text-primary hover:border-border-strong"
               }`}
             >
               {c.label.toUpperCase()}
@@ -165,7 +165,7 @@ export default function FilingsPage() {
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="animate-pulse h-24 bg-surface rounded-xl border border-[#1E2235]"
+              className="animate-pulse h-24 bg-surface rounded-xl border border-border"
             />
           ))}
         </div>
@@ -176,7 +176,7 @@ export default function FilingsPage() {
             return (
               <div
                 key={f.id}
-                className={`group border border-[#1E2235] rounded-xl p-5 bg-surface hover:bg-surface/60 transition-all ${
+                className={`group border border-border rounded-xl p-5 bg-surface hover:bg-surface/60 transition-all ${
                   isNew ? "animate-flash" : ""
                 }`}
               >
@@ -187,7 +187,7 @@ export default function FilingsPage() {
                         {f.company}
                       </h3>
                       {f.scripCode && (
-                        <span className="text-xs font-mono text-muted border border-[#1E2235] px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-mono text-muted border border-border px-1.5 py-0.5 rounded">
                           {f.scripCode}
                         </span>
                       )}
@@ -203,7 +203,7 @@ export default function FilingsPage() {
                       href={f.pdfUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1E2235] text-xs font-mono text-muted hover:text-amber hover:border-amber/40 transition-all"
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-mono text-muted hover:text-amber hover:border-amber/40 transition-all"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       PDF

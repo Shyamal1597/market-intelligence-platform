@@ -55,8 +55,11 @@ export interface OptionRow {
 
 export interface DerivativesData {
   symbol: string; expiry: string; expiryDates: string[];
-  spot: number; timestamp: string; pcr: number; maxPain: number;
+  spot: number; timestamp: string; pcr: number;
+  maxPain: number; cePeakOI: number; pePeakOI: number;
   atmStrike: number; atmIV: number; chain: OptionRow[];
+  totalCeOI: number; totalPeOI: number;
+  totalCeVol: number; totalPeVol: number;
   fetchedAt: string;
 }
 
@@ -90,6 +93,27 @@ function computeMaxPain(chain: OptionRow[]): number {
     if (totalLoss < minLoss) { minLoss = totalLoss; maxPainStrike = testStrike; }
   }
   return maxPainStrike;
+}
+
+/**
+ * Strike with highest OI for calls (resistance) and puts (support),
+ * scoped to near-ATM: CE above/at spot, PE below/at spot.
+ * This gives the immediate walls rather than far OTM accumulation.
+ */
+function peakOIStrikes(chain: OptionRow[], spot: number): { callPeak: number; putPeak: number } {
+  let maxCeOI = 0, callPeak = 0;
+  let maxPeOI = 0, putPeak = 0;
+  for (const row of chain) {
+    // CE wall = highest call OI at or above spot (resistance)
+    if (row.strikePrice >= spot && (row.ceOI ?? 0) > maxCeOI) {
+      maxCeOI = row.ceOI!; callPeak = row.strikePrice;
+    }
+    // PE wall = highest put OI at or below spot (support)
+    if (row.strikePrice <= spot && (row.peOI ?? 0) > maxPeOI) {
+      maxPeOI = row.peOI!; putPeak = row.strikePrice;
+    }
+  }
+  return { callPeak, putPeak };
 }
 
 function findAtmStrike(chain: OptionRow[], spot: number): number {
@@ -175,17 +199,23 @@ export async function fetchDerivatives(symbol: string, expiry?: string): Promise
     .sort((a, b) => a.strikePrice - b.strikePrice);
 
   const filtered = json.filtered ?? {};
-  const totCeOI: number = filtered.CE?.totOI ?? 0;
-  const totPeOI: number = filtered.PE?.totOI ?? 0;
-  const pcr = totCeOI > 0 ? totPeOI / totCeOI : 0;
+  const totalCeOI: number = filtered.CE?.totOI ?? 0;
+  const totalPeOI: number = filtered.PE?.totOI ?? 0;
+  const totalCeVol: number = filtered.CE?.totVol ?? 0;
+  const totalPeVol: number = filtered.PE?.totVol ?? 0;
+  const pcr = totalCeOI > 0 ? totalPeOI / totalCeOI : 0;
   const maxPain = computeMaxPain(chain);
+  const { callPeak, putPeak } = peakOIStrikes(chain, spot);
   const atmStrike = chain.length > 0 ? findAtmStrike(chain, spot) : 0;
   const atmRow = chain.find((r) => r.strikePrice === atmStrike);
   const atmIV = atmRow?.ceIV ?? atmRow?.peIV ?? 0;
 
   const data: DerivativesData = {
     symbol: sym, expiry: selectedExpiry, expiryDates, spot, timestamp,
-    pcr, maxPain, atmStrike, atmIV, chain, fetchedAt: new Date().toISOString(),
+    pcr, maxPain, cePeakOI: callPeak, pePeakOI: putPeak,
+    atmStrike, atmIV, chain,
+    totalCeOI, totalPeOI, totalCeVol, totalPeVol,
+    fetchedAt: new Date().toISOString(),
   };
   cache.set(cacheKey, { data, ts: Date.now() });
   return data;

@@ -68,6 +68,7 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
           {fmtOI(row.ceOIChg)}
         </td>
       )}
+      {columns.vol     && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted/70"))}>{fmtOI(row.ceVol)}</td>}
       {columns.iv      && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted"))}>{fmt(row.ceIV, 1)}</td>}
       {columns.ltp     && <td className={c(clsx(ceItm && ITM_STRIPE, "text-primary font-medium"))}>{fmt(row.ceLTP)}</td>}
       {columns.chng    && (
@@ -126,6 +127,7 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
       )}
       {columns.ltp     && <td className={c(clsx(peItm && ITM_STRIPE, "text-primary font-medium text-left"))}>{fmt(row.peLTP)}</td>}
       {columns.iv      && <td className={c(clsx(peItm && ITM_STRIPE, "text-muted text-left"))}>{fmt(row.peIV, 1)}</td>}
+      {columns.vol     && <td className={c(clsx(peItm && ITM_STRIPE, "text-muted/70 text-left"))}>{fmtOI(row.peVol)}</td>}
       {columns.oiChange && (
         <td className={c(clsx(peItm && ITM_STRIPE, "text-left", (row.peOIChg ?? 0) >= 0 ? "text-teal/70" : "text-danger/70"))}>
           {fmtOI(row.peOIChg)}

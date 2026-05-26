@@ -100,21 +100,23 @@ export function FiltersBar({ filters, quarters, metrics, onChange }: Props) {
 
       {/* Row 2 — dropdowns + search */}
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Quarter */}
-        <select
-          className={selectClass}
-          value={filters.quarter ?? "all"}
-          onChange={(e) =>
-            set({ quarter: e.target.value === "all" ? null : e.target.value })
-          }
-        >
-          <option value="all">All quarters</option>
-          {quarters.map((q) => (
-            <option key={q} value={q}>
-              {q}
-            </option>
-          ))}
-        </select>
+        {/* Quarter — only render when there are selectable quarters */}
+        {quarters.length > 0 && (
+          <select
+            className={selectClass}
+            value={filters.quarter ?? "all"}
+            onChange={(e) =>
+              set({ quarter: e.target.value === "all" ? null : e.target.value })
+            }
+          >
+            <option value="all">All quarters</option>
+            {quarters.map((q) => (
+              <option key={q} value={q}>
+                {q}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Segment — hidden when only one */}
         {segments.length > 1 && (

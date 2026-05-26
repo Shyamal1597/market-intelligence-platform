@@ -12,7 +12,7 @@ export function QuickLinksPreview() {
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group flex items-start gap-2 p-3 rounded-lg border border-[#1E2235] bg-base/60 hover:border-amber/30 hover:bg-[#1E2235]/40 transition-all"
+          className="group flex items-start gap-2 p-3 rounded-lg border border-border bg-base/60 hover:border-amber/30 hover:bg-border/40 transition-all"
         >
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-primary group-hover:text-amber transition-colors truncate">

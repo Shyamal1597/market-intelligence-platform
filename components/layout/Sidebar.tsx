@@ -45,12 +45,12 @@ export function Sidebar() {
     <aside
       className={clsx(
         "fixed left-0 top-0 z-50 h-screen flex flex-col transition-all duration-300 ease-in-out",
-        "bg-surface border-r border-[#1E2235]",
+        "bg-surface border-r border-border",
         expanded ? "w-56" : "w-16"
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-[#1E2235] shrink-0">
+      <div className="flex items-center h-16 px-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
           {/* Collapsed: actual Sunidhi logo on white square */}
           {!expanded && (
@@ -114,7 +114,7 @@ export function Sidebar() {
       {/* Expand toggle */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-center h-12 border-t border-[#1E2235] text-muted hover:text-primary transition-colors"
+        className="flex items-center justify-center h-12 border-t border-border text-muted hover:text-primary transition-colors"
         aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
       >
         <ChevronRight

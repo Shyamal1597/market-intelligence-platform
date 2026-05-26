@@ -10,7 +10,7 @@ export interface ColumnConfig {
   ltp: boolean; chng: boolean; bid: boolean; ask: boolean;
   bidQty: boolean; askQty: boolean;
   // Market data
-  oi: boolean; oiChange: boolean; iv: boolean;
+  oi: boolean; oiChange: boolean; vol: boolean; iv: boolean;
 }
 
 export const DEFAULT_COLUMNS: ColumnConfig = {
@@ -18,7 +18,7 @@ export const DEFAULT_COLUMNS: ColumnConfig = {
   delta: false, gamma: false, theta: false, vega: false, rho: false,
   ltp: true, chng: true, bid: true, ask: true,
   bidQty: false, askQty: false,
-  oi: true, oiChange: true, iv: true,
+  oi: true, oiChange: true, vol: false, iv: true,
 };
 
 const STORAGE_KEY = "nebula:options:columns";
@@ -49,6 +49,7 @@ const GROUPS = [
     cols: [
       { key: "oi" as const, label: "OI" },
       { key: "oiChange" as const, label: "OI Chg" },
+      { key: "vol" as const, label: "Volume" },
       { key: "iv" as const, label: "IV%" },
     ],
   },

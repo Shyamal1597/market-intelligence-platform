@@ -80,7 +80,7 @@ export default function SectorsPage() {
             {[...Array(10)].map((_, i) => (
               <div
                 key={i}
-                className="animate-pulse h-[140px] bg-surface rounded-xl border border-[#1E2235]"
+                className="animate-pulse h-[140px] bg-surface rounded-xl border border-border"
               />
             ))}
           </div>
@@ -101,7 +101,7 @@ export default function SectorsPage() {
 
           {/* Row 3: Leaderboard */}
           {quotes.length > 0 && (
-            <div className="border border-[#1E2235] rounded-xl px-5 py-4 bg-surface">
+            <div className="border border-border rounded-xl px-5 py-4 bg-surface">
               <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-3">
                 Today&apos;s Ranking
               </p>
