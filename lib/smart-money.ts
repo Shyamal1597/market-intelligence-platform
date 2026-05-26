@@ -320,7 +320,7 @@ export function buildMarketPrompt(data: MarketStreamData): string {
     fiiCumulative >= -1000 ? "⚪ NEUTRAL" :
     "🔴 BEARISH";
 
-  return `You are a senior equity analyst at Sunidhi Capital. Today: ${new Date().toISOString().split("T")[0]}.
+  return `You are a senior equity research analyst. Today: ${new Date().toISOString().split("T")[0]}.
 Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX. All classification is pre-computed — your job is to write clear, specific insights using the facts below.
 
 ━━━ PRE-COMPUTED SIGNALS (do NOT override or recompute) ━━━
@@ -407,7 +407,7 @@ export function buildSymbolPrompt(data: SymbolStreamData): string {
       }).join("\n")
     : `No recent news found mentioning ${symbol}`;
 
-  return `You are a senior equity analyst at Sunidhi Capital. Today: ${new Date().toISOString().split("T")[0]}.
+  return `You are a senior equity research analyst. Today: ${new Date().toISOString().split("T")[0]}.
 Task: Produce a Smart Money Signal for ${symbol} from the four data streams below.
 
 ━━━ HARD INTERPRETATION RULES ━━━

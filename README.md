@@ -1,6 +1,6 @@
-# Sunidhi Research Intelligence Platform
+# Market Intelligence Platform
 
-Production internal research platform for a capital markets firm. Bloomberg Terminal-inspired dark UI serving a 15-analyst equity research team.
+Production internal research platform for an equity research firm. Bloomberg Terminal-inspired dark UI serving a 15-analyst equity research team.
 
 **Built solo. 25,500+ lines of TypeScript. 15 modules. 237+ commits.**
 

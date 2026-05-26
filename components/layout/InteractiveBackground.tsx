@@ -110,7 +110,7 @@ export function InteractiveBackground() {
 
         const orbs: Orb[] = [];
 
-        // Premium brand colors: Sunidhi Amber, Tech Teal, Deep Navy/Indigo
+        // Premium brand colors: Amber, Tech Teal, Deep Navy/Indigo
         // Using large radii (600px - 1000px) to create smooth, blurry gradients
         orbs.push(new Orb(width, height, "rgba(245, 130, 13, 0)", 800)); // Amber
         orbs.push(new Orb(width, height, "rgba(0, 229, 255, 0)", 900));  // Teal

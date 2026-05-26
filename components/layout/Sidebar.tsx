@@ -52,24 +52,24 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* Collapsed: actual Sunidhi logo on white square */}
+          {/* Collapsed: logo on white square */}
           {!expanded && (
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0 select-none p-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/Sunidhi_logo_homepage.png"
-                alt="Sunidhi"
+                src="/images/logo.png"
+                alt="Research"
                 className="w-full h-full object-contain"
               />
             </div>
           )}
-          {/* Expanded: actual Sunidhi logo on white background pill */}
+          {/* Expanded: logo on white background pill */}
           {expanded && (
             <div className="bg-white rounded-md px-2.5 py-1 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/Sunidhi_logo_homepage.png"
-                alt="Sunidhi Securities & Finance"
+                src="/images/logo.png"
+                alt="Research Intelligence"
                 className="h-7 w-auto object-contain"
               />
             </div>

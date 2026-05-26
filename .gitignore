@@ -82,3 +82,6 @@ Concall Data/
 
 # Docs/plans (local working docs)
 docs/plans/
+
+# Session context (local paths, internal workflows)
+CONTEXT.md

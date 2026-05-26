@@ -1,6 +1,6 @@
-# Sunidhi Research Intelligence Platform — Roadmap
+# Market Intelligence Platform — Roadmap
 
-**Project:** Sunidhi Capital Internal Intranet
+**Project:** Internal Research Intranet
 **Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · App Router
 **Updated:** 2026-02-26
 
@@ -32,7 +32,7 @@
 ### Design System Established
 
 - Background `#0C0E14` · Surface `#13151E` · Borders `#1E2235`
-- Accent orange `#F5820D` (Sunidhi brand) · Teal `#00C9A7` · Danger `#E84040`
+- Accent orange `#F5820D` (brand) · Teal `#00C9A7` · Danger `#E84040`
 - Fonts: Cormorant Garamond (display) + JetBrains Mono (data) + DM Sans (body)
 - Aesthetic: Bloomberg Terminal × Financial Times Editorial
 
@@ -40,7 +40,7 @@
 
 ## Phase 2 — Dashboard Redesign ✅ COMPLETE
 
-**Objective:** Replace the generic dashboard with a professional, information-dense layout inspired by Koyfin — hero metrics row with sparklines, terminal-style section headers, Sunidhi brand identity.
+**Objective:** Replace the generic dashboard with a professional, information-dense layout inspired by Koyfin — hero metrics row with sparklines, terminal-style section headers, brand identity.
 
 **Design doc:** `docs/plans/2026-02-26-dashboard-redesign-design.md`
 **Implementation plan:** `docs/plans/2026-02-26-dashboard-redesign.md`
@@ -49,7 +49,7 @@
 
 | # | File | Change |
 |---|---|---|
-| 1 | `app/globals.css` | Accent color `#E8A020` → `#F5820D` (Sunidhi brand orange) |
+| 1 | `app/globals.css` | Accent color `#E8A020` → `#F5820D` (brand orange) |
 | 2 | `components/layout/Sidebar.tsx` | Replaced `Activity` Lucide icon with CSS `S` brand mark in `#CC1F37` |
 | 3 | `app/layout.tsx` | Removed `<TickerStrip />` from global layout (file kept) |
 | 4 | `components/dashboard/MetricsRow.tsx` | **NEW** — 5-tile hero row with sparklines, teal/danger left borders |
@@ -76,14 +76,14 @@ ebf9ee5  style: update accent color
 
 ## Phase 3 — Data & Brand Enhancement 🔄 IN PROGRESS
 
-**Objective:** Replace unreliable BSE XML feed with NSE RSS feeds (always-accessible links), add the actual Sunidhi logo, and update branding.
+**Objective:** Replace unreliable BSE XML feed with NSE RSS feeds (always-accessible links), add logo, and update branding.
 
 ### Tasks
 
 | # | Task | Status | File(s) |
 |---|---|---|---|
 | 3.1 | Replace BSE XML with NSE RSS feeds | ✅ Done | `lib/nse-filings.ts` (new), `app/api/filings/route.ts` |
-| 3.2 | Add Sunidhi logo PNG to sidebar | ✅ Done | `public/images/Sunidhi_logo_homepage.png`, `components/layout/Sidebar.tsx` |
+| 3.2 | Add logo PNG to sidebar | ✅ Done | `public/images/logo.png`, `components/layout/Sidebar.tsx` |
 | 3.3 | Update filings page header text (BSE → NSE) | 🔲 Todo | `app/filings/page.tsx` |
 | 3.4 | Fix Sidebar nav label "BSE Filings" → "NSE Filings" | 🔲 Todo | `components/layout/Sidebar.tsx` |
 

@@ -16,7 +16,7 @@ export interface NSEFiling {
 }
 
 // rss-parser instance with NSE custom fields
-// (mirrors sunidhi-nextjs/src/app/api/nse-feeds/route.ts reference implementation)
+// rss-parser with NSE custom fields
 const parser = new Parser({
   customFields: {
     item: [["pdf_link", "pdfLink"]],

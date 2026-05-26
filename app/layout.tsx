@@ -5,8 +5,8 @@ import { OmniCore } from "@/components/layout/OmniCore";
 import { InteractiveBackground } from "@/components/layout/InteractiveBackground";
 
 export const metadata: Metadata = {
-  title: "Project NEBULA | Sunidhi Research",
-  description: "Futuristic internal research platform for Sunidhi Capital",
+  title: "Project NEBULA | Research Intelligence",
+  description: "Internal research intelligence platform for equity research teams",
 };
 
 export default function RootLayout({
@@ -34,8 +34,8 @@ export default function RootLayout({
                 <div className="bg-white/90 p-2 rounded-xl backdrop-blur-md border border-white/20 shadow-lg shadow-amber/10">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/images/Sunidhi_logo_homepage.png"
-                    alt="Sunidhi"
+                    src="/images/logo.png"
+                    alt="Research"
                     className="h-8 w-auto object-contain"
                   />
                 </div>

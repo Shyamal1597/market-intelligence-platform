@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "..");
 const EXTRACTOR = path.join(__dirname, "extract-single.mjs");
 
-const REPORTS_BASE = "D:\\Sunidhi Intranet\\Research Reports";
+const REPORTS_BASE = process.env.REPORTS_BASE || path.join(PROJECT_ROOT, "research-reports");
 const DB_PATH = path.join(PROJECT_ROOT, "data", "reports.db");
 
 const CHUNK_SIZE = 2000;
@@ -196,7 +196,7 @@ function parseFilename(filename, analystFolder) {
   }
 
   // 3. Company name: everything before the first type-bearing segment,
-  //    stripped of trailing "Sunidhi", dates, and underscores.
+  //    stripped of trailing broker name prefix, dates, and underscores.
   const segs = base.split("_");
   let typeSegIdx = -1;
   for (let i = 0; i < segs.length; i++) {
@@ -208,12 +208,12 @@ function parseFilename(filename, analystFolder) {
       break;
     }
     // Also stop before any segment that is mostly digits (date segment)
-    if (/^\s*(?:Sunidhi)?\d{6,}\s*$/i.test(s)) { typeSegIdx = i; break; }
+    if (/^\s*(?:[A-Za-z]+)?\d{6,}\s*$/i.test(s)) { typeSegIdx = i; break; }
   }
 
   let company = (typeSegIdx > 0 ? segs.slice(0, typeSegIdx) : [segs[0]])
     .join(" ")
-    .replace(/\bSunidhi\b/gi, "")
+    .replace(/^[A-Za-z]+(?=\s)/i, "")
     .replace(/\d{8}/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();

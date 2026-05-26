@@ -32,7 +32,7 @@ function buildCsv(entries: FiiDiiEntry[]): string {
 
   // Section 1: header metadata + period totals
   const meta: (string | number)[][] = [
-    ["Sunidhi Research — FII / DII Flows"],
+    ["Research Intelligence — FII / DII Flows"],
     ["Exported", exportedAt],
     ["Rows", entries.length],
     [],

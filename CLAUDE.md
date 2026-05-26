@@ -1,4 +1,4 @@
-# Sunidhi Research Intelligence Platform — Development Guidelines
+# Market Intelligence Platform — Development Guidelines
 
 ## Project Overview
 Internal financial research intranet for an equity research team. Next.js 16 App Router, TypeScript, Tailwind CSS. File-based JSON persistence. Serves ~15 analysts on internal network.
