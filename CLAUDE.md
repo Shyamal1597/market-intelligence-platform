@@ -163,6 +163,47 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 ---
 
+## Intel Pipeline — Current Status
+
+### Architecture (5-stage LLM pipeline)
+```
+Stage 1: Parse Excel fundamentals (OPTIONAL — legacy, not needed for new flow)
+Stage 2: Ingest transcripts (PDF → text via pdf2json + pdfminer fallback)
+Stage 3: Extract forward-looking claims (LLM, sector-aware prompts)
+Stage 4: Cross-verify claims against NEXT quarter's transcript (LLM) ← REWRITTEN
+Stage 5: Generate quarterly narrative summaries (LLM)
+```
+
+### What's Done
+- **SYMBOL_SECTOR**: 100 stocks across 19 sectors (NIFTY 50 + Next 50)
+- **BSE scraper**: Migrated from dead XML endpoint to live JSON API (`api.bseindia.com`). Uses `node:https` with `insecureHTTPParser: true` for BSE's malformed headers.
+- **BSE_SCRIP_TO_SYMBOL**: ~95 verified scrip codes mapped to symbols
+- **COMPANY_NAME_PATTERNS**: ~100 fingerprint patterns for transcript validation
+- **Stage 4 rewrite**: Complete. Uses transcript-based verification with `met/moving/miss/pending/ambiguous` verdicts instead of Excel-based `hit/miss/partial/no-data`
+- **Frontend**: StatusBadge, FiltersBar, ClaimRow, IntelDashboard, companies API all updated for new verdict system
+- **Transcript seeding**: First run complete — 50 transcripts across 32 stocks (mostly Q4-FY26 only; BSE purges old attachments after ~2 months)
+
+### What's NOT Done — Next Steps
+1. **Sector registries** — Only `bank` and `insurance-holding` registries exist. Need 17 more for: nbfc, insurance-life, financial-services, it-services, pharma, auto, fmcg, oil-gas-energy, metals-mining, power-utilities, telecom, cement-building, capital-goods-infra, defence, consumer-retail, aviation, real-estate
+2. **Run LLM pipeline** — No Anthropic API credits currently. Once available, run Stages 3-5 for all stocks with transcripts: `npm run intel:rebuild SYMBOL --stage=3`
+3. **Retry failed BSE downloads** — ~15 stocks timed out during seeding (TCS, HCLTECH, CIPLA, ITC, HINDUNILVR, etc.). Retry with: `npx tsx scripts/intel-seed-transcripts.ts TCS HCLTECH CIPLA`
+4. **Historical transcript sourcing** — BSE only has current quarter. For cross-checking (Stage 4), need ≥2 consecutive quarters per stock. Manual upload via `/api/intel/upload` or alternative sources needed.
+5. **Frontend scaling** — `/intel` page needs to handle 100 stocks (currently works for 2). May need pagination, search, sector filtering.
+
+### Key Files
+- `lib/intel/types.ts` — All type definitions, SYMBOL_SECTOR map (100 stocks)
+- `lib/intel/crossCheck.ts` — Stage 4 (transcript-based, REWRITTEN)
+- `lib/intel/bse-transcript-scraper.ts` — BSE JSON API scraper, SYMBOL_TO_SCRIP map
+- `lib/intel/pipeline.ts` — PDF ingestion (ingestPdfTranscript)
+- `lib/intel/extractClaims.ts` — Stage 3 claim extraction
+- `lib/intel/registry.ts` — Sector registry loader
+- `scripts/intel-seed-transcripts.ts` — Bulk BSE transcript downloader
+- `scripts/intel-rebuild.ts` — Full pipeline runner
+- `data/intelligence/{SYMBOL}/transcripts/*.txt` — Extracted transcript text
+- `data/intelligence/registries/*.json` — Sector metric definitions
+
+---
+
 ## Secrets
 
 - `ANTHROPIC_API_KEY` — required for LLM pipeline. Place in `.env.local` (gitignored).
