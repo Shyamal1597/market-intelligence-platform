@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Search } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
@@ -23,6 +23,86 @@ interface IntelData {
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
 const MAX_COLUMNS = 4;
+
+// ── Sector display config ────────────────────────────────────────────────────
+
+const SECTOR_DISPLAY_ORDER = [
+  "bank", "nbfc", "insurance-holding", "insurance-life", "financial-services",
+  "it-services", "pharma", "auto", "fmcg", "oil-gas-energy",
+  "metals-mining", "power-utilities", "telecom", "cement-building",
+  "capital-goods-infra", "defence", "consumer-retail", "aviation", "real-estate",
+] as const;
+
+const SECTOR_LABELS: Record<string, string> = {
+  "bank":                "Banking",
+  "nbfc":                "NBFC & Lending",
+  "insurance-holding":   "Insurance — Holding",
+  "insurance-life":      "Insurance — Life",
+  "financial-services":  "Financial Services",
+  "it-services":         "IT Services",
+  "pharma":              "Pharma & Healthcare",
+  "auto":                "Auto & Ancillaries",
+  "fmcg":                "FMCG",
+  "oil-gas-energy":      "Oil, Gas & Energy",
+  "metals-mining":       "Metals & Mining",
+  "power-utilities":     "Power & Utilities",
+  "telecom":             "Telecom",
+  "cement-building":     "Cement & Building Materials",
+  "capital-goods-infra": "Capital Goods & Infra",
+  "defence":             "Defence",
+  "consumer-retail":     "Consumer & Retail",
+  "aviation":            "Aviation",
+  "real-estate":         "Real Estate",
+};
+
+// ── Company chip ─────────────────────────────────────────────────────────────
+
+function CompanyChip({
+  company,
+  selectedSymbol,
+  onSelect,
+}: {
+  company: CompanySummary;
+  selectedSymbol: string;
+  onSelect: (sym: string) => void;
+}) {
+  const isSelected = company.symbol === selectedSymbol;
+  const decisive = company.metCount + company.movingCount + company.missCount;
+  const onTrackPct = decisive > 0
+    ? Math.round(((company.metCount + company.movingCount) / decisive) * 100)
+    : null;
+  const hasData = company.totalClaims > 0;
+
+  return (
+    <button
+      onClick={() => onSelect(company.symbol)}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-xs transition-colors ${
+        isSelected
+          ? "border-amber/50 bg-amber/10 text-amber"
+          : hasData
+          ? "border-border bg-surface text-muted hover:text-primary hover:border-border/60"
+          : "border-border/30 bg-surface/30 text-muted/40 hover:text-muted hover:border-border/40"
+      }`}
+    >
+      <span className="font-bold text-[11px]">{company.symbol}</span>
+      {hasData && (
+        <span className={`text-[10px] ${isSelected ? "text-amber/70" : "text-muted/60"}`}>
+          {company.totalClaims}
+        </span>
+      )}
+      {onTrackPct !== null && (
+        <span className={`text-[10px] font-bold ${
+          isSelected        ? "text-teal"
+          : onTrackPct >= 70 ? "text-teal"
+          : onTrackPct >= 40 ? "text-amber"
+          : "text-danger"
+        }`}>
+          {onTrackPct}%
+        </span>
+      )}
+    </button>
+  );
+}
 
 // ── Latest Guidance (unverified forward-looking claims) ──────────────────────
 
@@ -124,6 +204,9 @@ export function IntelDashboard() {
   const [summaries, setSummaries] = useState<Record<string, QuarterSummary | null>>({});
   const [summariesLoading, setSummariesLoading] = useState(false);
   const [selectedQuarters, setSelectedQuarters] = useState<string[]>([]);
+  const [showAllQuarters, setShowAllQuarters] = useState(false);
+  const [openSectors, setOpenSectors] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load company list
   useEffect(() => {
@@ -133,6 +216,13 @@ export function IntelDashboard() {
       .catch(() => {});
   }, []);
 
+  // Auto-open sectors that have any claims data once companies load
+  useEffect(() => {
+    if (companies.length === 0) return;
+    const withData = new Set(companies.filter((c) => c.totalClaims > 0).map((c) => c.sector));
+    setOpenSectors(withData);
+  }, [companies]);
+
   // Load symbol data + all summaries in parallel
   const loadSymbol = useCallback((sym: string) => {
     setLoading(true);
@@ -140,6 +230,8 @@ export function IntelDashboard() {
     setData(null);
     setSummaries({});
     setSelectedQuarters([]); // reset; auto-picked once quarters load
+    setShowAllQuarters(false); // collapse to 4-quarter default on symbol switch
+    setSearchQuery("");
 
     fetch(`/api/intel/${sym}`)
       .then(async (r) => {
@@ -175,11 +267,10 @@ export function IntelDashboard() {
 
   useEffect(() => { loadSymbol(selectedSymbol); }, [selectedSymbol, loadSymbol]);
 
-  // Quarters sorted newest-first, excluding quarters with no verified claims
-  const sortedQuarters = useMemo(() => {
+  // All verified quarters newest-first — full history, no cap.
+  const allVerifiedQuarters = useMemo(() => {
     if (!data) return [];
     const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse();
-    // Hide quarters where every claim is unverified (pending/ambiguous/null check)
     return all.filter((q) => {
       const claims = data.byQuarter[q] ?? [];
       if (claims.length === 0) return false;
@@ -189,6 +280,12 @@ export function IntelDashboard() {
       });
     });
   }, [data]);
+
+  // Visible picker list — default 4 most recent, expanded by user toggle.
+  const sortedQuarters = useMemo(
+    () => (showAllQuarters ? allVerifiedQuarters : allVerifiedQuarters.slice(0, 4)),
+    [allVerifiedQuarters, showAllQuarters]
+  );
 
   // Auto-select 2 most recent once quarters are available (after a symbol switch)
   useEffect(() => {
@@ -206,27 +303,36 @@ export function IntelDashboard() {
         return prev.length > 1 ? prev.filter((x) => x !== q) : prev;
       }
       if (prev.length >= MAX_COLUMNS) return prev; // cap reached
-      // Maintain newest-first order
+      // Maintain newest-first order (use full list so old quarters sort correctly)
       return [...prev, q].sort(
-        (a, b) => sortedQuarters.indexOf(a) - sortedQuarters.indexOf(b)
+        (a, b) => allVerifiedQuarters.indexOf(a) - allVerifiedQuarters.indexOf(b)
       );
     });
   };
 
-  // Quarters with claims but no verified data (forward-looking only)
+  // Quarters with claims but no verified data — shown as "Latest Guidance".
+  // Only includes quarters NEWER than the most recent verified quarter so that
+  // old unprocessed quarters (pre-pipeline) don't bleed in here.
   const pendingQuarters = useMemo(() => {
     if (!data) return [];
-    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse();
+    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse(); // newest-first
+
+    // Compute ordinal (FY * 4 + quarter) for chronological comparison
+    const ordinal = (q: string) => parseInt(q.slice(5)) * 4 + parseInt(q[1]);
+    const newestVerifiedOrdinal = allVerifiedQuarters.length > 0 ? ordinal(allVerifiedQuarters[0]) : -1;
+
     return all.filter((q) => {
       const claims = data.byQuarter[q] ?? [];
       if (claims.length === 0) return false;
-      // Quarter is "pending" if NO claim has a decisive verdict
+      // Must be strictly newer than the most recent verified quarter
+      if (ordinal(q) <= newestVerifiedOrdinal) return false;
+      // Quarter is "latest guidance" if NO claim has a decisive verdict
       return !claims.some((c) => {
         const v = c.check?.verdict;
         return v && v !== "pending" && v !== "ambiguous";
       });
     });
-  }, [data]);
+  }, [data, allVerifiedQuarters]);
 
   // Unique segments in appearance order
   const segments = useMemo(() => {
@@ -242,47 +348,113 @@ export function IntelDashboard() {
     return order;
   }, [data]);
 
+  // Group companies by sector for the accordion
+  const companiesBySector = useMemo(() => {
+    const map = new Map<string, CompanySummary[]>();
+    for (const c of companies) {
+      if (!map.has(c.sector)) map.set(c.sector, []);
+      map.get(c.sector)!.push(c);
+    }
+    return map;
+  }, [companies]);
+
+  // Search: flat filtered list (active only when query is non-empty)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.trim().toLowerCase();
+    return companies.filter((c) => c.symbol.toLowerCase().includes(q));
+  }, [companies, searchQuery]);
+
   return (
     <div className="space-y-4">
 
-      {/* ── Company selector + Upload ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
-        {companies.map((c) => {
-          const isSelected = c.symbol === selectedSymbol;
-          const decisive = c.metCount + c.movingCount + c.missCount;
-          const onTrackPct = decisive > 0
-            ? Math.round(((c.metCount + c.movingCount) / decisive) * 100)
-            : null;
-          return (
-            <button
-              key={c.symbol}
-              onClick={() => setSelectedSymbol(c.symbol)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded border font-mono transition-colors ${
-                isSelected
-                  ? "border-amber/50 bg-amber/10 text-amber"
-                  : "border-border bg-surface text-muted hover:text-primary hover:border-border/60"
-              }`}
-            >
-              <span className="text-xs font-bold">{c.symbol}</span>
-              {c.totalClaims > 0 && (
-                <span className={`text-[10px] ${isSelected ? "text-amber/70" : "text-muted"}`}>
-                  {c.totalClaims} claims
-                </span>
-              )}
-              {onTrackPct !== null && (
-                <span className={`text-[10px] font-bold ${
-                  isSelected        ? "text-teal"
-                  : onTrackPct >= 70 ? "text-teal"
-                  : onTrackPct >= 40 ? "text-amber"
-                  : "text-danger"
-                }`}>
-                  {onTrackPct}%
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* ── Company selector: search + sector accordion ── */}
+      <div className="space-y-2">
+        {/* Upload + Search row */}
+        <div className="flex items-center gap-2">
+          <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
+          <div className="relative max-w-[200px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted pointer-events-none" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search…"
+              className="w-full pl-7 pr-3 py-1.5 text-xs font-mono bg-surface border border-border rounded text-primary placeholder:text-muted/40 focus:outline-none focus:border-amber/40"
+            />
+          </div>
+        </div>
+
+        {/* Search results: flat chips */}
+        {searchQuery.trim() && (
+          <div className="flex flex-wrap gap-1.5 px-0.5 py-1">
+            {searchResults.length === 0 ? (
+              <span className="text-[11px] font-mono text-muted/60">No match for &ldquo;{searchQuery}&rdquo;</span>
+            ) : (
+              searchResults.map((c) => (
+                <CompanyChip key={c.symbol} company={c} selectedSymbol={selectedSymbol}
+                  onSelect={(s) => { setSelectedSymbol(s); setSearchQuery(""); }} />
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Sector accordion (hidden while searching) */}
+        {!searchQuery.trim() && (
+          <div className="border border-border rounded overflow-hidden divide-y divide-border/60">
+            {SECTOR_DISPLAY_ORDER.map((sector) => {
+              const sectorCos = companiesBySector.get(sector) ?? [];
+              if (sectorCos.length === 0) return null;
+              const isOpen = openSectors.has(sector);
+              const totalClaims = sectorCos.reduce((s, c) => s + c.totalClaims, 0);
+              const decisive = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
+              const onTrack = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
+              const onTrackPct = decisive > 0 ? Math.round((onTrack / decisive) * 100) : null;
+
+              return (
+                <div key={sector}>
+                  <button
+                    onClick={() =>
+                      setOpenSectors((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(sector)) next.delete(sector); else next.add(sector);
+                        return next;
+                      })
+                    }
+                    className="w-full flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface/70 text-left transition-colors"
+                  >
+                    <span className="text-[11px] font-mono font-bold text-primary w-44 truncate">
+                      {SECTOR_LABELS[sector] ?? sector}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted/60">
+                      {sectorCos.length} stocks
+                    </span>
+                    {totalClaims > 0 && (
+                      <span className="text-[10px] font-mono text-muted/50">· {totalClaims} claims</span>
+                    )}
+                    {onTrackPct !== null && (
+                      <span className={`ml-auto mr-2 text-[10px] font-mono font-bold ${
+                        onTrackPct >= 70 ? "text-teal" : onTrackPct >= 40 ? "text-amber" : "text-danger"
+                      }`}>
+                        {onTrackPct}%
+                      </span>
+                    )}
+                    <span className="text-muted/50 shrink-0">
+                      {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 py-2 bg-base/30 flex flex-wrap gap-1.5">
+                      {sectorCos.map((c) => (
+                        <CompanyChip key={c.symbol} company={c} selectedSymbol={selectedSymbol}
+                          onSelect={setSelectedSymbol} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -329,6 +501,18 @@ export function IntelDashboard() {
                 </button>
               );
             })}
+
+            {/* Expand / collapse older quarters */}
+            {allVerifiedQuarters.length > 4 && (
+              <button
+                onClick={() => setShowAllQuarters((p) => !p)}
+                className="px-2 py-1 text-[10px] font-mono text-muted/60 hover:text-primary border border-border/30 hover:border-border/60 rounded transition-colors"
+              >
+                {showAllQuarters
+                  ? "show less"
+                  : `+${allVerifiedQuarters.length - 4} older`}
+              </button>
+            )}
 
             <span className="text-[10px] font-mono text-muted/40 ml-1">
               {selectedQuarters.length}/{MAX_COLUMNS} shown
