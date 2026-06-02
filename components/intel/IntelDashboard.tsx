@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronRight, Clock, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
 import type { EnrichedClaim } from "./ClaimRow";
 import type { QuarterSummary } from "@/lib/intel/types";
+import { SYMBOL_SECTOR } from "@/lib/intel/types";
 
 interface IntelData {
   symbol: string;
@@ -101,6 +102,89 @@ function CompanyChip({
         </span>
       )}
     </button>
+  );
+}
+
+// ── Sector dropdown ───────────────────────────────────────────────────────────
+
+function SectorDropdown({
+  selectedSector,
+  companies,
+  onChange,
+}: {
+  selectedSector: string;
+  companies: CompanySummary[];
+  onChange: (sector: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const availableSectors = SECTOR_DISPLAY_ORDER.filter((s) =>
+    companies.some((c) => c.sector === s)
+  );
+
+  const sectorCos = companies.filter((c) => c.sector === selectedSector);
+  const decisive = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
+  const onTrack  = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
+  const pct = decisive > 0 ? Math.round((onTrack / decisive) * 100) : null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-surface text-xs font-mono text-primary hover:border-amber/40 transition-colors"
+      >
+        <span className="text-muted/60 shrink-0 text-[10px] uppercase tracking-wider">Sector</span>
+        <span className="font-bold">{SECTOR_LABELS[selectedSector] ?? selectedSector}</span>
+        <span className="text-muted/40">·</span>
+        <span className="text-muted/60">{sectorCos.length}</span>
+        {pct !== null && (
+          <span className={`font-bold ${
+            pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
+          }`}>
+            {pct}%
+          </span>
+        )}
+        <ChevronDown size={11} className="text-muted/50 shrink-0" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden">
+            {availableSectors.map((sector) => {
+              const cos = companies.filter((c) => c.sector === sector);
+              const dec = cos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
+              const ot  = cos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
+              const p   = dec > 0 ? Math.round((ot / dec) * 100) : null;
+              const isActive = sector === selectedSector;
+              return (
+                <button
+                  key={sector}
+                  onClick={() => { onChange(sector); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono transition-colors ${
+                    isActive
+                      ? "bg-amber/10 text-amber"
+                      : "text-muted hover:bg-base/60 hover:text-primary"
+                  }`}
+                >
+                  <span className="flex-1 truncate">{SECTOR_LABELS[sector] ?? sector}</span>
+                  <span className={`text-[10px] shrink-0 ${isActive ? "text-amber/60" : "text-muted/50"}`}>
+                    {cos.length}
+                  </span>
+                  {p !== null && (
+                    <span className={`text-[10px] font-bold shrink-0 ${
+                      p >= 70 ? "text-teal" : p >= 40 ? "text-amber" : "text-danger"
+                    }`}>
+                      {p}%
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -205,8 +289,9 @@ export function IntelDashboard() {
   const [summariesLoading, setSummariesLoading] = useState(false);
   const [selectedQuarters, setSelectedQuarters] = useState<string[]>([]);
   const [showAllQuarters, setShowAllQuarters] = useState(false);
-  const [openSectors, setOpenSectors] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSector, setSelectedSector] = useState<string>(
+    () => SYMBOL_SECTOR[DEFAULT_SYMBOL] ?? SECTOR_DISPLAY_ORDER[0]
+  );
 
   // Load company list
   useEffect(() => {
@@ -216,13 +301,6 @@ export function IntelDashboard() {
       .catch(() => {});
   }, []);
 
-  // Auto-open sectors that have any claims data once companies load
-  useEffect(() => {
-    if (companies.length === 0) return;
-    const withData = new Set(companies.filter((c) => c.totalClaims > 0).map((c) => c.sector));
-    setOpenSectors(withData);
-  }, [companies]);
-
   // Load symbol data + all summaries in parallel
   const loadSymbol = useCallback((sym: string) => {
     setLoading(true);
@@ -231,7 +309,6 @@ export function IntelDashboard() {
     setSummaries({});
     setSelectedQuarters([]); // reset; auto-picked once quarters load
     setShowAllQuarters(false); // collapse to 4-quarter default on symbol switch
-    setSearchQuery("");
 
     fetch(`/api/intel/${sym}`)
       .then(async (r) => {
@@ -266,6 +343,12 @@ export function IntelDashboard() {
   }, []);
 
   useEffect(() => { loadSymbol(selectedSymbol); }, [selectedSymbol, loadSymbol]);
+
+  // Sync selected sector when symbol changes externally
+  useEffect(() => {
+    const s = SYMBOL_SECTOR[selectedSymbol];
+    if (s) setSelectedSector(s);
+  }, [selectedSymbol]);
 
   // All verified quarters newest-first — full history, no cap.
   const allVerifiedQuarters = useMemo(() => {
@@ -348,113 +431,32 @@ export function IntelDashboard() {
     return order;
   }, [data]);
 
-  // Group companies by sector for the accordion
-  const companiesBySector = useMemo(() => {
-    const map = new Map<string, CompanySummary[]>();
-    for (const c of companies) {
-      if (!map.has(c.sector)) map.set(c.sector, []);
-      map.get(c.sector)!.push(c);
-    }
-    return map;
-  }, [companies]);
-
-  // Search: flat filtered list (active only when query is non-empty)
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.trim().toLowerCase();
-    return companies.filter((c) => c.symbol.toLowerCase().includes(q));
-  }, [companies, searchQuery]);
+  const sectorCompanies = useMemo(
+    () => companies.filter((c) => c.sector === selectedSector),
+    [companies, selectedSector]
+  );
 
   return (
     <div className="space-y-4">
 
-      {/* ── Company selector: search + sector accordion ── */}
-      <div className="space-y-2">
-        {/* Upload + Search row */}
-        <div className="flex items-center gap-2">
-          <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
-          <div className="relative max-w-[200px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted pointer-events-none" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search…"
-              className="w-full pl-7 pr-3 py-1.5 text-xs font-mono bg-surface border border-border rounded text-primary placeholder:text-muted/40 focus:outline-none focus:border-amber/40"
+      {/* ── Company selector: sector dropdown + inline chips ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
+        <SectorDropdown
+          selectedSector={selectedSector}
+          companies={companies}
+          onChange={setSelectedSector}
+        />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {sectorCompanies.map((c) => (
+            <CompanyChip
+              key={c.symbol}
+              company={c}
+              selectedSymbol={selectedSymbol}
+              onSelect={setSelectedSymbol}
             />
-          </div>
+          ))}
         </div>
-
-        {/* Search results: flat chips */}
-        {searchQuery.trim() && (
-          <div className="flex flex-wrap gap-1.5 px-0.5 py-1">
-            {searchResults.length === 0 ? (
-              <span className="text-[11px] font-mono text-muted/60">No match for &ldquo;{searchQuery}&rdquo;</span>
-            ) : (
-              searchResults.map((c) => (
-                <CompanyChip key={c.symbol} company={c} selectedSymbol={selectedSymbol}
-                  onSelect={(s) => { setSelectedSymbol(s); setSearchQuery(""); }} />
-              ))
-            )}
-          </div>
-        )}
-
-        {/* Sector accordion (hidden while searching) */}
-        {!searchQuery.trim() && (
-          <div className="border border-border rounded overflow-hidden divide-y divide-border/60">
-            {SECTOR_DISPLAY_ORDER.map((sector) => {
-              const sectorCos = companiesBySector.get(sector) ?? [];
-              if (sectorCos.length === 0) return null;
-              const isOpen = openSectors.has(sector);
-              const totalClaims = sectorCos.reduce((s, c) => s + c.totalClaims, 0);
-              const decisive = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
-              const onTrack = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
-              const onTrackPct = decisive > 0 ? Math.round((onTrack / decisive) * 100) : null;
-
-              return (
-                <div key={sector}>
-                  <button
-                    onClick={() =>
-                      setOpenSectors((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(sector)) next.delete(sector); else next.add(sector);
-                        return next;
-                      })
-                    }
-                    className="w-full flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface/70 text-left transition-colors"
-                  >
-                    <span className="text-[11px] font-mono font-bold text-primary w-44 truncate">
-                      {SECTOR_LABELS[sector] ?? sector}
-                    </span>
-                    <span className="text-[10px] font-mono text-muted/60">
-                      {sectorCos.length} stocks
-                    </span>
-                    {totalClaims > 0 && (
-                      <span className="text-[10px] font-mono text-muted/50">· {totalClaims} claims</span>
-                    )}
-                    {onTrackPct !== null && (
-                      <span className={`ml-auto mr-2 text-[10px] font-mono font-bold ${
-                        onTrackPct >= 70 ? "text-teal" : onTrackPct >= 40 ? "text-amber" : "text-danger"
-                      }`}>
-                        {onTrackPct}%
-                      </span>
-                    )}
-                    <span className="text-muted/50 shrink-0">
-                      {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                    </span>
-                  </button>
-                  {isOpen && (
-                    <div className="px-3 py-2 bg-base/30 flex flex-wrap gap-1.5">
-                      {sectorCos.map((c) => (
-                        <CompanyChip key={c.symbol} company={c} selectedSymbol={selectedSymbol}
-                          onSelect={setSelectedSymbol} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {loading && (
