@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
@@ -106,6 +107,9 @@ function CompanyChip({
 }
 
 // ── Sector dropdown ───────────────────────────────────────────────────────────
+// Uses a React Portal so the panel renders directly in <body> — this breaks
+// it out of any parent stacking context or overflow clipping that Tailwind v4
+// color-mix() layers can introduce on siblings.
 
 function SectorDropdown({
   selectedSector,
@@ -117,13 +121,104 @@ function SectorDropdown({
   onChange: (sector: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const current = sectorStats.find((s) => s.sector === selectedSector);
+
+  const openPanel = () => {
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPanelStyle({
+        position: "fixed",
+        top: r.bottom + 4,
+        left: r.left,
+        width: 256,
+        zIndex: 9999,
+      });
+    }
+    setOpen(true);
+  };
+
+  // Close on scroll / resize so panel doesn't drift
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, { passive: true, capture: true });
+    window.addEventListener("resize", close, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const panel = open ? (
+    <>
+      {/* Invisible backdrop for outside-click dismiss */}
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+        onClick={() => setOpen(false)}
+      />
+      {/* Panel — rendered at body level, no parent CSS can clip it */}
+      <div
+        style={panelStyle}
+        className="rounded border border-border bg-surface shadow-xl overflow-y-auto"
+        onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+      >
+        {sectorStats.map(({ sector, count, pct }) => {
+          const isActive = sector === selectedSector;
+          return (
+            <div
+              key={sector}
+              tabIndex={0}
+              onClick={() => { onChange(sector); setOpen(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") { onChange(sector); setOpen(false); }
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+                backgroundColor: isActive ? "color-mix(in oklch, var(--color-amber) 12%, transparent)" : "transparent",
+              }}
+              className={isActive ? "" : "hover:bg-base/60"}
+            >
+              <span style={{ color: isActive ? "var(--color-amber)" : "var(--color-primary)" }}>
+                {SECTOR_LABELS[sector] ?? sector}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, marginLeft: 12 }}>
+                <span style={{
+                  fontSize: "10px",
+                  color: isActive ? "color-mix(in oklch, var(--color-amber) 60%, transparent)" : "var(--color-muted)",
+                }}>
+                  {count}
+                </span>
+                {pct != null && (
+                  <span style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    color: pct >= 70 ? "var(--color-teal)" : pct >= 40 ? "var(--color-amber)" : "var(--color-danger)",
+                  }}>
+                    {pct}%
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  ) : null;
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((p) => !p)}
+        ref={triggerRef}
+        onClick={() => (open ? setOpen(false) : openPanel())}
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -143,49 +238,10 @@ function SectorDropdown({
         <ChevronDown size={11} className="text-muted/50 shrink-0" />
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div
-            role="listbox"
-            onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
-            className="absolute top-full left-0 mt-1 z-20 w-64 rounded border border-border bg-surface shadow-lg overflow-y-auto max-h-[70vh]"
-          >
-            {sectorStats.map(({ sector, count, pct }) => {
-              const isActive = sector === selectedSector;
-              return (
-                <button
-                  key={sector}
-                  role="option"
-                  aria-selected={isActive}
-                  onClick={() => { onChange(sector); setOpen(false); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-mono transition-colors ${
-                    isActive ? "bg-amber/10" : "hover:bg-base/60"
-                  }`}
-                >
-                  {/* Label — no truncate needed; all sector names fit in w-64 */}
-                  <span className={`${isActive ? "text-amber" : "text-primary"}`}>
-                    {SECTOR_LABELS[sector] ?? sector}
-                  </span>
-                  {/* Count + pct grouped on the right */}
-                  <span className="flex items-center gap-1.5 shrink-0 ml-3">
-                    <span className={`text-[10px] tabular-nums ${isActive ? "text-amber/60" : "text-muted"}`}>
-                      {count}
-                    </span>
-                    {pct != null && (
-                      <span className={`text-[10px] font-bold tabular-nums ${
-                        pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
-                      }`}>
-                        {pct}%
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+      {/* Mount panel in <body> via portal */}
+      {typeof window !== "undefined" && panel
+        ? createPortal(panel, document.body)
+        : null}
     </div>
   );
 }
