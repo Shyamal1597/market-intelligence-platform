@@ -22,6 +22,7 @@
 import path from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 import { promises as fs } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 // Load .env.local (dotenv is not a dependency)
 try {
@@ -315,7 +316,6 @@ function log(symbol: string, stage: string, msg: string) {
 
   // Rebuild companies index after pipeline run
   console.log("\nRebuilding companies index…");
-  const { spawnSync } = await import("node:child_process");
   const indexResult = spawnSync("npx", ["tsx", "scripts/intel-build-index.ts"], {
     stdio: "inherit",
     shell: true,

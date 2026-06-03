@@ -53,6 +53,7 @@ async function main() {
       symbol,
       sector,
       totalClaims,
+      // checkedClaims = decisive verdicts only (excludes pending / ambiguous)
       checkedClaims: metCount + movingCount + missCount,
       metCount,
       movingCount,
