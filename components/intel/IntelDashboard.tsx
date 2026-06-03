@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
@@ -23,7 +23,7 @@ interface IntelData {
 }
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
-const MAX_COLUMNS = 4;
+const MAX_COLUMNS = 6;
 
 // ── Sector display config ────────────────────────────────────────────────────
 
@@ -161,12 +161,14 @@ function SectorDropdown({
                   onClick={() => { onChange(sector); setOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono transition-colors ${
                     isActive
-                      ? "bg-amber/10 text-amber"
-                      : "text-muted hover:bg-base/60 hover:text-primary"
+                      ? "bg-amber/10"
+                      : "hover:bg-base/60"
                   }`}
                 >
-                  <span className="flex-1 truncate">{SECTOR_LABELS[sector] ?? sector}</span>
-                  <span className={`text-[10px] shrink-0 ${isActive ? "text-amber/60" : "text-muted/50"}`}>
+                  <span className={`flex-1 truncate ${isActive ? "text-amber" : "text-primary"}`}>
+                    {SECTOR_LABELS[sector] ?? sector}
+                  </span>
+                  <span className={`text-[10px] shrink-0 ${isActive ? "text-amber/60" : "text-muted"}`}>
                     {count}
                   </span>
                   {pct != null && (
@@ -181,97 +183,6 @@ function SectorDropdown({
             })}
           </div>
         </>
-      )}
-    </div>
-  );
-}
-
-// ── Latest Guidance (unverified forward-looking claims) ──────────────────────
-
-function LatestGuidanceSection({
-  quarters,
-  byQuarter,
-  registry,
-}: {
-  quarters: string[];
-  byQuarter: Record<string, EnrichedClaim[]>;
-  registry: Array<{ key: string; label: string; unit: string; segment: string }>;
-}) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <div className="rounded border border-border/60 overflow-hidden">
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center gap-3 px-5 py-3 bg-surface hover:bg-surface/70 text-left transition-colors"
-      >
-        <Clock className="w-3.5 h-3.5 text-amber/70 shrink-0" />
-        <span className="text-xs font-mono font-bold text-primary uppercase tracking-wider">
-          Latest Guidance
-        </span>
-        <span className="text-[10px] font-mono text-muted">
-          {quarters.map((q) => quarterDisplay(q)).join(", ")}
-        </span>
-        <span className="ml-auto text-muted">
-          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </span>
-      </button>
-
-      {open && (
-        <div className="border-t border-border/40">
-          {/* Explanation */}
-          <div className="px-5 py-3 bg-amber/[0.03] border-b border-border/30">
-            <p className="text-xs font-sans text-muted leading-relaxed">
-              Forward-looking statements from the most recent earnings call.
-              These claims have no target quarter yet — verification begins once the
-              next quarter&apos;s transcript is available and cross-checked.
-            </p>
-          </div>
-
-          {/* Claims grouped by quarter */}
-          {quarters.map((q) => {
-            const claims = byQuarter[q] ?? [];
-            if (claims.length === 0) return null;
-            return (
-              <div key={q} className="px-5 py-4 border-b border-border/30 last:border-b-0">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-mono font-bold text-amber tracking-wide">
-                    {quarterDisplay(q)}
-                  </span>
-                  <span className="text-[10px] font-mono text-muted">
-                    {claims.length} claim{claims.length !== 1 ? "s" : ""} · all pending verification
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {claims.map((c) => {
-                    const metric = registry.find((r) => r.key === c.metricKey);
-                    return (
-                      <div
-                        key={c.id}
-                        className="flex items-start gap-4 py-2 border-l-2 border-border pl-3"
-                      >
-                        <span className="shrink-0 text-[11px] font-mono text-amber/80 w-36 truncate" title={metric?.label}>
-                          {metric?.label ?? c.metricKey}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-sans text-primary/80 leading-relaxed line-clamp-2">
-                            &ldquo;{c.quote}&rdquo;
-                          </p>
-                          {c.speaker && (
-                            <span className="text-[10px] font-mono text-muted mt-0.5 block">— {c.speaker}</span>
-                          )}
-                        </div>
-                        <span className="shrink-0 text-[10px] font-mono text-muted/60 border border-border/50 px-1.5 py-0.5 rounded">
-                          PENDING
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       )}
     </div>
   );
@@ -348,31 +259,39 @@ export function IntelDashboard() {
     if (s) setSelectedSector(s);
   }, [selectedSymbol]);
 
-  // All verified quarters newest-first — full history, no cap.
-  const allVerifiedQuarters = useMemo(() => {
+  // All quarters with any claims, newest-first.
+  // Includes pending/unverified quarters — Stage 4 uses later transcripts to
+  // verify earlier claims, so pending quarters belong in the same compare view.
+  const allQuarters = useMemo(() => {
     if (!data) return [];
-    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse();
-    return all.filter((q) => {
-      const claims = data.byQuarter[q] ?? [];
-      if (claims.length === 0) return false;
-      return claims.some((c) => {
-        const v = c.check?.verdict;
-        return v && v !== "pending" && v !== "ambiguous";
-      });
-    });
+    return [...sortQuarters(Object.keys(data.byQuarter))].reverse()
+      .filter((q) => (data.byQuarter[q] ?? []).length > 0);
   }, [data]);
 
-  // Visible picker list — default 4 most recent, expanded by user toggle.
+  // Which quarters have at least one decisive verdict (met/moving/miss)
+  const verifiedSet = useMemo(() => {
+    if (!data) return new Set<string>();
+    const s = new Set<string>();
+    for (const [q, claims] of Object.entries(data.byQuarter)) {
+      if (claims.some((c) => {
+        const v = c.check?.verdict;
+        return v && v !== "pending" && v !== "ambiguous";
+      })) s.add(q);
+    }
+    return s;
+  }, [data]);
+
+  // Visible picker list — default MAX_COLUMNS most recent, expanded by user toggle.
   const sortedQuarters = useMemo(
-    () => (showAllQuarters ? allVerifiedQuarters : allVerifiedQuarters.slice(0, 4)),
-    [allVerifiedQuarters, showAllQuarters]
+    () => (showAllQuarters ? allQuarters : allQuarters.slice(0, MAX_COLUMNS)),
+    [allQuarters, showAllQuarters]
   );
 
-  // Auto-select 2 most recent once quarters are available (after a symbol switch)
+  // Auto-select up to 4 most recent quarters on symbol switch
   useEffect(() => {
     setSelectedQuarters((current) =>
       current.length === 0 && sortedQuarters.length > 0
-        ? sortedQuarters.slice(0, 2)
+        ? sortedQuarters.slice(0, Math.min(4, sortedQuarters.length))
         : current
     );
   }, [sortedQuarters]);
@@ -384,36 +303,13 @@ export function IntelDashboard() {
         return prev.length > 1 ? prev.filter((x) => x !== q) : prev;
       }
       if (prev.length >= MAX_COLUMNS) return prev; // cap reached
-      // Maintain newest-first order (use full list so old quarters sort correctly)
+      // Maintain newest-first order
       return [...prev, q].sort(
-        (a, b) => allVerifiedQuarters.indexOf(a) - allVerifiedQuarters.indexOf(b)
+        (a, b) => allQuarters.indexOf(a) - allQuarters.indexOf(b)
       );
     });
   };
 
-  // Quarters with claims but no verified data — shown as "Latest Guidance".
-  // Only includes quarters NEWER than the most recent verified quarter so that
-  // old unprocessed quarters (pre-pipeline) don't bleed in here.
-  const pendingQuarters = useMemo(() => {
-    if (!data) return [];
-    const all = [...sortQuarters(Object.keys(data.byQuarter))].reverse(); // newest-first
-
-    // Compute ordinal (FY * 4 + quarter) for chronological comparison
-    const ordinal = (q: string) => parseInt(q.slice(5)) * 4 + parseInt(q[1]);
-    const newestVerifiedOrdinal = allVerifiedQuarters.length > 0 ? ordinal(allVerifiedQuarters[0]) : -1;
-
-    return all.filter((q) => {
-      const claims = data.byQuarter[q] ?? [];
-      if (claims.length === 0) return false;
-      // Must be strictly newer than the most recent verified quarter
-      if (ordinal(q) <= newestVerifiedOrdinal) return false;
-      // Quarter is "latest guidance" if NO claim has a decisive verdict
-      return !claims.some((c) => {
-        const v = c.check?.verdict;
-        return v && v !== "pending" && v !== "ambiguous";
-      });
-    });
-  }, [data, allVerifiedQuarters]);
 
   // Unique segments in appearance order
   const segments = useMemo(() => {
@@ -500,39 +396,49 @@ export function IntelDashboard() {
             {sortedQuarters.map((q) => {
               const isActive = selectedQuarters.includes(q);
               const atMax = !isActive && selectedQuarters.length >= MAX_COLUMNS;
+              const isVerified = verifiedSet.has(q);
               return (
                 <button
                   key={q}
                   onClick={() => toggleQuarter(q)}
                   disabled={atMax}
-                  title={atMax ? `Max ${MAX_COLUMNS} columns` : undefined}
-                  className={`px-2.5 py-1 rounded border text-xs font-mono transition-colors ${
+                  title={
+                    atMax          ? `Max ${MAX_COLUMNS} columns`
+                    : !isVerified  ? "Pending verification — claims extracted, cross-check not yet run"
+                    : undefined
+                  }
+                  className={`px-2.5 py-1 rounded text-xs font-mono transition-colors ${
                     isActive
-                      ? "border-amber/50 bg-amber/10 text-amber"
+                      ? "border border-amber/50 bg-amber/10 text-amber"
                       : atMax
-                      ? "border-border/20 text-muted/25 cursor-not-allowed"
-                      : "border-border bg-surface text-muted hover:text-primary hover:border-amber/30"
+                      ? "border border-border/20 text-muted/25 cursor-not-allowed"
+                      : isVerified
+                      ? "border border-border bg-surface text-muted hover:text-primary hover:border-amber/30"
+                      : "border border-dashed border-amber/30 bg-surface/50 text-muted/70 hover:text-primary hover:border-amber/50"
                   }`}
                 >
                   {quarterDisplay(q)}
+                  {!isVerified && !isActive && (
+                    <span className="ml-1 text-[9px] text-amber/50">●</span>
+                  )}
                 </button>
               );
             })}
 
             {/* Expand / collapse older quarters */}
-            {allVerifiedQuarters.length > 4 && (
+            {allQuarters.length > MAX_COLUMNS && (
               <button
                 onClick={() => setShowAllQuarters((p) => !p)}
                 className="px-2 py-1 text-[10px] font-mono text-muted/60 hover:text-primary border border-border/30 hover:border-border/60 rounded transition-colors"
               >
                 {showAllQuarters
                   ? "show less"
-                  : `+${allVerifiedQuarters.length - 4} older`}
+                  : `+${allQuarters.length - MAX_COLUMNS} older`}
               </button>
             )}
 
             <span className="text-[10px] font-mono text-muted/40 ml-1">
-              {selectedQuarters.length}/{MAX_COLUMNS} shown
+              {selectedQuarters.length}/{MAX_COLUMNS} cols
             </span>
 
             {summariesLoading && (
@@ -558,15 +464,6 @@ export function IntelDashboard() {
             registry={data.registry}
             segmentDescriptions={data.segmentDescriptions}
           />
-
-          {/* ── Latest guidance (unverified quarters) ── */}
-          {pendingQuarters.length > 0 && (
-            <LatestGuidanceSection
-              quarters={pendingQuarters}
-              byQuarter={data.byQuarter}
-              registry={data.registry}
-            />
-          )}
 
           {data.warnings.length > 0 && (
             <details className="text-[11px] font-mono text-muted">

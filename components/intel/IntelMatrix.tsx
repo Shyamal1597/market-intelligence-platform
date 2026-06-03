@@ -76,9 +76,16 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                         }`}>{s.onTrackPct}% on track</span>
                         <VerdictChips counts={s.verdictCounts} />
                       </>
-                    ) : (
-                      <span className="text-xs font-mono text-muted/40 mt-1 block">—</span>
-                    )}
+                    ) : (() => {
+                      const n = (byQuarter[q] ?? []).length;
+                      return n > 0 ? (
+                        <span className="text-[10px] font-mono text-amber/50 mt-1 block">
+                          {n} claim{n !== 1 ? "s" : ""} · pending verification
+                        </span>
+                      ) : (
+                        <span className="text-xs font-mono text-muted/40 mt-1 block">—</span>
+                      );
+                    })()}
                   </th>
                 );
               })}
@@ -144,6 +151,17 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                                   </span>
                                 </div>
                               )}
+                            </div>
+                          ) : claims.length > 0 ? (
+                            /* No LLM summary yet, but claims exist (pending quarter) */
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted/30 text-xs font-mono">—</span>
+                              <span className="text-[10px] font-mono text-muted/50">
+                                {claims.length} claim{claims.length !== 1 ? "s" : ""}
+                                <span className="text-amber/50 ml-1">
+                                  {isCellActive ? "▲" : "▸"}
+                                </span>
+                              </span>
                             </div>
                           ) : (
                             <span className="text-muted/30 text-xs font-mono">—</span>
