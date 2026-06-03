@@ -112,16 +112,30 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                       );
                     })()}
 
-                    {/* Cross-check summary: how many prior-quarter claims this transcript verified */}
+                    {/* Cross-check summary: which prior-quarter claims this transcript verified */}
                     {prevVerified.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-border/30">
-                        <span className="text-[10px] font-mono text-muted/60 block leading-snug">
-                          confirmed {prevVerified.length} {quarterDisplay(prevQ!)} guidance
+                        <span className="text-[10px] font-mono text-muted/60 block leading-snug mb-1">
+                          confirmed {quarterDisplay(prevQ!)} guidance
                         </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {pvMet    > 0 && <span className="text-[10px] font-mono text-teal">{pvMet} met</span>}
-                          {pvMoving > 0 && <span className="text-[10px] font-mono text-amber">{pvMoving} moving</span>}
-                          {pvMiss   > 0 && <span className="text-[10px] font-mono text-danger">{pvMiss} miss</span>}
+                        <div className="space-y-0.5">
+                          {prevVerified.slice(0, 4).map((c) => {
+                            const label = registry.find((r) => r.key === c.metricKey)?.label ?? c.metricKey;
+                            const v = c.check?.verdict;
+                            return (
+                              <div key={c.id} className="flex items-center gap-1.5 min-w-0">
+                                <span className={`text-[9px] font-mono uppercase tracking-wider shrink-0 ${
+                                  v === "met" ? "text-teal" : v === "moving" ? "text-amber" : "text-danger"
+                                }`}>{v}</span>
+                                <span className="text-[10px] font-mono text-muted/70 truncate">{label}</span>
+                              </div>
+                            );
+                          })}
+                          {prevVerified.length > 4 && (
+                            <span className="text-[9px] font-mono text-muted/40">
+                              +{prevVerified.length - 4} more
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
@@ -192,15 +206,36 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                               )}
                             </div>
                           ) : claims.length > 0 ? (
-                            /* No LLM summary yet, but claims exist (pending quarter) */
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted/30 text-xs font-mono">—</span>
-                              <span className="text-[10px] font-mono text-muted/50">
-                                {claims.length} claim{claims.length !== 1 ? "s" : ""}
-                                <span className="text-amber/50 ml-1">
-                                  {isCellActive ? "▲" : "▸"}
+                            /* No LLM summary yet — render raw Stage 3 claims directly */
+                            <div className="space-y-2.5">
+                              {claims.slice(0, 3).map((c) => {
+                                const metric = registry.find((r) => r.key === c.metricKey);
+                                const v = c.check?.verdict;
+                                const isDecisive = v && v !== "pending" && v !== "ambiguous";
+                                return (
+                                  <div key={c.id} className="pl-2.5 border-l-2 border-border/40">
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      <span className="text-[10px] font-mono text-amber/70 truncate">
+                                        {metric?.label ?? c.metricKey}
+                                      </span>
+                                      {isDecisive && (
+                                        <span className={`text-[9px] font-mono uppercase tracking-wider shrink-0 ${
+                                          v === "met" ? "text-teal" : v === "moving" ? "text-amber" : "text-danger"
+                                        }`}>{v}</span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs font-sans text-primary/65 leading-relaxed line-clamp-2">
+                                      &ldquo;{c.quote}&rdquo;
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                              {claims.length > 3 && (
+                                <span className="text-[10px] font-mono text-muted/40">
+                                  +{claims.length - 3} more
+                                  <span className="text-amber/40 ml-1">{isCellActive ? "▲" : "▸"}</span>
                                 </span>
-                              </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted/30 text-xs font-mono">—</span>
