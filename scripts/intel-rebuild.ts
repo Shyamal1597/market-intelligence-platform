@@ -11,6 +11,7 @@
  *   --all               Run all symbols (BAJAJFINSV + HDFCBANK)
  *   --only=<Q1-FY26>    Process only this quarter (stage 3 & 4)
  *   --cost-cap=<N>      Abort if cumulative LLM cost exceeds $N (default: 10)
+ *   --concurrency=<N>   Max parallel symbols (default: 4)
  *   --dry-run           Print plan without executing
  *
  * Environment variables:
@@ -66,6 +67,7 @@ function parseArgs() {
     onlyQuarters: flags.only ? (flags.only as string).split(",") : undefined,
     costCap: flags["cost-cap"] ? parseFloat(flags["cost-cap"] as string) : 10,
     dryRun: flags["dry-run"] === true,
+    concurrency: flags.concurrency ? parseInt(flags.concurrency as string) : 4,
   };
 }
 
@@ -266,6 +268,23 @@ function log(symbol: string, stage: string, msg: string) {
   console.log(`[${symbol}][${stage}] ${msg}`);
 }
 
+// ── Concurrency semaphore ─────────────────────────────────────────────────────
+
+function makeSemaphore(n: number) {
+  let active = 0;
+  const queue: Array<() => void> = [];
+  return async function acquire<T>(fn: () => Promise<T>): Promise<T> {
+    if (active >= n) await new Promise<void>((r) => queue.push(r));
+    active++;
+    try {
+      return await fn();
+    } finally {
+      active--;
+      queue.shift()?.();
+    }
+  };
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -289,25 +308,41 @@ function log(symbol: string, stage: string, msg: string) {
 
   const totalCost = { v: 0 };
 
-  for (const sym of symbols) {
-    const runStages = opts.stage ? [opts.stage] : [1, 2, 3, 4];
+  const sem = makeSemaphore(opts.concurrency);
+  if (symbols.length > 1) {
+    console.log(`Running ${symbols.length} symbols with concurrency=${opts.concurrency}`);
+  }
 
-    if (runStages.includes(1)) await runStage1(sym, opts);
-    if (runStages.includes(2)) await runStage2(sym, opts);
-    if (runStages.includes(3)) {
-      if (totalCost.v > opts.costCap) {
-        console.error(`Cost cap $${opts.costCap} exceeded ($${totalCost.v.toFixed(3)}). Aborting.`);
-        process.exit(1);
+  const jobs = symbols.map((sym) =>
+    sem(async () => {
+      const runStages = opts.stage ? [opts.stage] : [1, 2, 3, 4];
+      try {
+        if (runStages.includes(1)) await runStage1(sym, opts);
+        if (runStages.includes(2)) await runStage2(sym, opts);
+        if (runStages.includes(3)) {
+          if (totalCost.v > opts.costCap) {
+            log(sym, "stage3", `SKIP — cost cap $${opts.costCap} exceeded`);
+            return;
+          }
+          await runStage3(sym, opts, totalCost);
+        }
+        if (runStages.includes(4)) {
+          if (totalCost.v > opts.costCap) {
+            log(sym, "stage4", `SKIP — cost cap $${opts.costCap} exceeded`);
+            return;
+          }
+          await runStage4(sym, opts, totalCost);
+        }
+      } catch (e) {
+        log(sym, "error", (e as Error).message ?? String(e));
       }
-      await runStage3(sym, opts, totalCost);
-    }
-    if (runStages.includes(4)) {
-      if (totalCost.v > opts.costCap) {
-        console.error(`Cost cap $${opts.costCap} exceeded ($${totalCost.v.toFixed(3)}). Aborting.`);
-        process.exit(1);
-      }
-      await runStage4(sym, opts, totalCost);
-    }
+    })
+  );
+
+  const results = await Promise.allSettled(jobs);
+  const failed = results.filter((r) => r.status === "rejected");
+  if (failed.length > 0) {
+    console.error(`\n${failed.length} symbol(s) failed.`);
   }
 
   if (totalCost.v > 0) {
