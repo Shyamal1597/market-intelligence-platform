@@ -149,7 +149,7 @@ function SectorDropdown({
           <div
             role="listbox"
             onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
-            className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden"
+            className="absolute top-full left-0 mt-1 z-20 w-64 rounded border border-border bg-surface shadow-lg overflow-y-auto max-h-[70vh]"
           >
             {sectorStats.map(({ sector, count, pct }) => {
               const isActive = sector === selectedSector;
@@ -159,25 +159,27 @@ function SectorDropdown({
                   role="option"
                   aria-selected={isActive}
                   onClick={() => { onChange(sector); setOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono transition-colors ${
-                    isActive
-                      ? "bg-amber/10"
-                      : "hover:bg-base/60"
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-mono transition-colors ${
+                    isActive ? "bg-amber/10" : "hover:bg-base/60"
                   }`}
                 >
-                  <span className={`flex-1 truncate ${isActive ? "text-amber" : "text-primary"}`}>
+                  {/* Label — no truncate needed; all sector names fit in w-64 */}
+                  <span className={`${isActive ? "text-amber" : "text-primary"}`}>
                     {SECTOR_LABELS[sector] ?? sector}
                   </span>
-                  <span className={`text-[10px] shrink-0 ${isActive ? "text-amber/60" : "text-muted"}`}>
-                    {count}
-                  </span>
-                  {pct != null && (
-                    <span className={`text-[10px] font-bold shrink-0 ${
-                      pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
-                    }`}>
-                      {pct}%
+                  {/* Count + pct grouped on the right */}
+                  <span className="flex items-center gap-1.5 shrink-0 ml-3">
+                    <span className={`text-[10px] tabular-nums ${isActive ? "text-amber/60" : "text-muted"}`}>
+                      {count}
                     </span>
-                  )}
+                    {pct != null && (
+                      <span className={`text-[10px] font-bold tabular-nums ${
+                        pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
+                      }`}>
+                        {pct}%
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })}
