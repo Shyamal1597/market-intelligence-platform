@@ -67,7 +67,7 @@ function parseArgs() {
     onlyQuarters: flags.only ? (flags.only as string).split(",") : undefined,
     costCap: flags["cost-cap"] ? parseFloat(flags["cost-cap"] as string) : 10,
     dryRun: flags["dry-run"] === true,
-    concurrency: flags.concurrency ? parseInt(flags.concurrency as string) : 4,
+    concurrency: Math.max(1, flags.concurrency ? parseInt(flags.concurrency as string) : 4),
   };
 }
 
