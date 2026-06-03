@@ -109,39 +109,35 @@ function CompanyChip({
 
 function SectorDropdown({
   selectedSector,
-  companies,
+  sectorStats,
   onChange,
 }: {
   selectedSector: string;
-  companies: CompanySummary[];
+  sectorStats: Array<{ sector: string; count: number; pct: number | null }>;
   onChange: (sector: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
-  const availableSectors = SECTOR_DISPLAY_ORDER.filter((s) =>
-    companies.some((c) => c.sector === s)
-  );
-
-  const sectorCos = companies.filter((c) => c.sector === selectedSector);
-  const decisive = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
-  const onTrack  = sectorCos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
-  const pct = decisive > 0 ? Math.round((onTrack / decisive) * 100) : null;
+  const current = sectorStats.find((s) => s.sector === selectedSector);
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((p) => !p)}
+        onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className="flex items-center gap-2 px-3 py-1.5 rounded border border-border bg-surface text-xs font-mono text-primary hover:border-amber/40 transition-colors"
       >
         <span className="text-muted/60 shrink-0 text-[10px] uppercase tracking-wider">Sector</span>
         <span className="font-bold">{SECTOR_LABELS[selectedSector] ?? selectedSector}</span>
         <span className="text-muted/40">·</span>
-        <span className="text-muted/60">{sectorCos.length}</span>
-        {pct !== null && (
+        <span className="text-muted/60">{current?.count ?? 0}</span>
+        {current?.pct != null && (
           <span className={`font-bold ${
-            pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
+            current.pct >= 70 ? "text-teal" : current.pct >= 40 ? "text-amber" : "text-danger"
           }`}>
-            {pct}%
+            {current.pct}%
           </span>
         )}
         <ChevronDown size={11} className="text-muted/50 shrink-0" />
@@ -150,16 +146,14 @@ function SectorDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden">
-            {availableSectors.map((sector) => {
-              const cos = companies.filter((c) => c.sector === sector);
-              const dec = cos.reduce((s, c) => s + c.metCount + c.movingCount + c.missCount, 0);
-              const ot  = cos.reduce((s, c) => s + c.metCount + c.movingCount, 0);
-              const p   = dec > 0 ? Math.round((ot / dec) * 100) : null;
+          <div role="listbox" className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden">
+            {sectorStats.map(({ sector, count, pct }) => {
               const isActive = sector === selectedSector;
               return (
                 <button
                   key={sector}
+                  role="option"
+                  aria-selected={isActive}
                   onClick={() => { onChange(sector); setOpen(false); }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-mono transition-colors ${
                     isActive
@@ -169,13 +163,13 @@ function SectorDropdown({
                 >
                   <span className="flex-1 truncate">{SECTOR_LABELS[sector] ?? sector}</span>
                   <span className={`text-[10px] shrink-0 ${isActive ? "text-amber/60" : "text-muted/50"}`}>
-                    {cos.length}
+                    {count}
                   </span>
-                  {p !== null && (
+                  {pct != null && (
                     <span className={`text-[10px] font-bold shrink-0 ${
-                      p >= 70 ? "text-teal" : p >= 40 ? "text-amber" : "text-danger"
+                      pct >= 70 ? "text-teal" : pct >= 40 ? "text-amber" : "text-danger"
                     }`}>
-                      {p}%
+                      {pct}%
                     </span>
                   )}
                 </button>
@@ -436,6 +430,23 @@ export function IntelDashboard() {
     [companies, selectedSector]
   );
 
+  const sectorStats = useMemo(
+    () =>
+      SECTOR_DISPLAY_ORDER
+        .filter((s) => companies.some((c) => c.sector === s))
+        .map((s) => {
+          const cos = companies.filter((c) => c.sector === s);
+          const dec = cos.reduce((a, c) => a + c.metCount + c.movingCount + c.missCount, 0);
+          const ot  = cos.reduce((a, c) => a + c.metCount + c.movingCount, 0);
+          return {
+            sector: s,
+            count: cos.length,
+            pct: dec > 0 ? Math.round((ot / dec) * 100) : null,
+          };
+        }),
+    [companies]
+  );
+
   return (
     <div className="space-y-4">
 
@@ -444,7 +455,7 @@ export function IntelDashboard() {
         <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
         <SectorDropdown
           selectedSector={selectedSector}
-          companies={companies}
+          sectorStats={sectorStats}
           onChange={setSelectedSector}
         />
         <div className="flex flex-wrap items-center gap-1.5">
