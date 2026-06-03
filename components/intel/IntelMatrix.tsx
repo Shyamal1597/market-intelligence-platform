@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { quarterDisplay } from "@/lib/intel/uiHelpers";
+import React, { useState, useMemo } from "react";
+import { quarterDisplay, sortQuarters } from "@/lib/intel/uiHelpers";
 import { SegmentCard } from "./SegmentCard";
 import type { QuarterSummary } from "@/lib/intel/types";
 import type { EnrichedClaim } from "./ClaimRow";
@@ -38,6 +38,12 @@ function VerdictChips({ counts }: { counts: QuarterSummary["verdictCounts"] }) {
 export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry, segmentDescriptions }: Props) {
   const [expandedCell, setExpandedCell] = useState<{ seg: string; quarter: string } | null>(null);
 
+  // All quarters with claims, newest-first — used to find "previous quarter" for each column
+  const allSortedDesc = useMemo(
+    () => [...sortQuarters(Object.keys(byQuarter))].reverse(),
+    [byQuarter]
+  );
+
   const getSegClaims = (q: string, seg: string) =>
     (byQuarter[q] ?? []).filter(
       (c) => registry.find((r) => r.key === c.metricKey)?.segment === seg
@@ -60,6 +66,23 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
 
               {quarters.map((q) => {
                 const s = summaries[q];
+
+                // Previous quarter in history (the one whose claims this transcript verified)
+                const prevIdx = allSortedDesc.indexOf(q);
+                const prevQ = prevIdx >= 0 && prevIdx < allSortedDesc.length - 1
+                  ? allSortedDesc[prevIdx + 1] : null;
+
+                // Count decisive verdicts on prevQ claims (verified using this transcript)
+                const prevVerified = prevQ
+                  ? (byQuarter[prevQ] ?? []).filter(c => {
+                      const v = c.check?.verdict;
+                      return v === "met" || v === "moving" || v === "miss";
+                    })
+                  : [];
+                const pvMet     = prevVerified.filter(c => c.check?.verdict === "met").length;
+                const pvMoving  = prevVerified.filter(c => c.check?.verdict === "moving").length;
+                const pvMiss    = prevVerified.filter(c => c.check?.verdict === "miss").length;
+
                 return (
                   <th
                     key={q}
@@ -69,6 +92,8 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                     <span className="text-sm font-mono font-bold text-amber block tracking-wide">
                       {quarterDisplay(q)}
                     </span>
+
+                    {/* Source-quarter summary: own claims and their verdicts */}
                     {s ? (
                       <>
                         <span className={`text-xs font-mono font-semibold mt-0.5 block ${
@@ -86,6 +111,20 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                         <span className="text-xs font-mono text-muted/40 mt-1 block">—</span>
                       );
                     })()}
+
+                    {/* Cross-check summary: how many prior-quarter claims this transcript verified */}
+                    {prevVerified.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/30">
+                        <span className="text-[10px] font-mono text-muted/60 block leading-snug">
+                          confirmed {prevVerified.length} {quarterDisplay(prevQ!)} guidance
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {pvMet    > 0 && <span className="text-[10px] font-mono text-teal">{pvMet} met</span>}
+                          {pvMoving > 0 && <span className="text-[10px] font-mono text-amber">{pvMoving} moving</span>}
+                          {pvMiss   > 0 && <span className="text-[10px] font-mono text-danger">{pvMiss} miss</span>}
+                        </div>
+                      </div>
+                    )}
                   </th>
                 );
               })}
