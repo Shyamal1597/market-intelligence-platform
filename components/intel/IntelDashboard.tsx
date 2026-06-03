@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LayoutGrid, TrendingUp } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
 import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
 import { IntelMatrix } from "./IntelMatrix";
+import { KPITracker } from "./KPITracker";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
 import type { EnrichedClaim } from "./ClaimRow";
 import type { QuarterSummary } from "@/lib/intel/types";
@@ -256,6 +257,7 @@ export function IntelDashboard() {
   const [summariesLoading, setSummariesLoading] = useState(false);
   const [selectedQuarters, setSelectedQuarters] = useState<string[]>([]);
   const [showAllQuarters, setShowAllQuarters] = useState(false);
+  const [viewMode, setViewMode] = useState<"matrix" | "kpi">("matrix");
   const [selectedSector, setSelectedSector] = useState<string>(
     () => SYMBOL_SECTOR[DEFAULT_SYMBOL] ?? SECTOR_DISPLAY_ORDER[0]
   );
@@ -445,8 +447,39 @@ export function IntelDashboard() {
 
       {!loading && !error && data && (
         <>
-          {/* ── Quarter picker ── */}
-          <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-border/40">
+          {/* ── View toggle ── */}
+          <div className="flex items-center gap-1 border-b border-border/40 pb-3">
+            <button
+              onClick={() => setViewMode("matrix")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+                viewMode === "matrix"
+                  ? "bg-amber/10 text-amber border border-amber/30"
+                  : "text-muted hover:text-primary border border-transparent hover:border-border/40"
+              }`}
+            >
+              <LayoutGrid size={12} />
+              Matrix
+            </button>
+            <button
+              onClick={() => setViewMode("kpi")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+                viewMode === "kpi"
+                  ? "bg-amber/10 text-amber border border-amber/30"
+                  : "text-muted hover:text-primary border border-transparent hover:border-border/40"
+              }`}
+            >
+              <TrendingUp size={12} />
+              KPI Tracker
+            </button>
+            <span className="text-[10px] font-mono text-muted/35 ml-2">
+              {viewMode === "matrix"
+                ? "quarterly snapshot — compare guidance across calls"
+                : "guidance narrative — track each KPI across all calls"}
+            </span>
+          </div>
+
+          {/* ── Quarter picker (matrix only) ── */}
+          {viewMode === "matrix" && <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-border/40">
             <span className="text-[10px] font-mono text-muted uppercase tracking-widest shrink-0">
               Compare
             </span>
@@ -504,7 +537,7 @@ export function IntelDashboard() {
                 loading summaries…
               </span>
             )}
-          </div>
+          </div>}
 
           {/* ── Meta line ── */}
           <div className="flex flex-wrap gap-3 text-[10px] font-mono text-muted">
@@ -514,14 +547,22 @@ export function IntelDashboard() {
             )}
           </div>
 
-          <IntelMatrix
-            quarters={selectedQuarters}
-            summaries={summaries}
-            segments={segments}
-            byQuarter={data.byQuarter}
-            registry={data.registry}
-            segmentDescriptions={data.segmentDescriptions}
-          />
+          {viewMode === "matrix" ? (
+            <IntelMatrix
+              quarters={selectedQuarters}
+              summaries={summaries}
+              segments={segments}
+              byQuarter={data.byQuarter}
+              registry={data.registry}
+              segmentDescriptions={data.segmentDescriptions}
+            />
+          ) : (
+            <KPITracker
+              byQuarter={data.byQuarter}
+              registry={data.registry}
+              segmentDescriptions={data.segmentDescriptions}
+            />
+          )}
 
           {data.warnings.length > 0 && (
             <details className="text-[11px] font-mono text-muted">
