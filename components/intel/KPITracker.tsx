@@ -20,6 +20,35 @@ function isOnTrack(v: Verdict | null | undefined): boolean {
   return v === "met" || v === "moving";
 }
 
+/**
+ * Return a readable quote snippet that ends at a sentence boundary.
+ * Cuts at the last `.` / `!` / `?` before maxLen so the reader gets a
+ * complete thought rather than an abruptly truncated fragment.
+ */
+function snippetQuote(quote: string, maxLen = 320): string {
+  if (quote.length <= maxLen) return quote;
+
+  const window = quote.slice(0, maxLen);
+
+  // Find the last sentence-ending punctuation in the window
+  const lastEnd = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+    window.lastIndexOf(".\n"),
+  );
+
+  // Only use the sentence boundary if it's past the halfway point —
+  // otherwise the snippet would be too short to be useful.
+  if (lastEnd > maxLen * 0.45) {
+    return window.slice(0, lastEnd + 1).trimEnd();
+  }
+
+  // Fallback: cut at a word boundary so we don't split a word mid-way
+  const lastSpace = window.lastIndexOf(" ");
+  return (lastSpace > maxLen * 0.7 ? window.slice(0, lastSpace) : window) + "…";
+}
+
 type Trend = "improving" | "consistent" | "declining" | "volatile" | null;
 
 function computeTrend(verdicts: (Verdict | null | undefined)[]): Trend {
@@ -88,9 +117,9 @@ function QuarterCell({
             </p>
           )}
 
-          {/* Verbatim guidance quote */}
-          <p className="text-[11px] font-sans text-primary/60 leading-relaxed line-clamp-3 italic">
-            &ldquo;{claim.quote.slice(0, 140)}{claim.quote.length > 140 ? "…" : ""}&rdquo;
+          {/* Verbatim guidance quote — sentence-aware truncation at ~320 chars */}
+          <p className="text-[11px] font-sans text-primary/60 leading-relaxed line-clamp-5 italic">
+            &ldquo;{snippetQuote(claim.quote)}&rdquo;
           </p>
 
           {claim.speaker && (
@@ -105,8 +134,8 @@ function QuarterCell({
               <span className="text-[9px] font-mono text-muted/50 uppercase tracking-wider block mb-0.5">
                 Actual
               </span>
-              <p className="text-[11px] font-sans text-primary/55 leading-relaxed line-clamp-2">
-                {claim.check.actualText}
+              <p className="text-[11px] font-sans text-primary/55 leading-relaxed line-clamp-4">
+                {snippetQuote(claim.check.actualText, 240)}
               </p>
             </div>
           )}
