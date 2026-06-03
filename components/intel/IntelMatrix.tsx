@@ -67,21 +67,13 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
               {quarters.map((q) => {
                 const s = summaries[q];
 
-                // Previous quarter in history (the one whose claims this transcript verified)
-                const prevIdx = allSortedDesc.indexOf(q);
-                const prevQ = prevIdx >= 0 && prevIdx < allSortedDesc.length - 1
-                  ? allSortedDesc[prevIdx + 1] : null;
-
-                // Count decisive verdicts on prevQ claims (verified using this transcript)
-                const prevVerified = prevQ
-                  ? (byQuarter[prevQ] ?? []).filter(c => {
-                      const v = c.check?.verdict;
-                      return v === "met" || v === "moving" || v === "miss";
-                    })
-                  : [];
-                const pvMet     = prevVerified.filter(c => c.check?.verdict === "met").length;
-                const pvMoving  = prevVerified.filter(c => c.check?.verdict === "moving").length;
-                const pvMiss    = prevVerified.filter(c => c.check?.verdict === "miss").length;
+                // Next quarter in history = the one whose transcript verified this quarter's claims
+                const qIdx = allSortedDesc.indexOf(q);
+                const verifiedByQ = qIdx > 0 ? allSortedDesc[qIdx - 1] : null;
+                const hasDecisive = (byQuarter[q] ?? []).some(c => {
+                  const v = c.check?.verdict;
+                  return v === "met" || v === "moving" || v === "miss";
+                });
 
                 return (
                   <th
@@ -93,7 +85,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                       {quarterDisplay(q)}
                     </span>
 
-                    {/* Source-quarter summary: own claims and their verdicts */}
+                    {/* Own-claims summary */}
                     {s ? (
                       <>
                         <span className={`text-xs font-mono font-semibold mt-0.5 block ${
@@ -112,32 +104,11 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                       );
                     })()}
 
-                    {/* Cross-check summary: which prior-quarter claims this transcript verified */}
-                    {prevVerified.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-border/30">
-                        <span className="text-[10px] font-mono text-muted/60 block leading-snug mb-1">
-                          confirmed {quarterDisplay(prevQ!)} guidance
-                        </span>
-                        <div className="space-y-0.5">
-                          {prevVerified.slice(0, 4).map((c) => {
-                            const label = registry.find((r) => r.key === c.metricKey)?.label ?? c.metricKey;
-                            const v = c.check?.verdict;
-                            return (
-                              <div key={c.id} className="flex items-center gap-1.5 min-w-0">
-                                <span className={`text-[9px] font-mono uppercase tracking-wider shrink-0 ${
-                                  v === "met" ? "text-teal" : v === "moving" ? "text-amber" : "text-danger"
-                                }`}>{v}</span>
-                                <span className="text-[10px] font-mono text-muted/70 truncate">{label}</span>
-                              </div>
-                            );
-                          })}
-                          {prevVerified.length > 4 && (
-                            <span className="text-[9px] font-mono text-muted/40">
-                              +{prevVerified.length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                    {/* Single-line attribution: which transcript verified this quarter's claims */}
+                    {hasDecisive && verifiedByQ && (
+                      <span className="text-[10px] font-mono text-muted/40 mt-1.5 block">
+                        verified via {quarterDisplay(verifiedByQ)} transcript
+                      </span>
                     )}
                   </th>
                 );
