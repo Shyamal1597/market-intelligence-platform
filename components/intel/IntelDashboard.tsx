@@ -146,7 +146,11 @@ function SectorDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div role="listbox" className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden">
+          <div
+            role="listbox"
+            onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+            className="absolute top-full left-0 mt-1 z-20 w-60 rounded border border-border bg-surface shadow-lg overflow-hidden"
+          >
             {sectorStats.map(({ sector, count, pct }) => {
               const isActive = sector === selectedSector;
               return (
