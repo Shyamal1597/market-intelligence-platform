@@ -312,4 +312,15 @@ function log(symbol: string, stage: string, msg: string) {
   if (totalCost.v > 0) {
     console.log(`\nTotal LLM cost: ~$${totalCost.v.toFixed(4)}`);
   }
+
+  // Rebuild companies index after pipeline run
+  console.log("\nRebuilding companies index…");
+  const { spawnSync } = await import("node:child_process");
+  const indexResult = spawnSync("npx", ["tsx", "scripts/intel-build-index.ts"], {
+    stdio: "inherit",
+    shell: true,
+  });
+  if (indexResult.status !== 0) {
+    console.warn("Warning: intel:index rebuild failed (non-fatal)");
+  }
 })().catch((e) => { console.error(e); process.exit(1); });

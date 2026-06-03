@@ -30,6 +30,16 @@ async function readJson<T>(filePath: string): Promise<T | null> {
 
 export async function GET() {
   try {
+    // ── Fast path: pre-built index ─────────────────────────────────────────
+    const indexPath = path.join("data/intelligence", "_index.json");
+    try {
+      const raw = await fs.readFile(indexPath, "utf-8");
+      const { companies } = JSON.parse(raw) as { generatedAt: string; companies: CompanySummary[] };
+      return NextResponse.json(companies);
+    } catch {
+      // Index not built yet — fall through to live scan
+    }
+
     const summaries: CompanySummary[] = [];
 
     for (const [symbol, sector] of Object.entries(SYMBOL_SECTOR)) {
