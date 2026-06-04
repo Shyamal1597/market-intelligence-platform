@@ -69,3 +69,30 @@ export function sortQuarters(quarters: string[]): string[] {
     return afy !== bfy ? afy - bfy : aq - bq;
   });
 }
+
+// ── Quote helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Return a readable quote snippet that ends at a sentence boundary.
+ * Cuts at the last `.` / `!` / `?` before maxLen so the reader gets a
+ * complete thought rather than an abruptly truncated fragment.
+ */
+export function snippetQuote(quote: string, maxLen = 320): string {
+  if (quote.length <= maxLen) return quote;
+
+  const window = quote.slice(0, maxLen);
+
+  const lastEnd = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+    window.lastIndexOf(".\n"),
+  );
+
+  if (lastEnd > maxLen * 0.45) {
+    return window.slice(0, lastEnd + 1).trimEnd();
+  }
+
+  const lastSpace = window.lastIndexOf(" ");
+  return (lastSpace > maxLen * 0.7 ? window.slice(0, lastSpace) : window) + "…";
+}
