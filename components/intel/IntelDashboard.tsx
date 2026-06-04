@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, LayoutGrid, TrendingUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { TranscriptUpload } from "./TranscriptUpload";
-import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
-import { IntelMatrix } from "./IntelMatrix";
+import { GuidanceTimeline } from "./GuidanceTimeline";
+import { CompanySummaryBar } from "./CompanySummaryBar";
 import { KPITracker } from "./KPITracker";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
 import type { EnrichedClaim } from "./ClaimRow";
-import type { QuarterSummary } from "@/lib/intel/types";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 
 interface IntelData {
@@ -25,7 +24,6 @@ interface IntelData {
 }
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
-const MAX_COLUMNS = 6;
 
 // ── Sector display config ────────────────────────────────────────────────────
 
@@ -253,11 +251,7 @@ export function IntelDashboard() {
   const [data, setData] = useState<IntelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [summaries, setSummaries] = useState<Record<string, QuarterSummary | null>>({});
-  const [summariesLoading, setSummariesLoading] = useState(false);
-  const [selectedQuarters, setSelectedQuarters] = useState<string[]>([]);
-  const [showAllQuarters, setShowAllQuarters] = useState(false);
-  const [viewMode, setViewMode] = useState<"matrix" | "kpi">("matrix");
+  const [viewMode, setViewMode] = useState<"timeline" | "kpi">("timeline");
   const [selectedSector, setSelectedSector] = useState<string>(
     () => SYMBOL_SECTOR[DEFAULT_SYMBOL] ?? SECTOR_DISPLAY_ORDER[0]
   );
@@ -270,14 +264,10 @@ export function IntelDashboard() {
       .catch(() => {});
   }, []);
 
-  // Load symbol data + all summaries in parallel
   const loadSymbol = useCallback((sym: string) => {
     setLoading(true);
     setError(null);
     setData(null);
-    setSummaries({});
-    setSelectedQuarters([]); // reset; auto-picked once quarters load
-    setShowAllQuarters(false); // collapse to 4-quarter default on symbol switch
 
     fetch(`/api/intel/${sym}`)
       .then(async (r) => {
@@ -287,26 +277,9 @@ export function IntelDashboard() {
         }
         return r.json() as Promise<IntelData>;
       })
-      .then(async (d) => {
+      .then((d) => {
         setData(d);
         setLoading(false);
-
-        // Fetch all summaries in parallel
-        const quarters = Object.keys(d.byQuarter);
-        setSummariesLoading(true);
-        const results = await Promise.allSettled(
-          quarters.map(async (q) => {
-            const res = await fetch(`/api/intel/${sym}/summaries/${q}`);
-            const json = await res.json() as QuarterSummary | { pending: boolean };
-            return { q, summary: "pending" in json ? null : (json as QuarterSummary) };
-          })
-        );
-        const map: Record<string, QuarterSummary | null> = {};
-        for (const r of results) {
-          if (r.status === "fulfilled") map[r.value.q] = r.value.summary;
-        }
-        setSummaries(map);
-        setSummariesLoading(false);
       })
       .catch((e) => { setError(e.message); setLoading(false); });
   }, []);
@@ -318,72 +291,6 @@ export function IntelDashboard() {
     const s = SYMBOL_SECTOR[selectedSymbol];
     if (s) setSelectedSector(s);
   }, [selectedSymbol]);
-
-  // All quarters with any claims, newest-first.
-  // Includes pending/unverified quarters — Stage 4 uses later transcripts to
-  // verify earlier claims, so pending quarters belong in the same compare view.
-  const allQuarters = useMemo(() => {
-    if (!data) return [];
-    return [...sortQuarters(Object.keys(data.byQuarter))].reverse()
-      .filter((q) => (data.byQuarter[q] ?? []).length > 0);
-  }, [data]);
-
-  // Which quarters have at least one decisive verdict (met/moving/miss)
-  const verifiedSet = useMemo(() => {
-    if (!data) return new Set<string>();
-    const s = new Set<string>();
-    for (const [q, claims] of Object.entries(data.byQuarter)) {
-      if (claims.some((c) => {
-        const v = c.check?.verdict;
-        return v && v !== "pending" && v !== "ambiguous";
-      })) s.add(q);
-    }
-    return s;
-  }, [data]);
-
-  // Visible picker list — default MAX_COLUMNS most recent, expanded by user toggle.
-  const sortedQuarters = useMemo(
-    () => (showAllQuarters ? allQuarters : allQuarters.slice(0, MAX_COLUMNS)),
-    [allQuarters, showAllQuarters]
-  );
-
-  // Auto-select up to 4 most recent quarters on symbol switch
-  useEffect(() => {
-    setSelectedQuarters((current) =>
-      current.length === 0 && sortedQuarters.length > 0
-        ? sortedQuarters.slice(0, Math.min(4, sortedQuarters.length))
-        : current
-    );
-  }, [sortedQuarters]);
-
-  const toggleQuarter = (q: string) => {
-    setSelectedQuarters((prev) => {
-      if (prev.includes(q)) {
-        // Always keep at least 1 column selected
-        return prev.length > 1 ? prev.filter((x) => x !== q) : prev;
-      }
-      if (prev.length >= MAX_COLUMNS) return prev; // cap reached
-      // Maintain newest-first order
-      return [...prev, q].sort(
-        (a, b) => allQuarters.indexOf(a) - allQuarters.indexOf(b)
-      );
-    });
-  };
-
-
-  // Unique segments in appearance order
-  const segments = useMemo(() => {
-    if (!data) return [];
-    const seen = new Set<string>();
-    const order: string[] = [];
-    for (const q of sortQuarters(Object.keys(data.byQuarter))) {
-      for (const claim of data.byQuarter[q] ?? []) {
-        const seg = data.registry.find((r) => r.key === claim.metricKey)?.segment;
-        if (seg && !seen.has(seg)) { seen.add(seg); order.push(seg); }
-      }
-    }
-    return order;
-  }, [data]);
 
   const sectorCompanies = useMemo(
     () => companies.filter((c) => c.sector === selectedSector),
@@ -447,99 +354,43 @@ export function IntelDashboard() {
 
       {!loading && !error && data && (
         <>
-          {/* ── View toggle ── */}
+          {/* Company summary bar */}
+          <CompanySummaryBar
+            symbol={selectedSymbol}
+            sectorLabel={SECTOR_LABELS[selectedSector] ?? selectedSector}
+            byQuarter={data.byQuarter}
+          />
+
+          {/* View toggle */}
           <div className="flex items-center gap-1 border-b border-border/40 pb-3">
             <button
-              onClick={() => setViewMode("matrix")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
-                viewMode === "matrix"
+              onClick={() => setViewMode("timeline")}
+              className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+                viewMode === "timeline"
                   ? "bg-amber/10 text-amber border border-amber/30"
                   : "text-muted hover:text-primary border border-transparent hover:border-border/40"
               }`}
             >
-              <LayoutGrid size={12} />
-              Matrix
+              Timeline
             </button>
             <button
               onClick={() => setViewMode("kpi")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+              className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
                 viewMode === "kpi"
                   ? "bg-amber/10 text-amber border border-amber/30"
                   : "text-muted hover:text-primary border border-transparent hover:border-border/40"
               }`}
             >
-              <TrendingUp size={12} />
               KPI Tracker
             </button>
             <span className="text-[10px] font-mono text-muted/35 ml-2">
-              {viewMode === "matrix"
-                ? "quarterly snapshot — compare guidance across calls"
+              {viewMode === "timeline"
+                ? "per-call narrative — each quarter's guidance and outcomes"
                 : "guidance narrative — track each KPI across all calls"}
             </span>
           </div>
 
-          {/* ── Quarter picker (matrix only) ── */}
-          {viewMode === "matrix" && <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-border/40">
-            <span className="text-[10px] font-mono text-muted uppercase tracking-widest shrink-0">
-              Compare
-            </span>
-
-            {sortedQuarters.map((q) => {
-              const isActive = selectedQuarters.includes(q);
-              const atMax = !isActive && selectedQuarters.length >= MAX_COLUMNS;
-              const isVerified = verifiedSet.has(q);
-              return (
-                <button
-                  key={q}
-                  onClick={() => toggleQuarter(q)}
-                  disabled={atMax}
-                  title={
-                    atMax          ? `Max ${MAX_COLUMNS} columns`
-                    : !isVerified  ? "Pending verification — claims extracted, cross-check not yet run"
-                    : undefined
-                  }
-                  className={`px-2.5 py-1 rounded text-xs font-mono transition-colors ${
-                    isActive
-                      ? "border border-amber/50 bg-amber/10 text-amber"
-                      : atMax
-                      ? "border border-border/20 text-muted/25 cursor-not-allowed"
-                      : isVerified
-                      ? "border border-border bg-surface text-muted hover:text-primary hover:border-amber/30"
-                      : "border border-dashed border-amber/30 bg-surface/50 text-muted/70 hover:text-primary hover:border-amber/50"
-                  }`}
-                >
-                  {quarterDisplay(q)}
-                  {!isVerified && !isActive && (
-                    <span className="ml-1 text-[9px] text-amber/50">●</span>
-                  )}
-                </button>
-              );
-            })}
-
-            {/* Expand / collapse older quarters */}
-            {allQuarters.length > MAX_COLUMNS && (
-              <button
-                onClick={() => setShowAllQuarters((p) => !p)}
-                className="px-2 py-1 text-[10px] font-mono text-muted/60 hover:text-primary border border-border/30 hover:border-border/60 rounded transition-colors"
-              >
-                {showAllQuarters
-                  ? "show less"
-                  : `+${allQuarters.length - MAX_COLUMNS} older`}
-              </button>
-            )}
-
-            <span className="text-[10px] font-mono text-muted/40 ml-1">
-              {selectedQuarters.length}/{MAX_COLUMNS} cols
-            </span>
-
-            {summariesLoading && (
-              <span className="text-[10px] font-mono text-amber/50 ml-auto">
-                loading summaries…
-              </span>
-            )}
-          </div>}
-
-          {/* ── Meta line ── */}
+          {/* Meta line */}
           <div className="flex flex-wrap gap-3 text-[10px] font-mono text-muted">
             <span>{data.model}</span>
             {!data.hasChecks && (
@@ -547,11 +398,9 @@ export function IntelDashboard() {
             )}
           </div>
 
-          {viewMode === "matrix" ? (
-            <IntelMatrix
-              quarters={selectedQuarters}
-              summaries={summaries}
-              segments={segments}
+          {/* Main view */}
+          {viewMode === "timeline" ? (
+            <GuidanceTimeline
               byQuarter={data.byQuarter}
               registry={data.registry}
               segmentDescriptions={data.segmentDescriptions}
@@ -564,6 +413,7 @@ export function IntelDashboard() {
             />
           )}
 
+          {/* Pipeline warnings */}
           {data.warnings.length > 0 && (
             <details className="text-[11px] font-mono text-muted">
               <summary className="cursor-pointer hover:text-primary">

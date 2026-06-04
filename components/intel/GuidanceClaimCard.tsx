@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { snippetQuote } from "@/lib/intel/uiHelpers";
+import { snippetQuote, quarterDisplay } from "@/lib/intel/uiHelpers";
 import type { EnrichedClaim } from "./ClaimRow";
 import type { Verdict } from "@/lib/intel/types";
 
@@ -104,7 +104,3 @@ export function GuidanceClaimCard({ claim }: Props) {
   );
 }
 
-// ── inline helper (avoids circular import) ────────────────────────────────────
-function quarterDisplay(q: string): string {
-  return q.replace("-", " ");
-}

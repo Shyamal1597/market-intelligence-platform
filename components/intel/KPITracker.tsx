@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { sortQuarters, quarterDisplay } from "@/lib/intel/uiHelpers";
+import { sortQuarters, quarterDisplay, snippetQuote } from "@/lib/intel/uiHelpers";
 import type { EnrichedClaim } from "./ClaimRow";
 import type { Verdict } from "@/lib/intel/types";
 
@@ -18,35 +18,6 @@ interface Props {
 
 function isOnTrack(v: Verdict | null | undefined): boolean {
   return v === "met" || v === "moving";
-}
-
-/**
- * Return a readable quote snippet that ends at a sentence boundary.
- * Cuts at the last `.` / `!` / `?` before maxLen so the reader gets a
- * complete thought rather than an abruptly truncated fragment.
- */
-function snippetQuote(quote: string, maxLen = 320): string {
-  if (quote.length <= maxLen) return quote;
-
-  const window = quote.slice(0, maxLen);
-
-  // Find the last sentence-ending punctuation in the window
-  const lastEnd = Math.max(
-    window.lastIndexOf(". "),
-    window.lastIndexOf("! "),
-    window.lastIndexOf("? "),
-    window.lastIndexOf(".\n"),
-  );
-
-  // Only use the sentence boundary if it's past the halfway point —
-  // otherwise the snippet would be too short to be useful.
-  if (lastEnd > maxLen * 0.45) {
-    return window.slice(0, lastEnd + 1).trimEnd();
-  }
-
-  // Fallback: cut at a word boundary so we don't split a word mid-way
-  const lastSpace = window.lastIndexOf(" ");
-  return (lastSpace > maxLen * 0.7 ? window.slice(0, lastSpace) : window) + "…";
 }
 
 type Trend = "improving" | "consistent" | "declining" | "volatile" | null;
