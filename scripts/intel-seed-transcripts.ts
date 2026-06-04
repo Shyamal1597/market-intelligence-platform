@@ -19,7 +19,8 @@ import { SYMBOL_SECTOR } from "@/lib/intel/types";
 import https from "node:https";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-const BSE_ATTACH_BASE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
+const BSE_ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
+const BSE_ATTACH_HIS  = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/";
 const MAX_PDF_SIZE = 20 * 1024 * 1024;
 
 /** Download PDF using lenient HTTP parser (BSE sends malformed headers) */
@@ -132,20 +133,31 @@ async function main() {
         const attachment = filing.ATTACHMENTNAME?.trim();
         if (!attachment) continue;
 
-        const pdfUrl = `${BSE_ATTACH_BASE}${encodeURIComponent(attachment)}`;
+        // Try AttachLive first (recent), fall back to AttachHis (permanent archive)
+        const encoded = encodeURIComponent(attachment);
+        const liveUrl = `${BSE_ATTACH_LIVE}${encoded}`;
+        const hisUrl  = `${BSE_ATTACH_HIS}${encoded}`;
         try {
-          const parsedUrl = new URL(pdfUrl);
+          const parsedUrl = new URL(liveUrl);
           if (parsedUrl.hostname !== "www.bseindia.com") continue;
         } catch { continue; }
 
         let pdfBuffer: Buffer;
         try {
-          pdfBuffer = await downloadPdf(pdfUrl);
+          // Try AttachLive first, fall back to AttachHis for older filings
+          let dlError = "";
+          try {
+            pdfBuffer = await downloadPdf(liveUrl);
+          } catch (e1) {
+            dlError = (e1 as Error).message;
+            if (!dlError.includes("HTTP 404")) throw e1; // non-404 — don't retry
+            pdfBuffer = await downloadPdf(hisUrl);       // retry from archive
+          }
           totalDownloaded++;
         } catch (e) {
           const msg = (e as Error).message;
           if (msg.includes("HTTP 404")) {
-            // Expected for old filings — BSE purges attachments after ~2 months
+            // Not in live or archive — filing genuinely missing
             continue;
           }
           console.log(`    Download failed: ${msg}`);
