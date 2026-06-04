@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { sortQuarters } from "@/lib/intel/uiHelpers";
 import { QuarterChapter } from "./QuarterChapter";
-import { VerdictFilterBar } from "./VerdictFilterBar";
+import { VerdictFilterBar, type VerdictFilter } from "./VerdictFilterBar";
 import type { EnrichedClaim } from "./ClaimRow";
-import type { VerdictFilter } from "./VerdictFilterBar";
 
 interface Props {
   byQuarter: Record<string, EnrichedClaim[]>;
