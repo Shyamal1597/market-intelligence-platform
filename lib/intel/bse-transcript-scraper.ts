@@ -336,7 +336,19 @@ interface BSERawFiling {
   Fld_Attachsize: number;
 }
 
-const BSE_API_URL = "https://api.bseindia.com/BseIndiaAPI/api/AnnGetData/w";
+const BSE_API_URL = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w";
+
+/**
+ * BSE switched from AnnGetData/w (strCat=-1 / strCat=Transcript) to
+ * AnnSubCategoryGetData/w (strCat=<full category name>, optional subcategory).
+ * Transcripts are filed under multiple categories depending on the company.
+ * We search all likely categories and deduplicate by NEWSID.
+ */
+const TRANSCRIPT_CATEGORIES = [
+  { strCat: "Result",        subcategory: "" },
+  { strCat: "Board Meeting", subcategory: "" },
+  { strCat: "Company Update", subcategory: "Analyst / Investor Meet" },
+];
 const BSE_ATTACH_BASE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const MAX_PDF_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -389,10 +401,12 @@ function bseDateFmt(d: Date): string {
 
 /**
  * Fetch filings from BSE JSON API.
+ * Searches across all TRANSCRIPT_CATEGORIES and deduplicates by NEWSID.
+ *
  * @param scripCode - Optional BSE scrip code to filter by specific company
- * @param daysBack - How many days back to search (default 90)
- * @param fromDate - Explicit start date (overrides daysBack)
- * @param toDate - Explicit end date (defaults to today)
+ * @param daysBack  - How many days back to search (default 90)
+ * @param fromDate  - Explicit start date (overrides daysBack)
+ * @param toDate    - Explicit end date (defaults to today)
  */
 async function fetchBSEFilingsJSON(
   scripCode?: string,
@@ -403,28 +417,46 @@ async function fetchBSEFilingsJSON(
   const to = toDate ?? new Date();
   const from = fromDate ?? new Date(to.getTime() - daysBack * 86_400_000);
 
-  const params = new URLSearchParams({
-    strCat: "-1",           // All categories
-    strPrevDate: bseDateFmt(from),
-    strToDate: bseDateFmt(to),
-    strScrip: scripCode ?? "",  // Empty = all companies
-    strSearch: "P",         // Published
-    strType: "C",           // Corporate
-  });
+  const combined: BSERawFiling[] = [];
+  const seen = new Set<string>();
 
-  const url = `${BSE_API_URL}?${params}`;
-  const res = await bseFetch(url);
+  for (const { strCat, subcategory } of TRANSCRIPT_CATEGORIES) {
+    const params = new URLSearchParams({
+      pageno: "1",
+      strCat,
+      strPrevDate: bseDateFmt(from),
+      strToDate:   bseDateFmt(to),
+      strScrip:    scripCode ?? "",
+      strSearch:   "P",   // Published
+      strType:     "C",   // Corporate
+    });
+    if (subcategory) params.set("subcategory", subcategory);
 
-  if (res.status !== 200) {
-    throw new Error(`BSE API failed: ${res.status}`);
+    const url = `${BSE_API_URL}?${params}`;
+    let res: { status: number; body: string };
+    try {
+      res = await bseFetch(url);
+    } catch {
+      continue; // network error on this category — try next
+    }
+
+    if (res.status !== 200) continue;
+
+    let data: unknown;
+    try { data = JSON.parse(res.body); } catch { continue; }
+
+    const items = (data as Record<string, unknown>)?.Table;
+    if (!Array.isArray(items)) continue; // category returned no results
+
+    for (const item of items as BSERawFiling[]) {
+      const id = String((item as unknown as Record<string, unknown>).NEWSID ?? "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      combined.push(item);
+    }
   }
 
-  const data = JSON.parse(res.body);
-  const items = data?.Table;
-  if (!Array.isArray(items)) {
-    throw new Error("BSE API returned unexpected format (no Table array)");
-  }
-  return items;
+  return combined;
 }
 
 /**

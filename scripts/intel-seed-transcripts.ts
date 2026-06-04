@@ -48,7 +48,17 @@ function downloadPdf(url: string): Promise<Buffer> {
         }
         chunks.push(chunk);
       });
-      res.on("end", () => { clearTimeout(timer); resolve(Buffer.concat(chunks)); });
+      res.on("end", () => {
+        clearTimeout(timer);
+        const buf = Buffer.concat(chunks);
+        // BSE sometimes returns HTTP 200 with an HTML error page for purged attachments.
+        // Detect by checking PDF magic bytes (%PDF) at the start of the buffer.
+        if (buf.length < 5 || buf.slice(0, 4).toString("ascii") !== "%PDF") {
+          reject(new Error("HTTP 404")); // treat as soft-404
+          return;
+        }
+        resolve(buf);
+      });
       res.on("error", (e) => { clearTimeout(timer); reject(e); });
     });
     req.on("error", (e) => { clearTimeout(timer); reject(e); });
