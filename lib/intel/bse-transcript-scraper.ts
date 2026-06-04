@@ -338,6 +338,10 @@ interface BSERawFiling {
 
 const BSE_API_URL = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w";
 
+// Exported so auto-ingest route can reuse them
+export const BSE_ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
+export const BSE_ATTACH_HIS  = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/";
+
 /**
  * BSE switched from AnnGetData/w (strCat=-1 / strCat=Transcript) to
  * AnnSubCategoryGetData/w (strCat=<full category name>, optional subcategory).

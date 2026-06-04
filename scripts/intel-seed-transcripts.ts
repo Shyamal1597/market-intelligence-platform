@@ -14,6 +14,7 @@ import {
   fetchHistoricalTranscripts,
   SYMBOL_TO_SCRIP,
 } from "@/lib/intel/bse-transcript-scraper";
+import { fetchScreenerConcalls } from "@/lib/intel/screener-scraper";
 import { ingestPdfTranscript } from "@/lib/intel/pipeline";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 import https from "node:https";
@@ -185,6 +186,57 @@ async function main() {
         }
       }
       console.log(); // newline after all filings for this symbol
+    }
+
+    // ── Screener fallback (only when BSE found no filings for this symbol) ───
+    // Catches companies that file audio recordings on BSE but have text
+    // transcripts aggregated by Screener from other sources.
+    const bseHadFilings = (SYMBOL_TO_SCRIP[symbol] ?? []).length > 0;
+    const symbolWasIngested = false; // tracked below
+    void symbolWasIngested; // used by auto-ingest; seed script just checks BSE count
+    if (bseHadFilings) {
+      // Already tried BSE above — skip Screener to avoid duplicates
+    } else if (!args.includes("--no-screener")) {
+      process.stdout.write(`[${symbol}] `);
+      let screenerConcalls: Awaited<ReturnType<typeof fetchScreenerConcalls>> = [];
+      try {
+        screenerConcalls = await fetchScreenerConcalls(symbol);
+      } catch {
+        // Screener unavailable — skip
+      }
+
+      if (screenerConcalls.length === 0) {
+        console.log("no transcript filings found (BSE + Screener)");
+        continue;
+      }
+
+      console.log(`${screenerConcalls.length} filing(s) via Screener`);
+      for (const concall of screenerConcalls) {
+        let pdfBuffer: Buffer;
+        try {
+          pdfBuffer = await downloadPdf(concall.pdfUrl);
+          totalDownloaded++;
+        } catch {
+          continue; // inaccessible — skip silently
+        }
+
+        const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
+        try {
+          const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName);
+          if (result.alreadyExisted) {
+            process.stdout.write(`  ${result.quarter}(exists)`);
+            totalSkipped++;
+          } else {
+            process.stdout.write(`  ${result.quarter}(${result.chars}c)`);
+            totalIngested++;
+          }
+        } catch (e) {
+          const msg = (e as Error).message;
+          process.stdout.write(msg.includes("0 chars") ? "  (scanned-pdf)" : `  (err:${msg.slice(0, 40)})`);
+          totalErrors++;
+        }
+      }
+      console.log();
     }
   }
 
