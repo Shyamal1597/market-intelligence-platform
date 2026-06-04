@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { sortQuarters, quarterDisplay, snippetQuote } from "@/lib/intel/uiHelpers";
 import type { EnrichedClaim } from "./ClaimRow";
@@ -59,60 +59,101 @@ function QuarterCell({
   quarter: string;
   claim: EnrichedClaim | null;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   const v = claim?.check?.verdict ?? (claim ? "pending" : null);
   const borderClass = v ? BORDER_COLORS[v] ?? "border-l-border/30" : "border-l-border/20";
   const verdictClass = v ? VERDICT_COLORS[v] ?? "text-muted/30" : "text-muted/20";
 
   return (
     <div
-      className={`border-l-2 ${borderClass} pl-3 py-2.5 rounded-sm bg-surface/40 min-w-0`}
+      className={`border-l-2 ${borderClass} rounded-sm bg-surface/40 min-w-0 ${claim ? "cursor-pointer" : ""}`}
+      onClick={() => claim && setExpanded((p) => !p)}
     >
-      {/* Quarter + verdict */}
-      <div className="flex items-center justify-between mb-1.5 gap-2">
-        <span className="text-[10px] font-mono text-muted/60 uppercase tracking-wide shrink-0">
-          {quarterDisplay(quarter)}
-        </span>
-        {v && (
-          <span className={`text-[9px] font-mono uppercase tracking-wider font-bold shrink-0 ${verdictClass}`}>
-            {v}
+      {/* ── Always-visible header ── */}
+      <div className="pl-3 pr-2 py-2.5">
+        <div className="flex items-center justify-between mb-1.5 gap-2">
+          <span className="text-[10px] font-mono text-muted/60 uppercase tracking-wide shrink-0">
+            {quarterDisplay(quarter)}
           </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {v && (
+              <span className={`text-[9px] font-mono uppercase tracking-wider font-bold ${verdictClass}`}>
+                {v}
+              </span>
+            )}
+            {claim && (
+              <span className="text-[9px] font-mono text-muted/30">
+                {expanded ? "▲" : "▾"}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {claim?.targetText && (
+          <p className="text-[11px] font-mono text-primary/70 leading-snug">
+            ↗ {claim.targetText}
+          </p>
+        )}
+
+        {/* Collapsed preview — single line of quote */}
+        {!expanded && claim && (
+          <p className="text-[11px] font-sans text-primary/50 italic leading-relaxed mt-1 line-clamp-2">
+            &ldquo;{snippetQuote(claim.quote, 120)}&rdquo;
+          </p>
         )}
       </div>
 
-      {claim ? (
-        <>
-          {/* What was guided */}
-          {claim.targetText && (
-            <p className="text-[11px] font-mono text-primary/70 mb-1 leading-snug">
-              ↗ {claim.targetText}
-            </p>
-          )}
-
-          {/* Verbatim guidance quote — sentence-aware truncation at ~320 chars */}
-          <p className="text-[11px] font-sans text-primary/60 leading-relaxed line-clamp-5 italic">
-            &ldquo;{snippetQuote(claim.quote)}&rdquo;
-          </p>
-
-          {claim.speaker && (
-            <span className="text-[9px] font-mono text-muted/40 mt-0.5 block">
-              — {claim.speaker}
+      {/* ── Expanded detail ── */}
+      {expanded && claim && (
+        <div
+          className="border-t border-border/20 px-3 pb-3 pt-2.5 space-y-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Source quarter guidance quote */}
+          <div>
+            <span className="text-[9px] font-mono text-amber/60 uppercase tracking-wider block mb-1">
+              {quarterDisplay(quarter)} — guidance
             </span>
-          )}
-
-          {/* What actually happened (from verification transcript) */}
-          {claim.check?.actualText && (
-            <div className="mt-2 pt-2 border-t border-border/25">
-              <span className="text-[9px] font-mono text-muted/50 uppercase tracking-wider block mb-0.5">
-                Actual
+            <blockquote className="text-[11px] font-sans text-primary/70 italic leading-relaxed">
+              &ldquo;{claim.quote}&rdquo;
+            </blockquote>
+            {claim.speaker && (
+              <span className="text-[9px] font-mono text-muted/40 mt-0.5 block">
+                — {claim.speaker}
               </span>
-              <p className="text-[11px] font-sans text-primary/55 leading-relaxed line-clamp-4">
-                {snippetQuote(claim.check.actualText, 240)}
-              </p>
+            )}
+          </div>
+
+          {/* Verification transcript quote */}
+          {claim.check ? (
+            <div className="pt-2 border-t border-border/20">
+              <span className="text-[9px] font-mono text-muted/50 uppercase tracking-wider block mb-1">
+                {quarterDisplay(claim.check.verifiedInQuarter)} — confirmed
+              </span>
+
+              {/* Verbatim quote from verification transcript */}
+              {claim.check.quote && (
+                <blockquote className="text-[11px] font-sans text-primary/65 italic leading-relaxed mb-2">
+                  &ldquo;{claim.check.quote}&rdquo;
+                </blockquote>
+              )}
+
+              {/* Synthesised outcome (if different from verbatim) */}
+              {claim.check.actualText && claim.check.actualText !== claim.check.quote && (
+                <p className="text-[11px] font-sans text-primary/55 leading-relaxed">
+                  {claim.check.actualText}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-border/20">
+              <span className="text-[9px] font-mono text-muted/40">
+                Awaiting{claim.resolvedTargetQuarter ? ` ${quarterDisplay(claim.resolvedTargetQuarter)}` : " next"} transcript
+              </span>
             </div>
           )}
-        </>
-      ) : (
-        <span className="text-[10px] font-mono text-muted/25">no guidance this quarter</span>
+        </div>
       )}
     </div>
   );
