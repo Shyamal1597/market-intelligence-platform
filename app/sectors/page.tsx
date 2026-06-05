@@ -4,52 +4,63 @@ import { useEffect, useState } from "react";
 import { BreadthBar } from "@/components/sectors/BreadthBar";
 import { SectorTile } from "@/components/sectors/SectorTile";
 import { SectorLeaderboard } from "@/components/sectors/SectorLeaderboard";
+import { BseSectorGrid } from "@/components/sectors/BseSectorGrid";
 import type { QuoteData } from "@/lib/yahoo-finance";
+import type { BseSectorQuote } from "@/lib/bse-sectors";
 
 export default function SectorsPage() {
-  const [quotes, setQuotes] = useState<QuoteData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ── Nifty sectors (Yahoo Finance) ─────────────────────────────────────────
+  const [niftyQuotes, setNiftyQuotes] = useState<QuoteData[]>([]);
+  const [niftyLoading, setNiftyLoading] = useState(true);
+
+  // ── BSE SENSEX sectors ────────────────────────────────────────────────────
+  const [bseSectors, setBseSectors] = useState<BseSectorQuote[]>([]);
+  const [bseLoading, setBseLoading] = useState(true);
+  const [bseFetchedAt, setBseFetchedAt] = useState("");
+
+  // Active tab
+  const [tab, setTab] = useState<"nifty" | "bse">("bse");
 
   useEffect(() => {
-    let currentController: AbortController | null = null;
+    let ctrl: AbortController | null = null;
 
-    const fetchData = () => {
-      currentController?.abort(); // cancel any in-flight request from previous tick
-      currentController = new AbortController();
-      fetch("/api/sectors", { signal: currentController.signal })
-        .then((r) => {
-          if (!r.ok) throw new Error(`API error ${r.status}`);
-          return r.json();
+    const fetchNifty = () => {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      fetch("/api/sectors", { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((d: { quotes?: QuoteData[] }) => {
+          setNiftyQuotes(d.quotes ?? []);
+          setNiftyLoading(false);
         })
-        .then((data: { quotes?: QuoteData[] }) => {
-          setQuotes(data.quotes ?? []);
-          setError(null);
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.name !== "AbortError") {
-            setError("Could not load sector data.");
-            setLoading(false);
-          }
-        });
+        .catch(() => setNiftyLoading(false));
     };
 
-    fetchData();
-    const intervalId = setInterval(fetchData, 60000);
-    return () => {
-      clearInterval(intervalId);
-      currentController?.abort();
+    const fetchBse = () => {
+      fetch("/api/bse-sectors")
+        .then((r) => r.json())
+        .then((d: { sectors?: BseSectorQuote[]; fetchedAt?: string }) => {
+          setBseSectors(d.sectors ?? []);
+          if (d.fetchedAt) setBseFetchedAt(d.fetchedAt);
+          setBseLoading(false);
+        })
+        .catch(() => setBseLoading(false));
     };
+
+    fetchNifty();
+    fetchBse();
+
+    const id = setInterval(() => { fetchNifty(); fetchBse(); }, 60_000);
+    return () => { clearInterval(id); ctrl?.abort(); };
   }, []);
 
-  const advancing = quotes.filter((q) => q.changePercent > 0).length;
-  const declining = quotes.filter((q) => q.changePercent < 0).length;
+  const niftyAdvancing = niftyQuotes.filter((q) => q.changePercent > 0).length;
+  const niftyDeclining = niftyQuotes.filter((q) => q.changePercent < 0).length;
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[1400px]">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center gap-3 mb-1">
           <h1 className="font-display text-5xl font-semibold text-primary tracking-tight">
             Sector Dashboard
@@ -60,53 +71,66 @@ export default function SectorsPage() {
           </span>
         </div>
         <p className="text-muted text-sm font-sans">
-          Nifty sector indices · auto-polls every minute
+          BSE SENSEX sectors · Nifty sector indices · auto-polls every minute
+          {bseFetchedAt && tab === "bse" && (
+            <> · last updated {new Date(bseFetchedAt).toLocaleTimeString("en-IN")}</>
+          )}
         </p>
       </div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="mb-6 px-4 py-3 rounded-lg border border-danger/30 bg-danger/5 text-danger text-sm font-mono">
-          {error}
-        </div>
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-6 bg-surface border border-border rounded-lg p-1 w-fit">
+        {(["bse", "nifty"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-1.5 rounded text-sm font-mono transition-colors ${
+              tab === t
+                ? "bg-amber text-black font-semibold"
+                : "text-muted hover:text-primary"
+            }`}
+          >
+            {t === "bse" ? "BSE SENSEX" : "Nifty"}
+          </button>
+        ))}
+      </div>
+
+      {/* ── BSE SENSEX tab ──────────────────────────────────────────────────── */}
+      {tab === "bse" && (
+        <BseSectorGrid sectors={bseSectors} loading={bseLoading} />
       )}
 
-      {loading ? (
+      {/* ── Nifty tab ───────────────────────────────────────────────────────── */}
+      {tab === "nifty" && (
         <>
-          {/* Breadth bar skeleton */}
-          <div className="animate-pulse h-2 w-full rounded-full bg-surface-raised mb-6" />
-          {/* Grid skeleton */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {[...Array(10)].map((_, i) => (
-              <div
-                key={i}
-                className="animate-pulse h-[140px] bg-surface rounded-xl border border-border"
-              />
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Row 1: BreadthBar */}
-          <div className="mb-6">
-            <BreadthBar advancing={advancing} declining={declining} />
-          </div>
-
-          {/* Row 2: Sector heatmap grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-            {quotes.map((q) => (
-              <SectorTile key={q.symbol} quote={q} />
-            ))}
-          </div>
-
-          {/* Row 3: Leaderboard */}
-          {quotes.length > 0 && (
-            <div className="border border-border rounded-xl px-5 py-4 bg-surface">
-              <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-3">
-                Today&apos;s Ranking
-              </p>
-              <SectorLeaderboard quotes={quotes} />
-            </div>
+          {niftyLoading ? (
+            <>
+              <div className="animate-pulse h-2 w-full rounded-full bg-surface mb-6" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} className="h-[140px] animate-pulse bg-surface rounded-xl border border-border" />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-6">
+                <BreadthBar advancing={niftyAdvancing} declining={niftyDeclining} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                {niftyQuotes.map((q) => (
+                  <SectorTile key={q.symbol} quote={q} />
+                ))}
+              </div>
+              {niftyQuotes.length > 0 && (
+                <div className="border border-border rounded-xl px-5 py-4 bg-surface">
+                  <p className="font-mono text-[10px] tracking-widest text-muted uppercase mb-3">
+                    Today&apos;s Ranking
+                  </p>
+                  <SectorLeaderboard quotes={niftyQuotes} />
+                </div>
+              )}
+            </>
           )}
         </>
       )}

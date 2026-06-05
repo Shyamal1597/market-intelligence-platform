@@ -13,6 +13,7 @@ import { fetchAllFlowData } from "@/lib/nse-flows";
 import { fetchAllQuotes, fetchGlobalQuotes } from "@/lib/yahoo-finance";
 import type { QuoteData } from "@/lib/yahoo-finance";
 import { computePeriodTotals } from "@/lib/flow-periods";
+import { fetchBseSectors, mapEodSectors } from "@/lib/bse-sectors";
 
 export const dynamic = "force-dynamic";
 
@@ -123,11 +124,14 @@ function fyLongLabel(d: Date): string {
 
 export async function GET() {
   try {
-    const [flowData, macroQuotes, globalQuotes] = await Promise.all([
+    const [flowData, macroQuotes, globalQuotes, bseSectors] = await Promise.all([
       fetchAllFlowData(),
       fetchAllQuotes(),
       fetchGlobalQuotes(),
+      fetchBseSectors().catch(() => []), // non-fatal: blank rows if BSE is down
     ]);
+
+    const eodSectors = mapEodSectors(bseSectors);
 
     const { entries, snapshot } = flowData;
     const today = new Date();
@@ -286,10 +290,50 @@ export async function GET() {
     ([2,4,6,8] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "Index"));
     ([3,5,7,9] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "(%)"));
 
-    // ── Rows 18-23: sectorial data (blank — analyst fills) ────────────────────
-    for (let r = 18; r <= 23; r++) {
-      ws.getRow(r).height = 14;
-      for (let c = 2; c <= 9; c++) ws.getCell(r, c).border = BORDER(C.borderBlack);
+    // ── Rows 18-23: BSE SENSEX sectorial data (6 rows × 4 sector pairs) ───────
+    //
+    // Column layout per row:
+    //   B(2)=sector1 name  C(3)=% | D(4)=sector2 name  E(5)=% |
+    //   F(6)=sector3 name  G(7)=% | H(8)=sector4 name  I(9)=%
+    //
+    // eodSectors[] is indexed 0..23 in row-major order matching the template.
+    for (let row = 18; row <= 23; row++) {
+      ws.getRow(row).height = 14;
+      const baseIdx = (row - 18) * 4; // 0, 4, 8, 12, 16, 20
+
+      const COL_PAIRS: [number, number][] = [[2, 3], [4, 5], [6, 7], [8, 9]];
+
+      COL_PAIRS.forEach(([cLabel, cPct], colIdx) => {
+        const s = eodSectors[baseIdx + colIdx];
+        const labelCell = ws.getCell(row, cLabel);
+        const pctCell   = ws.getCell(row, cPct);
+
+        if (s) {
+          labelCell.value = s.label;
+          labelCell.font  = { name: "Calibri", size: 9, color: { argb: C.black } };
+          labelCell.alignment = { vertical: "middle" };
+          labelCell.border = BORDER(C.borderBlack);
+
+          pctCell.value  = s.changePercent / 100;
+          pctCell.numFmt = "0.00%";
+          pctCell.font   = {
+            name: "Calibri", size: 9,
+            color: {
+              argb: s.changePercent > 0
+                ? C.posGreen
+                : s.changePercent < 0
+                ? C.negRed
+                : C.black,
+            },
+          };
+          pctCell.alignment = { horizontal: "right", vertical: "middle" };
+          pctCell.border = BORDER(C.borderBlack);
+        } else {
+          // BSE didn't return this index — leave blank with border
+          labelCell.border = BORDER(C.borderBlack);
+          pctCell.border   = BORDER(C.borderBlack);
+        }
+      });
     }
 
     // ── Row 24: blank ─────────────────────────────────────────────────────────
