@@ -370,7 +370,81 @@ export async function fetchNiftyDailyHistory(): Promise<NiftyDayClose[]> {
   }
 }
 
-// ── Main Entry Point ─────────────────────────────────────────────────────────
+// ── Gap detection ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns the earliest date from which we should attempt a backfill.
+ * Triggers when:
+ *  a) history is completely empty, or
+ *  b) there is a gap > GAP_THRESHOLD calendar days between consecutive entries
+ *     within the last LOOK_BACK_DAYS window, or
+ *  c) the most recent entry is more than GAP_THRESHOLD days before today.
+ *
+ * Returns null if the history appears complete enough.
+ */
+const GAP_THRESHOLD_DAYS = 7;   // gaps bigger than this (calendar days) → backfill
+const LOOK_BACK_DAYS     = 120; // only inspect the last 4 months
+
+function detectBackfillFrom(entries: StoredEntry[], today: string): string | null {
+  if (entries.length === 0) {
+    // Start backfill from FY start (Apr 1 of current/prev year)
+    const d = new Date(today);
+    const fyStart = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+    return `${fyStart}-04-01`;
+  }
+
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - LOOK_BACK_DAYS);
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+
+  const recent = entries
+    .filter((e) => e.date >= cutoffIso)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (recent.length === 0) return cutoffIso;
+
+  // Gap between last entry and today
+  const lastDate   = new Date(recent[recent.length - 1].date);
+  const todayDate  = new Date(today);
+  const tailGap    = Math.round(
+    (todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (tailGap > GAP_THRESHOLD_DAYS) {
+    // Backfill from a week before the last entry to capture any missed days
+    const fromDate = new Date(lastDate);
+    fromDate.setDate(fromDate.getDate() - 7);
+    return fromDate.toISOString().slice(0, 10);
+  }
+
+  // Internal gap > threshold
+  for (let i = 1; i < recent.length; i++) {
+    const prev = new Date(recent[i - 1].date);
+    const curr = new Date(recent[i].date);
+    const gap  = Math.round(
+      (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (gap > GAP_THRESHOLD_DAYS) {
+      // Backfill from a week before this gap
+      const fromDate = new Date(prev);
+      fromDate.setDate(fromDate.getDate() - 7);
+      return fromDate.toISOString().slice(0, 10);
+    }
+  }
+
+  return null; // no gaps detected
+}
+
+/**
+ * Merge new entries into existing, dedup by date, return sorted.
+ * New entries win over old (allows correction of stale data).
+ */
+function mergeEntries(existing: StoredEntry[], incoming: StoredEntry[]): StoredEntry[] {
+  const map = new Map<string, StoredEntry>(existing.map((e) => [e.date, e]));
+  for (const e of incoming) map.set(e.date, e); // incoming overwrites
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ── Main Entry Point ──────────────────────────────────────────────────────────
 
 export async function fetchAllFlowData(): Promise<{
   entries: FiiDiiEntry[];
@@ -390,40 +464,63 @@ export async function fetchAllFlowData(): Promise<{
   ]);
 
   let entries = [...history];
-  let dirty = false;
+  let dirty   = false;
 
-  // Bootstrap from NSE historical API if file is empty (best-effort, fails gracefully)
-  if (entries.length === 0) {
-    const fromDate = new Date();
-    fromDate.setFullYear(fromDate.getFullYear() - 1);
-    const fromIso = fromDate.toISOString().slice(0, 10);
-    const bootstrapped = await tryNseHistoricalBootstrap(fromIso, today, cookie);
-    if (bootstrapped.length > 0) {
-      entries = bootstrapped;
-      dirty = true;
+  // Gap detection: backfill whenever the stored history has holes,
+  // not just when it is completely empty. NSE API fails gracefully.
+  const backfillFrom = detectBackfillFrom(entries, today);
+  if (backfillFrom) {
+    console.log(`[nse-flows] gap detected — attempting backfill from ${backfillFrom}`);
+    const fetched = await tryNseHistoricalBootstrap(backfillFrom, today, cookie);
+    if (fetched.length > 0) {
+      entries = mergeEntries(entries, fetched);
+      dirty   = true;
+      console.log(
+        `[nse-flows] backfill merged ${fetched.length} entries (total: ${entries.length})`,
+      );
+    } else {
+      console.warn("[nse-flows] backfill attempt returned 0 entries (NSE may be blocking)");
     }
   }
 
-  // Merge today's snapshot into history if not already present
+  // Append today's snapshot if not already present
   if (snapshot && !entries.some((e) => e.date === today)) {
     const todayEntry = snapshotToEntry(snapshot, today);
-    entries.push(todayEntry);
-    dirty = true;
-    console.log(`[nse-flows] appended ${today} to history (total: ${entries.length})`);
+    entries = mergeEntries(entries, [todayEntry]);
+    dirty   = true;
+    console.log(`[nse-flows] appended ${today} (total: ${entries.length})`);
   }
 
-  // Persist updated history
-  if (dirty) {
-    const sorted = [...entries].sort((a, b) => (a.date < b.date ? -1 : 1));
-    await saveHistory(sorted);
-    entries = sorted;
-  } else {
-    entries.sort((a, b) => (a.date < b.date ? -1 : 1));
-  }
+  // Persist if changed
+  if (dirty) await saveHistory(entries);
 
   return {
     entries: computeDerived(entries),
     snapshot,
     nifty,
   };
+}
+
+// ── Manual patch endpoint helpers ─────────────────────────────────────────────
+
+/**
+ * Patch one or more historical entries directly into the history file.
+ * Used by POST /api/flows/patch when the analyst needs to correct missing data.
+ */
+export async function patchFlowHistory(
+  patches: Array<{
+    date: string;
+    fiiEquityBuy: number; fiiEquitySell: number; fiiEquityNet: number;
+    diiEquityBuy: number; diiEquitySell: number; diiEquityNet: number;
+  }>,
+): Promise<{ saved: number; total: number }> {
+  const history = await loadHistory();
+  const incoming: StoredEntry[] = patches.map((p) => ({
+    ...p,
+    fiiDebtBuy: 0, fiiDebtSell: 0, fiiDebtNet: 0,
+    diiDebtBuy: 0, diiDebtSell: 0, diiDebtNet: 0,
+  }));
+  const merged = mergeEntries(history, incoming);
+  await saveHistory(merged);
+  return { saved: incoming.length, total: merged.length };
 }

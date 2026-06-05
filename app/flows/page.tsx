@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { FlowSnapshotCard } from "@/components/flows/FlowSnapshotCard";
 import { FlowChart } from "@/components/flows/FlowChart";
 import { FlowSummaryStrip } from "@/components/flows/FlowSummaryStrip";
+import { FlowsGapAlert } from "@/components/flows/FlowsGapAlert";
 import type { FiiDiiEntry, FlowsSnapshot } from "@/lib/nse-flows";
 import { computePeriodTotals } from "@/lib/flow-periods";
 
@@ -95,6 +96,13 @@ export default function FlowsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  function reloadFlows() {
+    fetch("/api/flows")
+      .then((r) => r.json())
+      .then((d: FlowsData) => { setData(d); setError(null); })
+      .catch(() => {});
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/flows", { signal: controller.signal })
@@ -160,6 +168,11 @@ export default function FlowsPage() {
           {error}
         </div>
       )}
+
+      {/* Data quality warning — shown whenever history has gaps */}
+      <div className="mb-4">
+        <FlowsGapAlert onPatched={reloadFlows} />
+      </div>
 
       {loading ? (
         <div className="space-y-6">
