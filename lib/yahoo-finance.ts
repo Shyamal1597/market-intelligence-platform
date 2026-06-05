@@ -33,6 +33,7 @@ export const GLOBAL_SYMBOLS: Record<string, { label: string; region: string }> =
   "^BDI":       { label: "Baltic Dry",      region: "Others" },
   "CL=F":       { label: "Nymex (USD/bbl)", region: "Others" },
   "BZ=F":       { label: "Brent (USD/bbl)", region: "Others" },
+  "NG=F":       { label: "Natural Gas (USD/MMBtu)", region: "Others" },
   // US
   "^DJI":       { label: "DJIA",            region: "US" },
   "^IXIC":      { label: "NASDAQ COMP",     region: "US" },

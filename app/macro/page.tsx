@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 import { GlobalMarkets } from "@/components/macro/GlobalMarkets";
 
 interface Quote {
@@ -82,6 +82,31 @@ export default function MacroPage() {
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const exportEOD = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/eod-export");
+      if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const today = new Date().toLocaleDateString("en-IN", {
+        day: "2-digit", month: "2-digit", year: "2-digit",
+      }).replace(/\//g, ".");
+      a.download = `EOD Snippets on Market MISC - ${today}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("EOD export failed:", e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const load = async () => {
     try {
@@ -118,14 +143,25 @@ export default function MacroPage() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => { setRefreshing(true); load(); }}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportEOD}
+            disabled={exporting}
+            title="Export EOD Snippets report as Excel"
+            className="flex items-center gap-2 px-4 py-2 border border-amber/40 rounded-lg text-sm text-amber hover:bg-amber/10 hover:border-amber/70 transition-all disabled:opacity-50"
+          >
+            <Download className={`w-4 h-4 ${exporting ? "animate-bounce" : ""}`} />
+            {exporting ? "Generating…" : "Export EOD"}
+          </button>
+          <button
+            onClick={() => { setRefreshing(true); load(); }}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-muted hover:text-primary hover:border-amber/30 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Live Market Quotes — terminal table */}
