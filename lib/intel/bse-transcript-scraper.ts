@@ -47,7 +47,6 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532978": "BAJAJFINSV",   // Bajaj Finserv Ltd
   "511218": "SBILIFE",
   "540777": "HDFCLIFE",
-  "540716": "ICICIPRULI",
 
   // ── NBFC / Lending ────────────────────────────────────────────────────────
   "500034": "BAJFINANCE",   // Bajaj Finance Ltd
@@ -57,14 +56,12 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532810": "PFC",
   "532955": "RECLTD",
   "543257": "IRFC",
-  "500253": "LICHSGFIN",
-  "532720": "M&MFIN",
-  "500302": "PEL",
 
   // ── Financial Services ────────────────────────────────────────────────────
   "543940": "JIOFIN",
   "500490": "BAJAJHLDNG",
   "541729": "HDFCAMC",
+  "544574": "TATACAP",      // Tata Capital Ltd — IPO Oct 2025
 
   // ── IT Services ───────────────────────────────────────────────────────────
   "532540": "TCS",
@@ -72,6 +69,7 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532281": "HCLTECH",
   "507685": "WIPRO",
   "532755": "TECHM",
+  "540005": "LTM",          // LTM Ltd (ex-LTIMindtree) — renamed Mar 2026
 
   // ── Pharma & Healthcare ───────────────────────────────────────────────────
   "524715": "SUNPHARMA",
@@ -88,13 +86,13 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532500": "MARUTI",
   "500520": "M&M",
   "505200": "EICHERMOT",
-  "500570": "TATAMOTORS",
+  "500570": "TMPV",         // Tata Motors PV (ex-TATAMOTORS) — renamed Oct 2025
+  "544569": "TMCV",         // Tata Motors CV — new listing Nov 2025
   "532343": "TVSMOTOR",
   "500480": "CUMMINSIND",
   "544274": "HYUNDAI",
   "517334": "MOTHERSON",
   "500530": "BOSCHLTD",
-  "500477": "ASHOKLEY",
 
   // ── FMCG ──────────────────────────────────────────────────────────────────
   "500696": "HINDUNILVR",
@@ -144,6 +142,7 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "500510": "LT",
   "500002": "ABB",
   "500550": "SIEMENS",
+  "544390": "ENRIN",        // Siemens Energy India — demerger listed Jun 2025
   "500093": "CGPOWER",
   "532921": "ADANIPORTS",
   "512599": "ADANIENT",
@@ -152,6 +151,7 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "500049": "BEL",
   "541154": "HAL",
   "543237": "MAZDOCK",
+  "532725": "SOLARINDS",    // Solar Industries India
 
   // ── Consumer & Retail ─────────────────────────────────────────────────────
   "500114": "TITAN",
