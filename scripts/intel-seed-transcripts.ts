@@ -23,6 +23,9 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const BSE_ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
 const BSE_ATTACH_HIS  = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/";
 const MAX_PDF_SIZE = 20 * 1024 * 1024;
+// Minimum characters for a PDF to be considered a real transcript (not a short
+// press release, agenda, or other non-transcript filing from BSE).
+const MIN_USEFUL_CHARS = 5_000;
 
 /** Download PDF using lenient HTTP parser (BSE sends malformed headers) */
 function downloadPdf(url: string): Promise<Buffer> {
@@ -80,6 +83,11 @@ for (const arg of args) {
   }
 }
 
+// --only-screener: skip BSE entirely, go straight to Screener.
+// Use when a symbol already has some real BSE transcripts but is missing
+// quarters that BSE never had (e.g. junk filings blocked Screener previously).
+const onlyScreener = args.includes("--only-screener");
+
 const targetSymbols = symbols.length > 0
   ? symbols.filter((s) => SYMBOL_SECTOR[s])
   : Object.keys(SYMBOL_SECTOR);
@@ -105,30 +113,44 @@ async function main() {
   let noScripCount = 0;
 
   for (const symbol of targetSymbols) {
-    const scripCodes = SYMBOL_TO_SCRIP[symbol];
-    if (!scripCodes || scripCodes.length === 0) {
+    const scripCodes = SYMBOL_TO_SCRIP[symbol] ?? [];
+
+    if (scripCodes.length === 0) {
       noScripCount++;
-      continue;
+      // No scrip codes — fall through to Screener fallback below
     }
 
     process.stdout.write(`[${symbol}] `);
 
-    for (const scrip of scripCodes) {
+    // Track how many transcript filings BSE actually returned (not just whether scrip
+    // codes exist). A symbol can have scrip codes but BSE may only have audio filings,
+    // in which case Screener should be tried.
+    let bseFilingsFound = 0;
+    // Count of BSE transcripts that are substantial enough to be real transcripts.
+    // BSE sometimes returns short press releases/agendas (<5k chars) — these are junk
+    // and should trigger the Screener fallback even though BSE technically "had filings".
+    let bseUsefulIngested = 0;
+
+    if (onlyScreener) {
+      // Skip BSE entirely — jump straight to Screener below.
+      // bseFilingsFound stays 0 so the Screener block always runs.
+      console.log("(--only-screener: skipping BSE)");
+    }
+
+    for (const scrip of scripCodes.filter(() => !onlyScreener)) {
       let transcriptFilings;
       try {
         transcriptFilings = await fetchHistoricalTranscripts(scrip, startDate);
       } catch (e) {
-        console.log(`BSE error: ${(e as Error).message}`);
+        process.stdout.write(`BSE error: ${(e as Error).message}\n`);
         totalErrors++;
         continue;
       }
 
-      if (transcriptFilings.length === 0) {
-        console.log("no transcript filings found");
-        continue;
-      }
+      if (transcriptFilings.length === 0) continue;
 
-      console.log(`${transcriptFilings.length} filing(s)`);
+      bseFilingsFound += transcriptFilings.length;
+      process.stdout.write(`${transcriptFilings.length} BSE filing(s)\n`);
 
       for (const filing of transcriptFilings) {
         const attachment = filing.ATTACHMENTNAME?.trim();
@@ -161,7 +183,7 @@ async function main() {
             // Not in live or archive — filing genuinely missing
             continue;
           }
-          console.log(`    Download failed: ${msg}`);
+          process.stdout.write(`    Download failed: ${msg}\n`);
           totalErrors++;
           continue;
         }
@@ -170,9 +192,11 @@ async function main() {
           const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment);
           if (result.alreadyExisted) {
             process.stdout.write(`  ${result.quarter}(exists)`);
+            if (result.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
             totalSkipped++;
           } else {
             process.stdout.write(`  ${result.quarter}(${result.chars}c)`);
+            if (result.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
             totalIngested++;
           }
         } catch (e) {
@@ -185,19 +209,19 @@ async function main() {
           totalErrors++;
         }
       }
-      console.log(); // newline after all filings for this symbol
+      console.log(); // newline after all filings for this scrip
     }
 
-    // ── Screener fallback (only when BSE found no filings for this symbol) ───
-    // Catches companies that file audio recordings on BSE but have text
-    // transcripts aggregated by Screener from other sources.
-    const bseHadFilings = (SYMBOL_TO_SCRIP[symbol] ?? []).length > 0;
-    const symbolWasIngested = false; // tracked below
-    void symbolWasIngested; // used by auto-ingest; seed script just checks BSE count
-    if (bseHadFilings) {
-      // Already tried BSE above — skip Screener to avoid duplicates
-    } else if (!args.includes("--no-screener")) {
-      process.stdout.write(`[${symbol}] `);
+    // ── Screener fallback ──────────────────────────────────────────────────────
+    // Runs whenever BSE produced no useful transcripts — covers:
+    //   • Symbols with no scrip codes (not yet mapped)
+    //   • Symbols that only file audio recordings on BSE (e.g. ICICIBANK)
+    //   • Symbols where BSE purged all attachments
+    //   • Symbols where BSE returned filings but all were junk (<5k chars press
+    //     releases / agendas rather than real transcripts, e.g. JSWSTEEL)
+    //   • --only-screener mode: BSE was intentionally skipped
+    // Suppress with --no-screener flag.
+    if ((bseFilingsFound === 0 || bseUsefulIngested === 0) && !args.includes("--no-screener")) {
       let screenerConcalls: Awaited<ReturnType<typeof fetchScreenerConcalls>> = [];
       try {
         screenerConcalls = await fetchScreenerConcalls(symbol);
@@ -237,12 +261,15 @@ async function main() {
         }
       }
       console.log();
+    } else if (bseUsefulIngested === 0 && scripCodes.length > 0) {
+      // Had scrip codes, BSE returned something but all junk, --no-screener set
+      console.log("no useful transcript filings found (BSE filings were too short)");
     }
   }
 
   console.log(`\n${"─".repeat(60)}`);
   console.log(`Seeding complete.`);
-  console.log(`  Symbols processed: ${targetSymbols.length - noScripCount} (${noScripCount} without scrip codes)`);
+  console.log(`  Symbols processed: ${targetSymbols.length} (${noScripCount} without BSE scrip codes — Screener tried)`);
   console.log(`  Downloaded:        ${totalDownloaded} PDFs`);
   console.log(`  Ingested:          ${totalIngested} new transcripts`);
   console.log(`  Skipped:           ${totalSkipped} (already existed)`);

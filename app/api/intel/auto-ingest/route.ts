@@ -36,6 +36,7 @@ import {
 } from "@/lib/intel/pipeline";
 
 const MAX_PDF_SIZE = 20 * 1024 * 1024;
+const MIN_USEFUL_CHARS = 5_000; // below this → junk filing (press release/agenda), not a real transcript
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
@@ -136,8 +137,8 @@ export async function POST(req: Request) {
     };
 
     for (const symbol of targetSymbols) {
-      const scripCodes = SYMBOL_TO_SCRIP[symbol];
-      if (!scripCodes?.length) continue;
+      const scripCodes = SYMBOL_TO_SCRIP[symbol] ?? [];
+      // No early-exit for missing scrip codes — fall through to Screener fallback.
 
       let bseFilings: Awaited<ReturnType<typeof fetchHistoricalTranscripts>> = [];
       for (const scrip of scripCodes) {
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
       }
 
       // ── BSE source ─────────────────────────────────────────────────────────
-      let bseIngested = false;
+      let bseUsefulIngested = 0; // count of transcripts above MIN_USEFUL_CHARS threshold
       for (const filing of bseFilings) {
         const attachment = filing.ATTACHMENTNAME?.trim();
         if (!attachment) continue;
@@ -179,6 +180,7 @@ export async function POST(req: Request) {
           const ingested = await ingestPdfTranscript(pdfBuf, symbol, attachment);
           if (ingested.alreadyExisted) {
             result.skipped++;
+            if (ingested.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
             result.symbols.push({
               symbol,
               source: "bse",
@@ -187,7 +189,7 @@ export async function POST(req: Request) {
             });
           } else {
             result.ingested++;
-            bseIngested = true;
+            if (ingested.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
             result.symbols.push({
               symbol,
               source: "bse",
@@ -207,8 +209,10 @@ export async function POST(req: Request) {
         }
       }
 
-      // ── Screener fallback (only if BSE found nothing) ──────────────────────
-      if (!bseIngested && bseFilings.length === 0 && screenerFallback) {
+      // ── Screener fallback ─────────────────────────────────────────────────
+      // Triggers when BSE produced no useful transcripts — zero filings OR all
+      // filings were too short to be real transcripts (press releases, agendas).
+      if ((bseFilings.length === 0 || bseUsefulIngested === 0) && screenerFallback) {
         let screenerConcalls: Awaited<ReturnType<typeof fetchScreenerConcalls>> = [];
         try {
           screenerConcalls = await fetchScreenerConcalls(symbol);
@@ -217,6 +221,22 @@ export async function POST(req: Request) {
         }
 
         for (const concall of screenerConcalls) {
+          // Re-validate URL server-side — scraper validation runs client-side
+          // but the download happens from the server's network context.
+          try {
+            const p = new URL(concall.pdfUrl);
+            const h = p.hostname.toLowerCase();
+            if (
+              p.protocol !== "https:" ||
+              h === "localhost" ||
+              h.startsWith("127.") ||
+              h.startsWith("10.") ||
+              h.startsWith("192.168.") ||
+              h.startsWith("169.254.") ||
+              /^172\.(1[6-9]|2\d|3[01])\./.test(h)
+            ) continue;
+          } catch { continue; }
+
           let pdfBuf: Buffer;
           try {
             pdfBuf = await downloadPdf(concall.pdfUrl);

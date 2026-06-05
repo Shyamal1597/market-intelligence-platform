@@ -98,23 +98,24 @@ export async function fetchScreenerConcalls(
     const href = $(el).attr("href");
     if (!href) return;
 
-    // Only accept PDF-like URLs (BSE or company-hosted)
-    if (!href.toLowerCase().endsWith(".pdf") && !href.includes(".pdf")) return;
-
-    // Security: only allow known safe domains
+    // Security: only allow HTTPS URLs from known-safe or well-known domains.
+    // Do NOT filter by .pdf extension — Screener sometimes serves transcripts via
+    // non-PDF URLs (e.g. /company/TRENT/transcript/123/). We verify content is
+    // actually PDF by checking magic bytes after download.
     try {
       const parsed = new URL(href);
-      const allowed = [
-        "www.bseindia.com",
-        "nsearchives.nseindia.com",
-      ];
-      // Also allow company IR domains that end in well-known TLDs (best-effort)
-      const isAllowed =
-        allowed.includes(parsed.hostname) ||
-        parsed.hostname.endsWith(".bseindia.com") ||
-        parsed.hostname.endsWith(".nseindia.com");
-      // For other domains (company IR sites), allow https only
-      if (!isAllowed && parsed.protocol !== "https:") return;
+      // Must be HTTPS
+      if (parsed.protocol !== "https:") return;
+      // Block localhost and all RFC-1918 / link-local ranges
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === "localhost" ||
+        host.startsWith("127.") ||
+        host.startsWith("10.") ||
+        host.startsWith("192.168.") ||
+        host.startsWith("169.254.") ||            // link-local / AWS metadata
+        /^172\.(1[6-9]|2\d|3[01])\./.test(host)  // 172.16–172.31
+      ) return;
     } catch {
       return;
     }

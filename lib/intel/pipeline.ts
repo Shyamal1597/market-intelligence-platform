@@ -28,7 +28,22 @@ import {
 import { extractClaimsForSymbol, claimsHash } from "@/lib/intel/extractClaims";
 import { crossCheckForSymbol } from "@/lib/intel/crossCheck";
 import { generateQuarterSummary } from "@/lib/intel/generateSummary";
+import { buildIntelIndex } from "@/lib/intel/buildIndex";
 import type { ClaimsArtifact, ChecksArtifact, SectorKey } from "@/lib/intel/types";
+
+// ── Index rebuild debounce ────────────────────────────────────────────────────
+// Multiple concurrent pipeline completions collapse into a single rebuild
+// 2 seconds after the last one finishes.
+let _indexRebuildTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleIndexRebuild() {
+  if (_indexRebuildTimer) clearTimeout(_indexRebuildTimer);
+  _indexRebuildTimer = setTimeout(() => {
+    _indexRebuildTimer = null;
+    buildIntelIndex().catch((e) =>
+      console.error("[pipeline] index rebuild failed:", (e as Error).message),
+    );
+  }, 2_000);
+}
 
 // ── Data paths ───────────────────────────────────────────────────────────────
 
@@ -420,6 +435,10 @@ export async function runFullPipeline(
   }
 
   onProgress?.("complete");
+
+  // Rebuild the pre-computed index so the frontend reflects new data immediately.
+  // Debounced: multiple concurrent pipeline completions collapse into one rebuild.
+  scheduleIndexRebuild();
 
   return {
     symbol: sym,

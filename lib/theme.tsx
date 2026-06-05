@@ -46,7 +46,7 @@ const DEFAULT_CUSTOM: CustomColors = {
 };
 
 const DEFAULTS: ThemeState = {
-  mode: "dark",
+  mode: "light",
   fontSize: "md",
   custom: DEFAULT_CUSTOM,
   settingsOpen: false,

@@ -68,10 +68,6 @@ function CompanyChip({
   onSelect: (sym: string) => void;
 }) {
   const isSelected = company.symbol === selectedSymbol;
-  const decisive = company.metCount + company.movingCount + company.missCount;
-  const onTrackPct = decisive > 0
-    ? Math.round(((company.metCount + company.movingCount) / decisive) * 100)
-    : null;
   const hasData = company.totalClaims > 0;
 
   return (
@@ -91,16 +87,6 @@ function CompanyChip({
           {company.totalClaims}
         </span>
       )}
-      {onTrackPct !== null && (
-        <span className={`text-[10px] font-bold ${
-          isSelected        ? "text-teal"
-          : onTrackPct >= 70 ? "text-teal"
-          : onTrackPct >= 40 ? "text-amber"
-          : "text-danger"
-        }`}>
-          {onTrackPct}%
-        </span>
-      )}
     </button>
   );
 }
@@ -116,7 +102,7 @@ function SectorDropdown({
   onChange,
 }: {
   selectedSector: string;
-  sectorStats: Array<{ sector: string; count: number; pct: number | null }>;
+  sectorStats: Array<{ sector: string; count: number }>;
   onChange: (sector: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -164,7 +150,7 @@ function SectorDropdown({
         className="rounded border border-border bg-surface shadow-xl overflow-y-auto"
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
       >
-        {sectorStats.map(({ sector, count, pct }) => {
+        {sectorStats.map(({ sector, count }) => {
           const isActive = sector === selectedSector;
           return (
             <div
@@ -196,15 +182,6 @@ function SectorDropdown({
                 }}>
                   {count}
                 </span>
-                {pct != null && (
-                  <span style={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    color: pct >= 70 ? "var(--color-teal)" : pct >= 40 ? "var(--color-amber)" : "var(--color-danger)",
-                  }}>
-                    {pct}%
-                  </span>
-                )}
               </span>
             </div>
           );
@@ -227,13 +204,6 @@ function SectorDropdown({
         <span className="font-bold">{SECTOR_LABELS[selectedSector] ?? selectedSector}</span>
         <span className="text-muted/40">·</span>
         <span className="text-muted/60">{current?.count ?? 0}</span>
-        {current?.pct != null && (
-          <span className={`font-bold ${
-            current.pct >= 70 ? "text-teal" : current.pct >= 40 ? "text-amber" : "text-danger"
-          }`}>
-            {current.pct}%
-          </span>
-        )}
         <ChevronDown size={11} className="text-muted/50 shrink-0" />
       </button>
 
@@ -303,12 +273,9 @@ export function IntelDashboard() {
         .filter((s) => companies.some((c) => c.sector === s))
         .map((s) => {
           const cos = companies.filter((c) => c.sector === s);
-          const dec = cos.reduce((a, c) => a + c.metCount + c.movingCount + c.missCount, 0);
-          const ot  = cos.reduce((a, c) => a + c.metCount + c.movingCount, 0);
           return {
             sector: s,
             count: cos.length,
-            pct: dec > 0 ? Math.round((ot / dec) * 100) : null,
           };
         }),
     [companies]

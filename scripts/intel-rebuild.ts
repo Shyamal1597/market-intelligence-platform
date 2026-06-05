@@ -61,6 +61,7 @@ function parseArgs() {
 
   return {
     symbol: positional[0] ?? null,
+    symbols: positional.length > 0 ? positional : null,
     stage: flags.stage ? parseInt(flags.stage as string) : null,
     force: flags.force === true,
     all: flags.all === true,
@@ -294,10 +295,17 @@ function makeSemaphore(n: number) {
   let symbols: string[] = [];
   if (opts.all) {
     symbols = Object.keys(SYMBOL_SECTOR);
+  } else if (opts.symbols && opts.symbols.length > 0) {
+    const invalid = opts.symbols.filter((s) => !SYMBOL_SECTOR[s]);
+    if (invalid.length) {
+      console.error(`Unknown symbols: ${invalid.join(", ")}`);
+      process.exit(2);
+    }
+    symbols = opts.symbols;
   } else if (opts.symbol && SYMBOL_SECTOR[opts.symbol]) {
     symbols = [opts.symbol];
   } else {
-    console.error("usage: npx tsx scripts/intel-rebuild.ts <SYMBOL> [--stage=N] [--force] [--all] [--dry-run]");
+    console.error("usage: npx tsx scripts/intel-rebuild.ts <SYMBOL> [<SYMBOL2> ...] [--stage=N] [--force] [--all] [--dry-run]");
     console.error(`  valid symbols: ${Object.keys(SYMBOL_SECTOR).join(", ")}`);
     process.exit(2);
   }
