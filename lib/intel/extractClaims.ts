@@ -154,30 +154,19 @@ async function processQuarter(
 
   const model = defaultExtractionModel();
   const localWarnings: string[] = [];
-  let result: Awaited<ReturnType<typeof callJson<{ claims: Partial<ExtractedClaim>[] }>>> | undefined;
-  // Retry up to 3 times on 429 rate-limit errors with exponential back-off.
-  let lastErr: Error | null = null;
-  let succeeded = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 5_000 * attempt));
-    try {
-      result = await callJson<{ claims: Partial<ExtractedClaim>[] }>({
-        model,
-        system, user,
-        temperature: 0,
-        cacheControl: true,
-        ...(args.numCtx    !== undefined && { numCtx:    args.numCtx }),
-        ...(args.maxTokens !== undefined && { maxTokens: args.maxTokens }),
-      });
-      succeeded = true;
-      break;
-    } catch (err) {
-      lastErr = err as Error;
-      if (!(err as Error).message.includes("429")) break; // non-rate-limit — don't retry
-    }
-  }
-  if (!succeeded || !result) {
-    localWarnings.push(`${quarter}: LLM error — ${lastErr!.message.slice(0, 120)}`);
+  let result: Awaited<ReturnType<typeof callJson<{ claims: Partial<ExtractedClaim>[] }>>>;
+  // callJson wraps withRetry (3 attempts, exponential backoff) — no outer loop needed.
+  try {
+    result = await callJson<{ claims: Partial<ExtractedClaim>[] }>({
+      model,
+      system, user,
+      temperature: 0,
+      cacheControl: true,
+      ...(args.numCtx    !== undefined && { numCtx:    args.numCtx }),
+      ...(args.maxTokens !== undefined && { maxTokens: args.maxTokens }),
+    });
+  } catch (err) {
+    localWarnings.push(`${quarter}: LLM error — ${(err as Error).message.slice(0, 120)}`);
     return { quarter, claims: [], warnings: localWarnings, cost: 0 };
   }
   const cost = estimateCostUsd(model, result);
@@ -225,18 +214,41 @@ const MIN_QUARTER_INT = quarterToInt("Q4-FY25"); // 2504
 
 export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<ExtractClaimsResult> {
   const allFiles = (await fs.readdir(args.transcriptsDir)).filter((n) => n.endsWith(".txt")).sort();
+  const warnings0: string[] = [];
   const files = allFiles.filter((f) => {
     const q = f.replace(/\.txt$/i, "");
+    const qi = quarterToInt(q);
+    if (qi === 0) {
+      warnings0.push(`Skipping "${f}" — filename is not a valid Q{n}-FY{yy} label`);
+      return false;
+    }
     // Never extract claims from transcripts before Q4-FY25 — too old to be actionable
     // and wastes API credits. onlyQuarters is an additional optional narrowing on top.
-    if (quarterToInt(q) < MIN_QUARTER_INT) return false;
+    if (qi < MIN_QUARTER_INT) return false;
     if (args.onlyQuarters) return args.onlyQuarters.includes(q);
     return true;
   });
+  for (const w of warnings0) console.warn(`  [warn] ${w}`);
 
-  const byQuarter: Record<string, ExtractedClaim[]> = {};
-  const warnings: string[] = [];
+  // When onlyQuarters is set (e.g. auto-ingest adding a single new quarter), load the
+  // existing artifact and merge into it so previous quarters are not overwritten.
+  let existingByQuarter: Record<string, ExtractedClaim[]> = {};
+  let existingWarnings: string[] = [];
+  if (args.onlyQuarters) {
+    try {
+      const existing = JSON.parse(await fs.readFile(args.outFile, "utf-8")) as ClaimsArtifact;
+      existingByQuarter = existing.byQuarter ?? {};
+      existingWarnings = existing.warnings ?? [];
+    } catch { /* no existing file — start fresh */ }
+  }
+
+  const byQuarter: Record<string, ExtractedClaim[]> = { ...existingByQuarter };
+  const warnings: string[] = [...existingWarnings];
   let totalCost = 0;
+
+  if (files.length === 0) {
+    console.log("  (no eligible quarters to process)");
+  }
 
   // Process quarters in concurrent batches capped at STAGE3_CONCURRENCY.
   // BATCH_DELAY_MS between batches gives rate-limiter headroom when multiple

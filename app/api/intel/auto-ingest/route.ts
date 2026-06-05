@@ -29,7 +29,7 @@ import {
   BSE_ATTACH_LIVE,
   BSE_ATTACH_HIS,
 } from "@/lib/intel/bse-transcript-scraper";
-import { fetchScreenerConcalls } from "@/lib/intel/screener-scraper";
+import { fetchScreenerConcalls, displayDateToQuarter } from "@/lib/intel/screener-scraper";
 import {
   ingestPdfTranscript,
   runFullPipeline,
@@ -209,10 +209,12 @@ export async function POST(req: Request) {
         }
       }
 
-      // ── Screener fallback ─────────────────────────────────────────────────
-      // Triggers when BSE produced no useful transcripts — zero filings OR all
-      // filings were too short to be real transcripts (press releases, agendas).
-      if ((bseFilings.length === 0 || bseUsefulIngested === 0) && screenerFallback) {
+      // ── Screener supplement ───────────────────────────────────────────────
+      // Always runs (unless screenerFallback=false) as an additive supplement to BSE.
+      // BSE is not a reliable source for the latest transcript — subcategories shift,
+      // attachments get purged. Screener aggregates from multiple sources and
+      // consistently has the latest. alreadyExisted quarters are skipped, so this is safe.
+      if (screenerFallback) {
         let screenerConcalls: Awaited<ReturnType<typeof fetchScreenerConcalls>> = [];
         try {
           screenerConcalls = await fetchScreenerConcalls(symbol);
@@ -240,35 +242,36 @@ export async function POST(req: Request) {
           let pdfBuf: Buffer;
           try {
             pdfBuf = await downloadPdf(concall.pdfUrl);
-          } catch {
-            continue; // skip inaccessible PDFs
+          } catch (e) {
+            result.errors++;
+            result.symbols.push({
+              symbol, source: "screener", quarter: "unknown", status: "error",
+              detail: `DL failed ${concall.displayDate}: ${(e as Error).message.slice(0, 60)}`,
+            });
+            continue;
           }
 
+          const screenerQtr = displayDateToQuarter(concall.displayDate) ?? undefined;
+          const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
           try {
-            const ingested = await ingestPdfTranscript(
-              pdfBuf,
-              symbol,
-              `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`,
-            );
+            const ingested = await ingestPdfTranscript(pdfBuf, symbol, fakeName, screenerQtr);
             if (ingested.alreadyExisted) {
               result.skipped++;
               result.symbols.push({
-                symbol,
-                source: "screener",
-                quarter: ingested.quarter,
-                status: "skipped",
+                symbol, source: "screener", quarter: ingested.quarter, status: "skipped",
               });
             } else {
               result.ingested++;
               result.symbols.push({
-                symbol,
-                source: "screener",
-                quarter: ingested.quarter,
-                status: "ingested",
+                symbol, source: "screener", quarter: ingested.quarter, status: "ingested",
               });
             }
-          } catch {
-            // Parse failure — skip
+          } catch (e) {
+            result.errors++;
+            result.symbols.push({
+              symbol, source: "screener", quarter: "unknown", status: "error",
+              detail: (e as Error).message.slice(0, 80),
+            });
           }
         }
       }

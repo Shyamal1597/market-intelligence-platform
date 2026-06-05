@@ -423,6 +423,8 @@ async function fetchBSEFilingsJSON(
 
   const combined: BSERawFiling[] = [];
   const seen = new Set<string>();
+  let categoryErrors = 0;
+  let lastCategoryError = "";
 
   for (const { strCat, subcategory } of TRANSCRIPT_CATEGORIES) {
     const params = new URLSearchParams({
@@ -440,7 +442,9 @@ async function fetchBSEFilingsJSON(
     let res: { status: number; body: string };
     try {
       res = await bseFetch(url);
-    } catch {
+    } catch (e) {
+      categoryErrors++;
+      lastCategoryError = (e as Error).message;
       continue; // network error on this category — try next
     }
 
@@ -458,6 +462,12 @@ async function fetchBSEFilingsJSON(
       seen.add(id);
       combined.push(item);
     }
+  }
+
+  // If every category errored (BSE API unreachable), surface it rather than
+  // silently returning empty — callers can't distinguish outage from "no filings".
+  if (categoryErrors === TRANSCRIPT_CATEGORIES.length && combined.length === 0) {
+    throw new Error(`BSE API unreachable for all categories: ${lastCategoryError}`);
   }
 
   return combined;
@@ -715,8 +725,13 @@ export async function scrapeBSETranscripts(options?: {
             `First 200 chars: "${snippet.slice(0, 200)}". Skipping.`,
           );
           result.details.push({ symbol, quarter: ingestResult.quarter, status: "error", message: "Company name mismatch — wrong transcript" });
-          // Don't continue with pipeline — the transcript file was already saved by ingestPdfTranscript,
-          // so we should clean it up
+          // Delete the file written by ingestPdfTranscript so future runs don't see it
+          // as alreadyExisted and silently skip downloading the correct transcript.
+          const transcriptPath = require("node:path").join(
+            process.cwd(), "data", "intelligence", symbol, "transcripts",
+            `${ingestResult.quarter}.txt`,
+          );
+          await fs.unlink(transcriptPath).catch(() => {});
           continue;
         }
       }

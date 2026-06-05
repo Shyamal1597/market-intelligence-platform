@@ -47,7 +47,10 @@ async function post(url: string, body: object): Promise<unknown> {
         });
       },
     );
-    req.on("error", reject);
+    req.setTimeout(120_000, () => {
+      req.destroy(new Error("Request timed out after 120s"));
+    });
+    req.on("error", (e) => { reject(e); process.exit(1); });
     req.write(payload);
     req.end();
   });

@@ -144,19 +144,27 @@ export function displayDateToQuarter(displayDate: string): string | null {
   const [, mon, yearStr] = m;
   const year = parseInt(yearStr, 10);
 
+  // Map call month → (quarter of results announced, FY offset from call year).
+  // Indian FY runs Apr–Mar. Companies report within ~2 months of quarter end:
+  //   Q4 (Jan–Mar) → call in Apr/May/Jun (late filers)
+  //   Q1 (Apr–Jun) → call in Jul/Aug/Sep (late filers)
+  //   Q2 (Jul–Sep) → call in Oct/Nov/Dec (late filers)
+  //   Q3 (Oct–Dec) → call in Jan/Feb/Mar (early in calendar year = same FY)
+  // fyOffset: 0 = FY ends in the call's calendar year (Apr–Mar calls announcing Q4/Q3).
+  //           1 = new FY; fyYear = (year + fyOffset - 1) % 100 for Q1/Q2.
   const monthMap: Record<string, { q: number; fyOffset: number }> = {
-    Jan: { q: 3, fyOffset: 0 },  // Q3 FY ending March of same year
+    Jan: { q: 3, fyOffset: 0 },  // Q3 results of FY ending same March
     Feb: { q: 3, fyOffset: 0 },
-    Mar: { q: 4, fyOffset: 0 },  // Q4 edge case (early filers)
-    Apr: { q: 4, fyOffset: 0 },  // Q4 results of FY ending March
+    Mar: { q: 4, fyOffset: 0 },  // Q4 early filer
+    Apr: { q: 4, fyOffset: 0 },  // Q4 results of FY ending March same year
     May: { q: 4, fyOffset: 0 },
-    Jun: { q: 1, fyOffset: 1 },  // Q1 results of new FY
-    Jul: { q: 1, fyOffset: 1 },
+    Jun: { q: 4, fyOffset: 0 },  // late Q4 filer — still announcing Jan–Mar results
+    Jul: { q: 1, fyOffset: 1 },  // Q1 results of new FY
     Aug: { q: 1, fyOffset: 1 },
-    Sep: { q: 2, fyOffset: 1 },  // edge case
+    Sep: { q: 1, fyOffset: 1 },  // late Q1 filer
     Oct: { q: 2, fyOffset: 1 },  // Q2 results
     Nov: { q: 2, fyOffset: 1 },
-    Dec: { q: 3, fyOffset: 1 },  // edge case
+    Dec: { q: 2, fyOffset: 1 },  // late Q2 filer
   };
 
   const info = monthMap[mon];
