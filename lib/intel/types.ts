@@ -161,7 +161,6 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   // ── Insurance — Life ──────────────────────────────────────────────────────
   SBILIFE:     "insurance-life",
   HDFCLIFE:    "insurance-life",
-  ICICIPRULI:  "insurance-life",
 
   // ── NBFC / Lending ────────────────────────────────────────────────────────
   BAJFINANCE:  "nbfc",
@@ -171,14 +170,12 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   PFC:         "nbfc",
   RECLTD:      "nbfc",
   IRFC:        "nbfc",
-  LICHSGFIN:   "nbfc",
-  "M&MFIN":    "nbfc",
-  PEL:         "nbfc",
 
   // ── Financial Services (AMC / Holding / Diversified) ──────────────────────
   JIOFIN:      "financial-services",
   BAJAJHLDNG:  "financial-services",
   HDFCAMC:     "financial-services",
+  TATACAP:     "financial-services",
 
   // ── IT Services ───────────────────────────────────────────────────────────
   TCS:         "it-services",
@@ -186,6 +183,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   HCLTECH:     "it-services",
   WIPRO:       "it-services",
   TECHM:       "it-services",
+  LTM:         "it-services",
 
   // ── Pharma & Healthcare ───────────────────────────────────────────────────
   SUNPHARMA:   "pharma",
@@ -202,13 +200,13 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   "M&M":       "auto",
   "BAJAJ-AUTO":"auto",
   EICHERMOT:   "auto",
-  TATAMOTORS:  "auto",
+  TMPV:        "auto",
+  TMCV:        "auto",
   TVSMOTOR:    "auto",
   CUMMINSIND:  "auto",
   HYUNDAI:     "auto",
   MOTHERSON:   "auto",
   BOSCHLTD:    "auto",
-  ASHOKLEY:    "auto",
 
   // ── FMCG ──────────────────────────────────────────────────────────────────
   HINDUNILVR:  "fmcg",
@@ -258,6 +256,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   LT:          "capital-goods-infra",
   ABB:         "capital-goods-infra",
   SIEMENS:     "capital-goods-infra",
+  ENRIN:       "capital-goods-infra",
   CGPOWER:     "capital-goods-infra",
   ADANIPORTS:  "capital-goods-infra",
   ADANIENT:    "capital-goods-infra",
@@ -266,6 +265,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   BEL:         "defence",
   HAL:         "defence",
   MAZDOCK:     "defence",
+  SOLARINDS:   "defence",
 
   // ── Consumer & Retail ─────────────────────────────────────────────────────
   TITAN:       "consumer-retail",
