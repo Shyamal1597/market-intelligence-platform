@@ -19,6 +19,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Prevent webpack from bundling pdf2json (and its pdfjs-dist dependency) into
+  // API routes — it must be loaded natively by Node.js. Without this, pdfjs-dist
+  // initialises a "fake worker" on every route cold-start and floods the dev console.
+  serverExternalPackages: ["pdf2json"],
+
   async headers() {
     return [
       {

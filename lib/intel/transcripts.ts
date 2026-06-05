@@ -39,12 +39,24 @@ export function reportingQuarterFromCallDate(iso: string): string {
 
 const MIN_CHARS_PER_KB = 100;
 
+// pdfjs-dist (used internally by pdf2json) writes diagnostic noise to console.warn.
+// These are not errors — filter them during PDF parsing so they don't flood the
+// Next.js dev server log on every ingestion request.
+const PDF_WARN_NOISE = /Setting up fake worker|TT: (undefined function|invalid function)|Unsupported: field\.type|NOT valid form element/;
+
 function tryPdf2json(pdfPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const PDFParser = _require("pdf2json");
+    const origWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      if (typeof args[0] === "string" && PDF_WARN_NOISE.test(args[0])) return;
+      origWarn(...args);
+    };
     const p = new PDFParser(null, 1);
-    p.on("pdfParser_dataError", (err: unknown) => reject(err));
+    const restore = () => { console.warn = origWarn; };
+    p.on("pdfParser_dataError", (err: unknown) => { restore(); reject(err); });
     p.on("pdfParser_dataReady", () => {
+      restore();
       try {
         resolve(p.getRawTextContent());
       } catch {
