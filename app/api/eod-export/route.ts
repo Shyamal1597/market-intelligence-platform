@@ -1,67 +1,128 @@
 /**
  * GET /api/eod-export
  *
- * Generates the daily EOD Snippets Excel report in the exact Sunidhi format
- * (B7:J44 layout). Fetches live data from all wired-in streams and returns
- * the file as a downloadable .xlsx attachment.
- *
- * Sections:
- *   - FII/FPI & DII trading activity (daily + MTD + YTD)
- *   - Sectorial Contribution in SENSEX (blank — analyst fills post 7pm)
- *   - Commodities: Gold, Silver, Brent, Nymex, Natural Gas
- *   - Asia Pacific: Shanghai, GIFT NIFTY, Nikkei 225, Hang Seng
- *   - Europe: FTSE 100, DAX, CAC
- *   - America: Dow Jones, S&P 500, Nasdaq Composite
- *   - Sunidhi disclaimer / footer
+ * Generates the daily EOD Snippets Excel report matching the Sunidhi template.
+ * Uses exceljs for full styling: fills, font colors, borders, merged cells, logo.
  */
 
 import { NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { fetchAllFlowData } from "@/lib/nse-flows";
 import { fetchAllQuotes, fetchGlobalQuotes } from "@/lib/yahoo-finance";
 import type { QuoteData } from "@/lib/yahoo-finance";
-import { computePeriodTotals, fyLabel } from "@/lib/flow-periods";
+import { computePeriodTotals } from "@/lib/flow-periods";
 
 export const dynamic = "force-dynamic";
 
-// ── Cell helpers ──────────────────────────────────────────────────────────────
+// ── Palette ───────────────────────────────────────────────────────────────────
 
-/** Excel cell address from 1-based row and column numbers (B = col 2). */
-function addr(row: number, col: number): string {
-  return XLSX.utils.encode_cell({ r: row - 1, c: col - 1 });
+const A = (hex: string) => `FF${hex}`; // prepend full-opacity alpha
+
+const C = {
+  posGreen:   A("00B050"),
+  negRed:     A("FF0000"),
+  darkHdr:    A("595959"),  // section header bg
+  white:      A("FFFFFF"),
+  black:      A("000000"),
+  bannerRed:  A("C00000"),  // top/bottom red strip
+  bannerBlue: A("1F3864"),  // main header blue
+  footerGray: A("D3D3D3"),
+  midGray:    A("808080"),
+  borderBlack:A("000000"),
+  borderGray: A("BFBFBF"),
+};
+
+// ── Thin border helper ─────────────────────────────────────────────────────────
+
+const THIN = (c = C.borderGray) =>
+  ({ style: "thin" as const, color: { argb: c } });
+
+const BORDER = (c = C.borderGray) => ({
+  top: THIN(c), bottom: THIN(c), left: THIN(c), right: THIN(c),
+});
+
+// ── Style appliers ─────────────────────────────────────────────────────────────
+
+function darkHdr(cell: ExcelJS.Cell, text: string, fontSize = 10) {
+  cell.value = text;
+  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.darkHdr } };
+  cell.font = { bold: true, color: { argb: C.white }, name: "Calibri", size: fontSize };
+  cell.alignment = { horizontal: "center", vertical: "middle" };
+  cell.border = BORDER(C.borderBlack);
 }
 
-/** Merge range from 1-based row/col coordinates. */
-function merge(r1: number, c1: number, r2: number, c2: number): XLSX.Range {
-  return { s: { r: r1 - 1, c: c1 - 1 }, e: { r: r2 - 1, c: c2 - 1 } };
+function colHdr(cell: ExcelJS.Cell, text: string) {
+  cell.value = text;
+  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.darkHdr } };
+  cell.font = { bold: true, color: { argb: C.white }, name: "Calibri", size: 9 };
+  cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+  cell.border = BORDER(C.borderBlack);
 }
 
-function str(v: string): XLSX.CellObject {
-  return { v, t: "s" };
+function label(cell: ExcelJS.Cell, text: string, bold = false) {
+  cell.value = text;
+  cell.font = { name: "Calibri", size: 10, bold, color: { argb: C.black } };
+  cell.alignment = { vertical: "middle" };
+  cell.border = BORDER(C.borderBlack);
 }
 
-function num(v: number, z = "#,##0.00"): XLSX.CellObject {
-  return { v, t: "n", z } as XLSX.CellObject;
+function neutral(cell: ExcelJS.Cell, value: number, fmt = "#,##0.00") {
+  cell.value = value;
+  cell.numFmt = fmt;
+  cell.font = { name: "Calibri", size: 10, color: { argb: C.black } };
+  cell.alignment = { horizontal: "right", vertical: "middle" };
+  cell.border = BORDER(C.borderBlack);
 }
 
-function pct(v: number): XLSX.CellObject {
-  // Store as decimal, format as percentage (e.g. -0.0235 → -2.35%)
-  return { v: v / 100, t: "n", z: "0.00%" } as XLSX.CellObject;
+function colored(cell: ExcelJS.Cell, value: number | null, fmt = "#,##0.00") {
+  if (value === null) {
+    cell.value = "N/A";
+    cell.font = { name: "Calibri", size: 10, color: { argb: C.midGray } };
+    cell.alignment = { horizontal: "center" };
+    cell.border = BORDER(C.borderBlack);
+    return;
+  }
+  cell.value = value;
+  cell.numFmt = fmt;
+  cell.font = {
+    name: "Calibri", size: 10,
+    color: { argb: value > 0 ? C.posGreen : value < 0 ? C.negRed : C.black },
+  };
+  cell.alignment = { horizontal: "right", vertical: "middle" };
+  cell.border = BORDER(C.borderBlack);
 }
 
-function dateCell(d: Date): XLSX.CellObject {
-  return { v: d, t: "d", z: "DD-MMM-YY" } as XLSX.CellObject;
+function coloredPct(cell: ExcelJS.Cell, value: number | null) {
+  if (value === null) {
+    cell.value = "N/A";
+    cell.font = { name: "Calibri", size: 10, color: { argb: C.midGray } };
+    cell.alignment = { horizontal: "center" };
+    cell.border = BORDER(C.borderBlack);
+    return;
+  }
+  cell.value = value / 100;
+  cell.numFmt = "0.00%";
+  cell.font = {
+    name: "Calibri", size: 10,
+    color: { argb: value > 0 ? C.posGreen : value < 0 ? C.negRed : C.black },
+  };
+  cell.alignment = { horizontal: "right", vertical: "middle" };
+  cell.border = BORDER(C.borderBlack);
 }
 
-function findQ(quotes: QuoteData[], symbol: string): QuoteData | undefined {
-  return quotes.find((q) => q.symbol === symbol);
+// ── FY label: "FY 26-27" format ───────────────────────────────────────────────
+
+function fyLongLabel(d: Date): string {
+  const endYear = d.getMonth() >= 3 ? d.getFullYear() + 1 : d.getFullYear();
+  return `FY ${String(endYear - 1).slice(-2)}-${String(endYear).slice(-2)}`;
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+// ── Main route ─────────────────────────────────────────────────────────────────
 
 export async function GET() {
   try {
-    // Fetch all data concurrently
     const [flowData, macroQuotes, globalQuotes] = await Promise.all([
       fetchAllFlowData(),
       fetchAllQuotes(),
@@ -70,12 +131,10 @@ export async function GET() {
 
     const { entries, snapshot } = flowData;
     const today = new Date();
-    const fy = fyLabel(today);
+    const fy = fyLongLabel(today);
 
-    // Period totals — FII (computePeriodTotals), DII computed inline
     const fiiTotals = computePeriodTotals(entries, today);
 
-    // DII period sums (same period logic as computePeriodTotals)
     const diiMtd = entries
       .filter((e) => e.date.slice(0, 7) >= fiiTotals.startOfMonth)
       .reduce((s, e) => s + e.diiEquityNet, 0);
@@ -83,255 +142,351 @@ export async function GET() {
       .filter((e) => e.date.slice(0, 7) >= fiiTotals.startOfFy)
       .reduce((s, e) => s + e.diiEquityNet, 0);
 
-    // Merge both quote sets for a single lookup pool
-    const allQuotes: QuoteData[] = [
+    const pool: QuoteData[] = [
       ...macroQuotes,
       ...globalQuotes.map(({ region: _r, ...q }) => q),
     ];
+    const Q = (sym: string) => pool.find((q) => q.symbol === sym) ?? null;
 
-    // Current time for CMP header stamps
     const timeStamp = today.toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
+      hour: "2-digit", minute: "2-digit", hour12: true,
     });
 
-    // Date of FII/DII data (use snapshot date if available, else today)
-    const fiiDate = snapshot
-      ? new Date((snapshot as { date?: string }).date ?? today.toISOString().slice(0, 10))
-      : today;
+    const dateStr = today.toLocaleDateString("en-IN", {
+      day: "2-digit", month: "long", year: "numeric",
+    }); // "05 June 2026"
 
-    // FY label for MTD/YTD headers (e.g. "FY26")
-    const fyLabel2526 = `FY ${fy}`; // e.g. "FY FY26" → cleaner: just use fy
+    const fiiDateStr = (() => {
+      const raw = (snapshot as { date?: string } | null)?.date;
+      return raw
+        ? new Date(raw).toLocaleDateString("en-IN", {
+            day: "2-digit", month: "long", year: "numeric",
+          })
+        : dateStr;
+    })();
 
-    // ── Build worksheet ──────────────────────────────────────────────────────
-    const ws: XLSX.WorkSheet = {};
-    const merges: XLSX.Range[] = [];
+    // ── Workbook setup ────────────────────────────────────────────────────────
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Sunidhi Research";
+    const ws = wb.addWorksheet("Sheet1");
 
-    // ── Row 9: Date ─────────────────────────────────────────────────────────
-    // H9:I9 merged — matches original (single date cell in top-right area)
-    merges.push(merge(9, 8, 9, 9));
-    ws[addr(9, 8)] = dateCell(today);
+    // Column widths (1=A … 10=J)
+    const WIDTHS = [2, 22, 17, 13, 10, 22, 17, 14, 14, 2];
+    WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    // ── Row 11: FII/DII section title ────────────────────────────────────────
-    merges.push(merge(11, 2, 11, 9));
-    ws[addr(11, 2)] = str(
-      "FII/FPI/DII trading activity across Indian Exchanges – CM (Rs. In Cr.)"
-    );
+    // ── ROWS 1-7: Branded header ───────────────────────────────────────────────
 
-    // ── Row 12: Column headers ───────────────────────────────────────────────
-    merges.push(merge(12, 2, 12, 3));
-    ws[addr(12, 2)] = str("Category");
-    ws[addr(12, 4)] = str("Date");
-    ws[addr(12, 5)] = str("Buy Value");
-    ws[addr(12, 6)] = str("Sell Value");
-    ws[addr(12, 7)] = str("Net Value");
-    ws[addr(12, 8)] = str(`MTD (${fy})`);
-    ws[addr(12, 9)] = str(`YTD (${fy})`);
+    // ── Fill header cells individually to avoid merge conflicts ─────────────
+    const blueFill = { type: "pattern" as const, pattern: "solid" as const,
+                       fgColor: { argb: C.bannerBlue } };
+    const redFill  = { type: "pattern" as const, pattern: "solid" as const,
+                       fgColor: { argb: C.bannerRed  } };
 
-    // ── Row 13: FII/FPI data ─────────────────────────────────────────────────
-    merges.push(merge(13, 2, 13, 3));
-    ws[addr(13, 2)] = str("FII/FPI");
-    ws[addr(13, 4)] = dateCell(fiiDate);
-    ws[addr(13, 5)] = num(snapshot?.fiiEquityBuy ?? 0);
-    ws[addr(13, 6)] = num(snapshot?.fiiEquitySell ?? 0);
-    ws[addr(13, 7)] = num(snapshot?.fiiEquityNet ?? 0);
-    ws[addr(13, 8)] = num(fiiTotals.mtd);
-    ws[addr(13, 9)] = num(fiiTotals.ytd);
+    // Rows 1-2: red strip — fill each cell
+    for (const r of [1, 2]) {
+      ws.getRow(r).height = 7;
+      for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = redFill;
+    }
 
-    // ── Row 14: DII data ─────────────────────────────────────────────────────
-    merges.push(merge(14, 2, 14, 3));
-    ws[addr(14, 2)] = str("DII");
-    ws[addr(14, 4)] = dateCell(fiiDate);
-    ws[addr(14, 5)] = num(snapshot?.diiEquityBuy ?? 0);
-    ws[addr(14, 6)] = num(snapshot?.diiEquitySell ?? 0);
-    ws[addr(14, 7)] = num(snapshot?.diiEquityNet ?? 0);
-    ws[addr(14, 8)] = num(diiMtd);
-    ws[addr(14, 9)] = num(diiYtd);
+    // Rows 3-6: blue banner — fill each cell
+    for (const r of [3, 4, 5, 6]) {
+      ws.getRow(r).height = 22;
+      for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = blueFill;
+    }
 
-    // ── Row 16: Sectorial Contribution title ─────────────────────────────────
-    merges.push(merge(16, 2, 16, 9));
-    ws[addr(16, 2)] = str("Sectorial Contribution in SENSEX");
+    // Title span across rows 3-6, cols 2-6 (left side of banner)
+    ws.mergeCells(3, 2, 6, 6);
+    const titleCell = ws.getCell(3, 2);
+    titleCell.value = "EOD Snippets On Market";
+    titleCell.fill = blueFill;
+    titleCell.font = { bold: true, size: 18, color: { argb: C.white }, name: "Calibri" };
+    titleCell.alignment = { horizontal: "center", vertical: "middle" };
 
-    // ── Row 17: Sectorial headers (4 paired columns) ─────────────────────────
-    ws[addr(17, 2)] = str("Index");
-    ws[addr(17, 3)] = str("(%)");
-    ws[addr(17, 4)] = str("Index");
-    ws[addr(17, 5)] = str("(%)");
-    ws[addr(17, 6)] = str("Index");
-    ws[addr(17, 7)] = str("(%)");
-    ws[addr(17, 8)] = str("Index");
-    ws[addr(17, 9)] = str("(%)");
+    // Row 7: red bottom strip — fill each cell
+    ws.getRow(7).height = 5;
+    for (let c = 1; c <= 10; c++) ws.getCell(7, c).fill = redFill;
 
-    // ── Rows 18-23: Sectorial data — left blank for analyst to fill post 7pm ─
-    // Sector contribution to Sensex is not available from automated streams;
-    // analyst fills this section after market close from BSE sector data.
-    // (Cells intentionally empty — analyst edits file after export)
+    // Embed Sunidhi logo (right side of banner rows 2-6)
+    try {
+      const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const imgId = wb.addImage({ buffer: readFileSync(logoPath) as any, extension: "png" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ws.addImage(imgId, {
+        tl: { col: 6.2, row: 1 },
+        br: { col: 9.8, row: 6.8 },
+        editAs: "oneCell",
+      } as any);
+    } catch { /* logo not found — skip */ }
 
-    // ── Row 25: Commodities + Asia Pacific headers ────────────────────────────
-    ws[addr(25, 2)] = str("Commodity");
-    ws[addr(25, 3)] = str(`CMP @ ${timeStamp}`);
-    ws[addr(25, 4)] = str("Points");
-    ws[addr(25, 5)] = str("(%)");
-    ws[addr(25, 6)] = str("Asia Pacific");
-    ws[addr(25, 7)] = str(`CMP @ ${timeStamp}`);
-    ws[addr(25, 8)] = str("Points");
-    ws[addr(25, 9)] = str("(%)");
+    // ── Row 8: blank spacer ───────────────────────────────────────────────────
+    ws.getRow(8).height = 8;
 
-    // ── Rows 26-30: Commodities ───────────────────────────────────────────────
-    const COMMODITIES: Array<{ label: string; sym: string; fmt?: string }> = [
-      { label: "Gold", sym: "GC=F", fmt: "#,##0.000" },
-      { label: "Silver", sym: "SI=F", fmt: "#,##0.000" },
-      { label: "Brent Crude", sym: "BZ=F", fmt: "#,##0.000" },
-      { label: "WTI Nymex Crude", sym: "CL=F", fmt: "#,##0.000" },
-      { label: "Natural Gas", sym: "NG=F", fmt: "#,##0.000" },
+    // ── Row 9: Date ────────────────────────────────────────────────────────────
+    ws.getRow(9).height = 20;
+    ws.mergeCells(9, 2, 9, 9);
+    const dateCell = ws.getCell(9, 2);
+    dateCell.value = dateStr;
+    dateCell.font = { bold: true, size: 12, name: "Calibri", color: { argb: C.black } };
+    dateCell.alignment = { horizontal: "center", vertical: "middle" };
+
+    // ── Row 10: blank ─────────────────────────────────────────────────────────
+    ws.getRow(10).height = 5;
+
+    // ── Row 11: FII section title ──────────────────────────────────────────────
+    ws.getRow(11).height = 18;
+    ws.mergeCells(11, 2, 11, 9);
+    darkHdr(ws.getCell(11, 2),
+      "FII/FPI/DII trading activity across Indian Exchanges – CM (Rs. In Cr.)", 10);
+
+    // ── Row 12: column headers ─────────────────────────────────────────────────
+    ws.getRow(12).height = 30;
+    ws.mergeCells(12, 2, 12, 3);
+    colHdr(ws.getCell(12, 2), "Category");
+    ([ [4,"Date"], [5,"Buy Value"], [6,"Sell Value"],
+       [7,"Net Value"], [8,`MTD\n(${fy})`], [9,`YTD\n(${fy})`] ] as [number,string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(12, c), t));
+
+    // ── Row 13: FII/FPI ────────────────────────────────────────────────────────
+    ws.getRow(13).height = 16;
+    ws.mergeCells(13, 2, 13, 3);
+    label(ws.getCell(13, 2), "FII/FPI", true);
+    ws.getCell(13, 2).alignment = { horizontal: "center", vertical: "middle" };
+    label(ws.getCell(13, 4), fiiDateStr);
+    ws.getCell(13, 4).alignment = { horizontal: "center", vertical: "middle" };
+    neutral(ws.getCell(13, 5), snapshot?.fiiEquityBuy ?? 0);
+    neutral(ws.getCell(13, 6), snapshot?.fiiEquitySell ?? 0);
+    colored(ws.getCell(13, 7), snapshot?.fiiEquityNet ?? 0);
+    colored(ws.getCell(13, 8), fiiTotals.mtd);
+    colored(ws.getCell(13, 9), fiiTotals.ytd);
+
+    // ── Row 14: DII ────────────────────────────────────────────────────────────
+    ws.getRow(14).height = 16;
+    ws.mergeCells(14, 2, 14, 3);
+    label(ws.getCell(14, 2), "DII", true);
+    ws.getCell(14, 2).alignment = { horizontal: "center", vertical: "middle" };
+    label(ws.getCell(14, 4), fiiDateStr);
+    ws.getCell(14, 4).alignment = { horizontal: "center", vertical: "middle" };
+    neutral(ws.getCell(14, 5), snapshot?.diiEquityBuy ?? 0);
+    neutral(ws.getCell(14, 6), snapshot?.diiEquitySell ?? 0);
+    colored(ws.getCell(14, 7), snapshot?.diiEquityNet ?? 0);
+    colored(ws.getCell(14, 8), diiMtd);
+    colored(ws.getCell(14, 9), diiYtd);
+
+    // ── Row 15: blank ─────────────────────────────────────────────────────────
+    ws.getRow(15).height = 5;
+
+    // ── Row 16: Sectorial title ────────────────────────────────────────────────
+    ws.getRow(16).height = 18;
+    ws.mergeCells(16, 2, 16, 9);
+    darkHdr(ws.getCell(16, 2), "Sectorial Contribution in SENSEX");
+
+    // ── Row 17: sectorial column headers ──────────────────────────────────────
+    ws.getRow(17).height = 16;
+    ([2,4,6,8] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "Index"));
+    ([3,5,7,9] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "(%)"));
+
+    // ── Rows 18-23: sectorial data (blank — analyst fills) ────────────────────
+    for (let r = 18; r <= 23; r++) {
+      ws.getRow(r).height = 14;
+      for (let c = 2; c <= 9; c++) ws.getCell(r, c).border = BORDER(C.borderBlack);
+    }
+
+    // ── Row 24: blank ─────────────────────────────────────────────────────────
+    ws.getRow(24).height = 5;
+
+    // ── Row 25: Commodity + APAC headers ──────────────────────────────────────
+    ws.getRow(25).height = 30;
+    ([ [2,"Commodity"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
+       [6,"Asia Pacific"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(25, c), t));
+
+    // ── Rows 26-30: Commodities (B-E) + APAC (F-I) ────────────────────────────
+    const COMMODITIES = [
+      { label: "Gold",            sym: "GC=F",      fmt: "#,##0.000" },
+      { label: "Silver",          sym: "SI=F",      fmt: "#,##0.000" },
+      { label: "Brent Crude",     sym: "BZ=F",      fmt: "#,##0.000" },
+      { label: "WTI Nymex Crude", sym: "CL=F",      fmt: "#,##0.000" },
+      { label: "Natural Gas",     sym: "NG=F",      fmt: "#,##0.000" },
     ];
-
-    COMMODITIES.forEach(({ label, sym, fmt = "#,##0.000" }, i) => {
-      const row = 26 + i;
-      const q = findQ(allQuotes, sym);
-      ws[addr(row, 2)] = str(label);
-      ws[addr(row, 3)] = q ? num(q.price, fmt) : str("N/A");
-      ws[addr(row, 4)] = q ? num(q.change, fmt) : str("N/A");
-      ws[addr(row, 5)] = q ? pct(q.changePercent) : str("N/A");
-    });
-
-    // ── Rows 26-29: Asia Pacific ──────────────────────────────────────────────
-    // GIFT NIFTY not available from Yahoo Finance — left blank for manual entry
-    const ASIA_PACIFIC: Array<{ label: string; sym: string | null }> = [
+    const APAC = [
       { label: "Shanghai Composite", sym: "000001.SS" },
-      { label: "GIFT NIFTY", sym: null }, // Not available via Yahoo Finance
-      { label: "Nikkei 225", sym: "^N225" },
-      { label: "Hang Seng", sym: "^HSI" },
+      { label: "GIFT NIFTY",         sym: null },
+      { label: "Nikkei 225",          sym: "^N225"     },
+      { label: "Hang Seng",           sym: "^HSI"      },
     ];
 
-    ASIA_PACIFIC.forEach(({ label, sym }, i) => {
+    for (let i = 0; i < 5; i++) {
       const row = 26 + i;
-      const q = sym ? findQ(allQuotes, sym) : null;
-      ws[addr(row, 6)] = str(label);
-      ws[addr(row, 7)] = q ? num(q.price, "#,##0.00") : str("N/A");
-      ws[addr(row, 8)] = q ? num(q.change, "#,##0.00") : str("N/A");
-      ws[addr(row, 9)] = q ? pct(q.changePercent) : str("N/A");
-    });
+      ws.getRow(row).height = 14;
 
-    // ── Row 32: Europe + America section headers ──────────────────────────────
-    merges.push(merge(32, 2, 32, 5));
-    ws[addr(32, 2)] = str("Europe");
-    merges.push(merge(32, 6, 32, 9));
-    ws[addr(32, 6)] = str("America");
+      const cm = COMMODITIES[i];
+      const cmQ = Q(cm.sym);
+      label(ws.getCell(row, 2), cm.label);
+      if (cmQ) {
+        neutral(ws.getCell(row, 3), cmQ.price, cm.fmt);
+        colored(ws.getCell(row, 4), cmQ.change, cm.fmt);
+        coloredPct(ws.getCell(row, 5), cmQ.changePercent);
+      } else {
+        [3, 4, 5].forEach((c) => colored(ws.getCell(row, c), null));
+      }
 
-    // ── Row 33: Column headers ────────────────────────────────────────────────
-    ws[addr(33, 2)] = str("Index");
-    ws[addr(33, 3)] = str(`CMP @ ${timeStamp}`);
-    ws[addr(33, 4)] = str("Points");
-    ws[addr(33, 5)] = str("(%)");
-    ws[addr(33, 6)] = str("Index");
-    ws[addr(33, 7)] = str(`CMP @ ${timeStamp}`);
-    ws[addr(33, 8)] = str("Points");
-    ws[addr(33, 9)] = str("(%)");
+      if (i < APAC.length) {
+        const ap = APAC[i];
+        const apQ = ap.sym ? Q(ap.sym) : null;
+        label(ws.getCell(row, 6), ap.label);
+        if (apQ) {
+          neutral(ws.getCell(row, 7), apQ.price, "#,##0.00");
+          colored(ws.getCell(row, 8), apQ.change, "#,##0.00");
+          coloredPct(ws.getCell(row, 9), apQ.changePercent);
+        } else {
+          [7, 8, 9].forEach((c) => colored(ws.getCell(row, c), null));
+        }
+      } else {
+        [6, 7, 8, 9].forEach((c) => {
+          ws.getCell(row, c).border = BORDER(C.borderBlack);
+        });
+      }
+    }
 
-    // ── Rows 34-36: Europe ────────────────────────────────────────────────────
-    const EUROPE = [
-      { label: "FTSE 100", sym: "^FTSE" },
-      { label: "DAX", sym: "^GDAXI" },
-      { label: "CAC", sym: "^FCHI" },
+    // ── Row 31: blank ─────────────────────────────────────────────────────────
+    ws.getRow(31).height = 5;
+
+    // ── Row 32: Europe + America headers ──────────────────────────────────────
+    ws.getRow(32).height = 18;
+    ws.mergeCells(32, 2, 32, 5);
+    darkHdr(ws.getCell(32, 2), "Europe");
+    ws.mergeCells(32, 6, 32, 9);
+    darkHdr(ws.getCell(32, 6), "America");
+
+    // ── Row 33: column headers ─────────────────────────────────────────────────
+    ws.getRow(33).height = 30;
+    ([ [2,"Index"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
+       [6,"Index"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(33, c), t));
+
+    // ── Rows 34-36: Europe (B-E) + America (F-I) ──────────────────────────────
+    const EUROPE  = [
+      { label: "FTSE 100",         sym: "^FTSE"  },
+      { label: "DAX",              sym: "^GDAXI" },
+      { label: "CAC",              sym: "^FCHI"  },
     ];
-
-    EUROPE.forEach(({ label, sym }, i) => {
-      const row = 34 + i;
-      const q = findQ(allQuotes, sym);
-      ws[addr(row, 2)] = str(label);
-      ws[addr(row, 3)] = q ? num(q.price, "#,##0.00") : str("N/A");
-      ws[addr(row, 4)] = q ? num(q.change, "#,##0.00") : str("N/A");
-      ws[addr(row, 5)] = q ? pct(q.changePercent) : str("N/A");
-    });
-
-    // ── Rows 34-36: America ───────────────────────────────────────────────────
     const AMERICA = [
-      { label: "Dow Jones", sym: "^DJI" },
-      { label: "S&P 500", sym: "^GSPC" },
+      { label: "Dow Jones",        sym: "^DJI"  },
+      { label: "S&P 500",          sym: "^GSPC" },
       { label: "Nasdaq Composite", sym: "^IXIC" },
     ];
 
-    AMERICA.forEach(({ label, sym }, i) => {
+    for (let i = 0; i < 3; i++) {
       const row = 34 + i;
-      const q = findQ(allQuotes, sym);
-      ws[addr(row, 6)] = str(label);
-      ws[addr(row, 7)] = q ? num(q.price, "#,##0.00") : str("N/A");
-      ws[addr(row, 8)] = q ? num(q.change, "#,##0.00") : str("N/A");
-      ws[addr(row, 9)] = q ? pct(q.changePercent) : str("N/A");
-    });
+      ws.getRow(row).height = 14;
 
-    // ── Rows 38-44: Disclosures & Disclaimer ─────────────────────────────────
-    merges.push(merge(38, 2, 38, 9));
-    ws[addr(38, 2)] = str("Disclosures and Disclaimer:-");
+      const eu = EUROPE[i];
+      const euQ = Q(eu.sym);
+      label(ws.getCell(row, 2), eu.label);
+      if (euQ) {
+        neutral(ws.getCell(row, 3), euQ.price, "#,##0.00");
+        colored(ws.getCell(row, 4), euQ.change, "#,##0.00");
+        coloredPct(ws.getCell(row, 5), euQ.changePercent);
+      } else {
+        [3, 4, 5].forEach((c) => colored(ws.getCell(row, c), null));
+      }
 
-    merges.push(merge(39, 2, 39, 9));
-    ws[addr(39, 2)] = str(
-      `This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as "Sunidhi") SEBI Research Analyst Registration Number: INH000000000 for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and Metropolitan Stock Exchange of India Limited in cash, derivatives and currency derivatives segments. It is also having registration as a Depository Participant with CDSL.\r\n\r\nSunidhi has other business divisions with independent research teams separated by Chinese walls, and therefore may, at times, have different or contrary views on stocks and markets.\r\n\r\nSunidhi or its associates has not been debarred / suspended by SEBI or any other regulatory authority for accessing / dealing in securities Market. Sunidhi or analyst or his relatives do not hold any financial interest in the subject company. Associates may have such interest in its ordinary course of business as a distinct and independent body. Sunidhi or its associates or Analyst do not have any conflict or material conflict of interest at the time of publication of the research report with the company covered by Analyst.\r\n\r\nSunidhi or its associates / analyst has not received any compensation / managed or co-managed public offering of securities of the company covered by Analyst during the past twelve months. Sunidhi or its associates has not received any compensation or other benefits from the company covered by Analyst or third party in connection with the research report. Analyst has not served as an officer, director or employee of subject company and Sunidhi / analyst has not been engaged in market making activity of the subject company.\r\n\r\nAnalyst or his relatives do not hold beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. Sunidhi or its associates may have investment positions in the stocks recommended in this report, which may have beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. However, Sunidhi is maintaining Chinese wall between other business divisions or activities. Analyst has exercised due diligence in checking correctness of details and opinion expressed herein is unbiased.\r\n\r\nThis report is meant for personal informational purposes and is not be construed as a solicitation or financial advice or an offer to buy or sell any securities or related financial instruments. While utmost care has been taken in preparing this report, we claim no responsibility for its accuracy. Recipients should not regard the report as a substitute for the exercise of their own judgment. Any opinions expressed in this report are subject to change without any notice and this report is not under any obligation to update or keep current the information contained herein. Past performance is not necessarily indicative of future results. This report accepts no liability whatsoever for any loss or damage of any kind arising out of the use of all or any part of this report.\r\n\r\nThe information in this document has been printed on the basis of publicly available information, internal data and other reliable sources believed to be true, but we do not represent that it is accurate or complete and it should not be relied on as such, as this document is for general guidance only. Sunidhi or any of its affiliates/ group companies shall not be in any way responsible for any loss or damage that may arise to any person from any inadvertent error in the information contained in this report.`
-    );
+      const am = AMERICA[i];
+      const amQ = Q(am.sym);
+      label(ws.getCell(row, 6), am.label);
+      if (amQ) {
+        neutral(ws.getCell(row, 7), amQ.price, "#,##0.00");
+        colored(ws.getCell(row, 8), amQ.change, "#,##0.00");
+        coloredPct(ws.getCell(row, 9), amQ.changePercent);
+      } else {
+        [7, 8, 9].forEach((c) => colored(ws.getCell(row, c), null));
+      }
+    }
 
-    merges.push(merge(40, 2, 40, 9));
-    ws[addr(40, 2)] = str(
-      "Sunidhi Securities & Finance Ltd. – Research Analyst – INH000000000"
-    );
+    // ── Row 37: blank ─────────────────────────────────────────────────────────
+    ws.getRow(37).height = 6;
 
-    merges.push(merge(41, 2, 41, 9));
-    ws[addr(41, 2)] = str(
-      "Registered office address (configure via MTF_COMPLIANCE_ADDRESS)"
-    );
+    // ── Row 38: Disclaimer header ──────────────────────────────────────────────
+    ws.getRow(38).height = 16;
+    ws.mergeCells(38, 2, 38, 9);
+    const discHdr = ws.getCell(38, 2);
+    discHdr.value = "Disclosures and Disclaimer:-";
+    discHdr.font = { bold: true, underline: true, name: "Calibri", size: 10 };
 
-    ws[addr(42, 2)] = str("Bombay Stock Exchange (BSE)      ");
-    ws[addr(42, 4)] = str("National Stock Exchange of India Ltd (NSE)");
-    ws[addr(42, 7)] = str("Metropolitan Stock Exchange of India Limited (MSEI)");
+    // ── Row 39: Disclaimer text (tall) ────────────────────────────────────────
+    ws.getRow(39).height = 320;
+    ws.mergeCells(39, 2, 39, 9);
+    const discBody = ws.getCell(39, 2);
+    discBody.value =
+      `This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as "Sunidhi") SEBI Research Analyst Registration Number: INH000000000 for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and Metropolitan Stock Exchange of India Limited in cash, derivatives and currency derivatives segments. It is also having registration as a Depository Participant with CDSL.\n\n` +
+      `Sunidhi has other business divisions with independent research teams separated by Chinese walls, and therefore may, at times, have different or contrary views on stocks and markets.\n\n` +
+      `Sunidhi or its associates has not been debarred / suspended by SEBI or any other regulatory authority for accessing / dealing in securities Market. Sunidhi or analyst or his relatives do not hold any financial interest in the subject company. Associates may have such interest in its ordinary course of business as a distinct and independent body. Sunidhi or its associates or Analyst do not have any conflict or material conflict of interest at the time of publication of the research report with the company covered by Analyst.\n\n` +
+      `Sunidhi or its associates / analyst has not received any compensation / managed or co-managed public offering of securities of the company covered by Analyst during the past twelve months. Sunidhi or its associates has not received any compensation or other benefits from the company covered by Analyst or third party in connection with the research report. Analyst has not served as an officer, director or employee of subject company and Sunidhi / analyst has not been engaged in market making activity of the subject company.\n\n` +
+      `Analyst or his relatives do not hold beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. Sunidhi or its associates may have investment positions in the stocks recommended in this report, which may have beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. However, Sunidhi is maintaining Chinese wall between other business divisions or activities. Analyst has exercised due diligence in checking correctness of details and opinion expressed herein is unbiased.\n\n` +
+      `This report is meant for personal informational purposes and is not be construed as a solicitation or financial advice or an offer to buy or sell any securities or related financial instruments. While utmost care has been taken in preparing this report, we claim no responsibility for its accuracy. Recipients should not regard the report as a substitute for the exercise of their own judgment. Any opinions expressed in this report are subject to change without any notice and this report is not under any obligation to update or keep current the information contained herein. Past performance is not necessarily indicative of future results. This report accepts no liability whatsoever for any loss or damage of any kind arising out of the use of all or any part of this report.\n\n` +
+      `The information in this document has been printed on the basis of publicly available information, internal data and other reliable sources believed to be true, but we do not represent that it is accurate or complete and it should not be relied on as such, as this document is for general guidance only. Sunidhi or any of its affiliates/ group companies shall not be in any way responsible for any loss or damage that may arise to any person from any inadvertent error in the information contained in this report. Sunidhi has not independently verified all the information contained within this document. Accordingly, we cannot testify, nor make any representation or`;
+    discBody.font = { name: "Calibri", size: 9, color: { argb: C.black } };
+    discBody.alignment = { wrapText: true, vertical: "top" };
 
-    ws[addr(43, 2)] = str("Registration no. INZ000000000 ");
-    ws[addr(43, 4)] = str("Registration no. INZ000000000 ");
-    ws[addr(43, 7)] = str("Registration no. INZ000000000 ");
+    // ── Row 40: Company footer ─────────────────────────────────────────────────
+    ws.getRow(40).height = 16;
+    ws.mergeCells(40, 2, 40, 9);
+    const footerCell = ws.getCell(40, 2);
+    footerCell.value = "Sunidhi Securities & Finance Ltd. – Research Analyst – INH000000000";
+    footerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.footerGray } };
+    footerCell.font = { bold: true, name: "Calibri", size: 10 };
+    footerCell.alignment = { horizontal: "center", vertical: "middle" };
+    footerCell.border = BORDER(C.borderBlack);
 
-    ws[addr(44, 2)] = str("Compliance Officer Name: ");
-    ws[addr(44, 4)] = str("Compliance Officer Name");
-    ws[addr(44, 7)] = str("Phone No: +91-00000-00000");
+    // ── Row 41: Address ────────────────────────────────────────────────────────
+    ws.getRow(41).height = 14;
+    ws.mergeCells(41, 2, 41, 9);
+    const addrCell = ws.getCell(41, 2);
+    addrCell.value =
+      "Registered office address (configure via MTF_COMPLIANCE_ADDRESS)";
+    addrCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.footerGray } };
+    addrCell.font = { name: "Calibri", size: 9 };
+    addrCell.alignment = { horizontal: "center", vertical: "middle" };
+    addrCell.border = BORDER(C.borderBlack);
 
-    // ── Worksheet metadata ────────────────────────────────────────────────────
-    ws["!ref"] = XLSX.utils.encode_range({ s: { r: 6, c: 1 }, e: { r: 43, c: 9 } }); // B7:J44
-    ws["!merges"] = merges;
+    // ── Rows 42-44: Registration table ────────────────────────────────────────
+    const regFill = { type: "pattern" as const, pattern: "solid" as const,
+                       fgColor: { argb: C.footerGray } };
 
-    // Column widths (A through J)
-    ws["!cols"] = [
-      { wch: 2 },   // A — unused
-      { wch: 24 },  // B — primary label
-      { wch: 16 },  // C — CMP / data
-      { wch: 12 },  // D — points / data
-      { wch: 10 },  // E — %
-      { wch: 24 },  // F — secondary label
-      { wch: 16 },  // G — CMP / data
-      { wch: 12 },  // H — points / MTD
-      { wch: 12 },  // I — % / YTD
-      { wch: 2 },   // J — buffer
+    const REG_ROWS: Array<[number, [number, number, string][]]> = [
+      [42, [[2, 3, "Bombay Stock Exchange (BSE)"],
+            [4, 6, "National Stock Exchange of India Ltd (NSE)"],
+            [7, 9, "Metropolitan Stock Exchange of India Limited (MSEI)"]]],
+      [43, [[2, 3, "Registration no. INZ000000000"],
+            [4, 6, "Registration no. INZ000000000"],
+            [7, 9, "Registration no. INZ000000000"]]],
+      [44, [[2, 3, "Compliance Officer Name:"],
+            [4, 6, "Compliance Officer Name"],
+            [7, 9, "Phone No: +91-00000-00000"]]],
     ];
 
-    // Row heights: tall row for disclaimer text
-    ws["!rows"] = Array.from({ length: 44 }, (_, i) => {
-      if (i === 38) return { hpt: 200 }; // Row 39 (0-indexed 38) = disclaimer text
-      return {};
-    });
+    for (const [row, cols] of REG_ROWS) {
+      ws.getRow(row).height = 14;
+      for (const [c1, c2, text] of cols) {
+        if (c1 !== c2) ws.mergeCells(row, c1, row, c2);
+        const cell = ws.getCell(row, c1);
+        cell.value = text;
+        cell.fill = regFill;
+        cell.font = { name: "Calibri", size: 9, bold: row === 42 };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = BORDER(C.borderBlack);
+      }
+    }
 
-    // ── Build workbook and return ─────────────────────────────────────────────
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    // ── Serialize ──────────────────────────────────────────────────────────────
+    const buf = await wb.xlsx.writeBuffer();
 
     const dateSuffix = today
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-      })
+      .toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "2-digit" })
       .replace(/\//g, ".");
 
-    return new NextResponse(buf, {
+    return new NextResponse(buf as unknown as BodyInit, {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
