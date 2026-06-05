@@ -131,25 +131,35 @@ export interface ExtractClaimsResult {
   totalCostUsd: number;
 }
 
-export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<ExtractClaimsResult> {
-  const files = (await fs.readdir(args.transcriptsDir)).filter((n) => n.endsWith(".txt")).sort();
-  const byQuarter: Record<string, ExtractedClaim[]> = {};
-  const warnings: string[] = [];
-  let totalCost = 0;
+// Max concurrent Haiku calls per symbol. When intel-rebuild runs multiple symbols
+// in parallel, total concurrent calls = STAGE3_CONCURRENCY × symbols. Keep low to
+// avoid 429s — Haiku's burst limit is ~10 rpm on most Anthropic tiers.
+const STAGE3_CONCURRENCY = 2;
 
-  for (const fname of files) {
-    const quarter = fname.replace(/\.txt$/i, "");
-    if (args.onlyQuarters && !args.onlyQuarters.includes(quarter)) continue;
-    let transcript = await fs.readFile(path.join(args.transcriptsDir, fname), "utf-8");
-    if (args.maxTranscriptChars && transcript.length > args.maxTranscriptChars) {
-      transcript = transcript.slice(0, args.maxTranscriptChars);
-    }
-    const { system, user } = buildExtractPrompt({
-      symbol: args.symbol, quarter, registry: args.registry, transcript,
-    });
+// Delay between batch starts (ms). Gives rate-limiter headroom when symbols run together.
+const BATCH_DELAY_MS = 2_000;
 
-    const model = defaultExtractionModel();
-    let result: Awaited<ReturnType<typeof callJson<{ claims: Partial<ExtractedClaim>[] }>>>;
+async function processQuarter(
+  fname: string,
+  args: ExtractClaimsArgs,
+): Promise<{ quarter: string; claims: ExtractedClaim[]; warnings: string[]; cost: number }> {
+  const quarter = fname.replace(/\.txt$/i, "");
+  let transcript = await fs.readFile(path.join(args.transcriptsDir, fname), "utf-8");
+  if (args.maxTranscriptChars && transcript.length > args.maxTranscriptChars) {
+    transcript = transcript.slice(0, args.maxTranscriptChars);
+  }
+  const { system, user } = buildExtractPrompt({
+    symbol: args.symbol, quarter, registry: args.registry, transcript,
+  });
+
+  const model = defaultExtractionModel();
+  const localWarnings: string[] = [];
+  let result: Awaited<ReturnType<typeof callJson<{ claims: Partial<ExtractedClaim>[] }>>> | undefined;
+  // Retry up to 3 times on 429 rate-limit errors with exponential back-off.
+  let lastErr: Error | null = null;
+  let succeeded = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 5_000 * attempt));
     try {
       result = await callJson<{ claims: Partial<ExtractedClaim>[] }>({
         model,
@@ -159,45 +169,87 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
         ...(args.numCtx    !== undefined && { numCtx:    args.numCtx }),
         ...(args.maxTokens !== undefined && { maxTokens: args.maxTokens }),
       });
+      succeeded = true;
+      break;
     } catch (err) {
-      warnings.push(`${quarter}: LLM error — ${(err as Error).message.slice(0, 120)}`);
-      byQuarter[quarter] = [];
-      continue;
+      lastErr = err as Error;
+      if (!(err as Error).message.includes("429")) break; // non-rate-limit — don't retry
     }
-    totalCost += estimateCostUsd(model, result);
+  }
+  if (!succeeded || !result) {
+    localWarnings.push(`${quarter}: LLM error — ${lastErr!.message.slice(0, 120)}`);
+    return { quarter, claims: [], warnings: localWarnings, cost: 0 };
+  }
+  const cost = estimateCostUsd(model, result);
 
-    // Normalize: LLM may return "key" instead of "metricKey"
-    const rawClaims = (result.data.claims ?? []).map((c: any) => {
-      if (!c.metricKey && c.key) { c.metricKey = c.key; delete c.key; }
-      return c;
+  // Normalize: LLM may return "key" instead of "metricKey"
+  const rawClaims = (result.data.claims ?? []).map((c: any) => {
+    if (!c.metricKey && c.key) { c.metricKey = c.key; delete c.key; }
+    return c;
+  });
+
+  const deduped = deduplicateClaims(rawClaims);
+  const accepted: ExtractedClaim[] = [];
+  let n = 0;
+  for (const raw of deduped) {
+    const v = validateClaim(raw, args.registry);
+    if (!v.valid) { localWarnings.push(`${quarter}: ${v.reason}`); continue; }
+    accepted.push({
+      id: `${args.symbol}-${quarter}-c${++n}`,
+      metricKey: raw.metricKey!,
+      quote: raw.quote!,
+      speaker: raw.speaker ?? null,
+      direction: raw.direction as ClaimDirection,
+      value: raw.value ?? null,
+      rangeMin: raw.rangeMin ?? null,
+      rangeMax: raw.rangeMax ?? null,
+      qualitativeText: raw.qualitativeText ?? null,
+      targetQuarter: raw.targetQuarter ?? null,
+      targetText: raw.targetText ?? "",
+      confidence: (raw.confidence ?? "medium") as Confidence,
+      conditional: raw.conditional ?? null,
     });
+  }
+  console.log(`  ${quarter}: ${accepted.length} claims (${deduped.length - accepted.length} rejected)`);
+  return { quarter, claims: accepted, warnings: localWarnings, cost };
+}
 
-    // Deduplicate before validation
-    const deduped = deduplicateClaims(rawClaims);
+// Parse a quarter label "Q4-FY26" → sortable integer 2604, "Q1-FY26" → 2601.
+// Used to enforce the Q4-FY25 minimum cutoff.
+function quarterToInt(q: string): number {
+  const m = q.match(/^Q(\d)-FY(\d{2})$/);
+  if (!m) return 0;
+  return parseInt(m[2], 10) * 10 + parseInt(m[1], 10);
+}
+const MIN_QUARTER_INT = quarterToInt("Q4-FY25"); // 2504
 
-    const accepted: ExtractedClaim[] = [];
-    let n = 0;
-    for (const raw of deduped) {
-      const v = validateClaim(raw, args.registry);
-      if (!v.valid) { warnings.push(`${quarter}: ${v.reason}`); continue; }
-      accepted.push({
-        id: `${args.symbol}-${quarter}-c${++n}`,
-        metricKey: raw.metricKey!,
-        quote: raw.quote!,
-        speaker: raw.speaker ?? null,
-        direction: raw.direction as ClaimDirection,
-        value: raw.value ?? null,
-        rangeMin: raw.rangeMin ?? null,
-        rangeMax: raw.rangeMax ?? null,
-        qualitativeText: raw.qualitativeText ?? null,
-        targetQuarter: raw.targetQuarter ?? null,
-        targetText: raw.targetText ?? "",
-        confidence: (raw.confidence ?? "medium") as Confidence,
-        conditional: raw.conditional ?? null,
-      });
+export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<ExtractClaimsResult> {
+  const allFiles = (await fs.readdir(args.transcriptsDir)).filter((n) => n.endsWith(".txt")).sort();
+  const files = allFiles.filter((f) => {
+    const q = f.replace(/\.txt$/i, "");
+    // Never extract claims from transcripts before Q4-FY25 — too old to be actionable
+    // and wastes API credits. onlyQuarters is an additional optional narrowing on top.
+    if (quarterToInt(q) < MIN_QUARTER_INT) return false;
+    if (args.onlyQuarters) return args.onlyQuarters.includes(q);
+    return true;
+  });
+
+  const byQuarter: Record<string, ExtractedClaim[]> = {};
+  const warnings: string[] = [];
+  let totalCost = 0;
+
+  // Process quarters in concurrent batches capped at STAGE3_CONCURRENCY.
+  // BATCH_DELAY_MS between batches gives rate-limiter headroom when multiple
+  // symbols run in parallel from intel-rebuild.ts.
+  for (let i = 0; i < files.length; i += STAGE3_CONCURRENCY) {
+    if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    const batch = files.slice(i, i + STAGE3_CONCURRENCY);
+    const results = await Promise.all(batch.map((fname) => processQuarter(fname, args)));
+    for (const r of results) {
+      byQuarter[r.quarter] = r.claims;
+      warnings.push(...r.warnings);
+      totalCost += r.cost;
     }
-    byQuarter[quarter] = accepted;
-    console.log(`  ${quarter}: ${accepted.length} claims (${deduped.length - accepted.length} rejected)`);
   }
 
   const artifact: ClaimsArtifact = {

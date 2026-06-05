@@ -279,17 +279,27 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
       companyBrief,
     );
 
-    let result: Awaited<ReturnType<typeof callJson<{ results: Array<Partial<ClaimCheck> & { verdict?: Verdict }> }>>>;
-    try {
-      result = await callJson({
-        model,
-        system,
-        user,
-        maxTokens: 4096,
-        temperature: 0,
-      });
-    } catch (err) {
-      warnings.push(`${key}: LLM error — ${(err as Error).message.slice(0, 120)}`);
+    let result: Awaited<ReturnType<typeof callJson<{ results: Array<Partial<ClaimCheck> & { verdict?: Verdict }> }>>> | undefined;
+    let callErr: Error | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 8_000 * attempt));
+      try {
+        result = await callJson({
+          model,
+          system,
+          user,
+          maxTokens: 4096,
+          temperature: 0,
+        });
+        callErr = null;
+        break;
+      } catch (err) {
+        callErr = err as Error;
+        if (!(err as Error).message.includes("429")) break;
+      }
+    }
+    if (!result) {
+      warnings.push(`${key}: LLM error — ${callErr!.message.slice(0, 120)}`);
       // Mark all claims in this batch as ambiguous
       for (const { claim, targetQuarter } of items) {
         const check: ClaimCheck = {

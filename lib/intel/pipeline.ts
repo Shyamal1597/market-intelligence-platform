@@ -271,8 +271,8 @@ function detectQuarterFromContent(text: string): string | null {
     return `Q${q}-FY${fy}`;
   }
 
-  // Pattern: "Quarter ended June 30, 2025" → infer Q1-FY26
-  const m4 = text.match(/quarter\s+ended?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+(\d{4})/i);
+  // Pattern: "Quarter ended June 30, 2025" or "quarter and year ended on March 31, 2026"
+  const m4 = text.match(/quarter(?:\s+and\s+year)?\s+ended?\s+(?:on\s+)?(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+(\d{4})/i);
   if (m4) {
     const monthMap: Record<string, number> = {
       january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,

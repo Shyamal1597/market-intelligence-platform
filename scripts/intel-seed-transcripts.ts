@@ -14,7 +14,7 @@ import {
   fetchHistoricalTranscripts,
   SYMBOL_TO_SCRIP,
 } from "@/lib/intel/bse-transcript-scraper";
-import { fetchScreenerConcalls } from "@/lib/intel/screener-scraper";
+import { fetchScreenerConcalls, displayDateToQuarter } from "@/lib/intel/screener-scraper";
 import { ingestPdfTranscript } from "@/lib/intel/pipeline";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 import https from "node:https";
@@ -212,57 +212,59 @@ async function main() {
       console.log(); // newline after all filings for this scrip
     }
 
-    // ── Screener fallback ──────────────────────────────────────────────────────
-    // Runs whenever BSE produced no useful transcripts — covers:
-    //   • Symbols with no scrip codes (not yet mapped)
-    //   • Symbols that only file audio recordings on BSE (e.g. ICICIBANK)
-    //   • Symbols where BSE purged all attachments
-    //   • Symbols where BSE returned filings but all were junk (<5k chars press
-    //     releases / agendas rather than real transcripts, e.g. JSWSTEEL)
-    //   • --only-screener mode: BSE was intentionally skipped
-    // Suppress with --no-screener flag.
-    if ((bseFilingsFound === 0 || bseUsefulIngested === 0) && !args.includes("--no-screener")) {
+    // ── Screener supplement ────────────────────────────────────────────────────
+    // Always runs (unless --no-screener) to catch quarters BSE missed.
+    // BSE is not a reliable source for the LATEST transcript — companies often
+    // file under subcategories we don't query, or BSE purges recent attachments.
+    // Screener aggregates from multiple sources and consistently has the latest.
+    // Existing quarters are skipped via alreadyExisted, so this is additive.
+    if (!args.includes("--no-screener")) {
       let screenerConcalls: Awaited<ReturnType<typeof fetchScreenerConcalls>> = [];
       try {
         screenerConcalls = await fetchScreenerConcalls(symbol);
-      } catch {
-        // Screener unavailable — skip
+      } catch (e) {
+        process.stdout.write(`  [Screener fetch failed: ${(e as Error).message.slice(0, 60)}]\n`);
       }
 
-      if (screenerConcalls.length === 0) {
+      if (screenerConcalls.length === 0 && bseFilingsFound === 0) {
         console.log("no transcript filings found (BSE + Screener)");
         continue;
       }
 
-      console.log(`${screenerConcalls.length} filing(s) via Screener`);
-      for (const concall of screenerConcalls) {
-        let pdfBuffer: Buffer;
-        try {
-          pdfBuffer = await downloadPdf(concall.pdfUrl);
-          totalDownloaded++;
-        } catch {
-          continue; // inaccessible — skip silently
-        }
-
-        const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
-        try {
-          const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName);
-          if (result.alreadyExisted) {
-            process.stdout.write(`  ${result.quarter}(exists)`);
-            totalSkipped++;
-          } else {
-            process.stdout.write(`  ${result.quarter}(${result.chars}c)`);
-            totalIngested++;
+      if (screenerConcalls.length > 0) {
+        console.log(`${screenerConcalls.length} filing(s) via Screener`);
+        for (const concall of screenerConcalls) {
+          let pdfBuffer: Buffer;
+          try {
+            pdfBuffer = await downloadPdf(concall.pdfUrl);
+            totalDownloaded++;
+          } catch (e) {
+            // Log failures — silent skips mask real problems (e.g. latest quarter unavailable)
+            process.stdout.write(`  [Screener DL failed ${concall.displayDate}: ${(e as Error).message.slice(0, 50)}]\n`);
+            totalErrors++;
+            continue;
           }
-        } catch (e) {
-          const msg = (e as Error).message;
-          process.stdout.write(msg.includes("0 chars") ? "  (scanned-pdf)" : `  (err:${msg.slice(0, 40)})`);
-          totalErrors++;
+
+          const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
+          const screenerQtr = displayDateToQuarter(concall.displayDate) ?? undefined;
+          try {
+            const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr);
+            if (result.alreadyExisted) {
+              process.stdout.write(`  ${result.quarter}(exists)`);
+              totalSkipped++;
+            } else {
+              process.stdout.write(`  ${result.quarter}(${result.chars}c)`);
+              totalIngested++;
+            }
+          } catch (e) {
+            const msg = (e as Error).message;
+            process.stdout.write(msg.includes("0 chars") ? "  (scanned-pdf)" : `  (err:${msg.slice(0, 50)})`);
+            totalErrors++;
+          }
         }
+        console.log();
       }
-      console.log();
     } else if (bseUsefulIngested === 0 && scripCodes.length > 0) {
-      // Had scrip codes, BSE returned something but all junk, --no-screener set
       console.log("no useful transcript filings found (BSE filings were too short)");
     }
   }

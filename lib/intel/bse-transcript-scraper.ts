@@ -351,7 +351,7 @@ export const BSE_ATTACH_HIS  = "https://www.bseindia.com/xml-data/corpfiling/Att
 const TRANSCRIPT_CATEGORIES = [
   { strCat: "Result",        subcategory: "" },
   { strCat: "Board Meeting", subcategory: "" },
-  { strCat: "Company Update", subcategory: "Analyst / Investor Meet" },
+  { strCat: "Company Update", subcategory: "" }, // broad: catches "Analyst/Investor Meet" AND "Earnings Call Transcript" subcategories
 ];
 const BSE_ATTACH_BASE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
