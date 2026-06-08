@@ -19,6 +19,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Allow Next.js dev server HMR websocket from the internal network IP.
+  // Without this, any colleague accessing via 192.168.48.102:3001 gets their
+  // HMR connection blocked, which prevents React hydration and data fetching.
+  allowedDevOrigins: ["192.168.48.102"],
+
   // Prevent webpack from bundling pdf2json (and its pdfjs-dist dependency) into
   // API routes — it must be loaded natively by Node.js. Without this, pdfjs-dist
   // initialises a "fake worker" on every route cold-start and floods the dev console.

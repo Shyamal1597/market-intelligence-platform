@@ -7,6 +7,7 @@ import { TranscriptUpload } from "./TranscriptUpload";
 import { GuidanceTimeline } from "./GuidanceTimeline";
 import { CompanySummaryBar } from "./CompanySummaryBar";
 import { KPITracker } from "./KPITracker";
+import { DataQualityBanner } from "./DataQualityBanner";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
 import type { EnrichedClaim } from "./ClaimRow";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
@@ -69,11 +70,15 @@ function CompanyChip({
 }) {
   const isSelected = company.symbol === selectedSymbol;
   const hasData = company.totalClaims > 0;
+  const dq = company.dataQuality;
+  const hasError = dq?.notes.some(n => n.severity === "error");
+  const hasWarn  = dq?.notes.some(n => n.severity === "warn");
 
   return (
     <button
       onClick={() => onSelect(company.symbol)}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-xs transition-colors ${
+      title={dq?.hasIssues ? dq.notes.map(n => n.message).join(" · ") : undefined}
+      className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-xs transition-colors ${
         isSelected
           ? "border-amber/50 bg-amber/10 text-amber"
           : hasData
@@ -86,6 +91,14 @@ function CompanyChip({
         <span className={`text-[10px] ${isSelected ? "text-amber/70" : "text-muted/60"}`}>
           {company.totalClaims}
         </span>
+      )}
+      {/* Data quality dot — top-right corner */}
+      {dq?.hasIssues && (
+        <span
+          className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
+            hasError ? "bg-danger" : hasWarn ? "bg-amber" : "bg-muted"
+          }`}
+        />
       )}
     </button>
   );
@@ -321,6 +334,14 @@ export function IntelDashboard() {
 
       {!loading && !error && data && (
         <>
+          {/* Data quality notes — shown when the selected company has completeness issues */}
+          {(() => {
+            const co = companies.find(c => c.symbol === selectedSymbol);
+            return co?.dataQuality?.hasIssues ? (
+              <DataQualityBanner symbol={selectedSymbol} quality={co.dataQuality} />
+            ) : null;
+          })()}
+
           {/* Company summary bar */}
           <CompanySummaryBar
             symbol={selectedSymbol}

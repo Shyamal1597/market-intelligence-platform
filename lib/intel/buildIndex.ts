@@ -12,6 +12,7 @@ import path from "node:path";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 import type { ClaimsArtifact, ChecksArtifact } from "@/lib/intel/types";
 import type { CompanySummary } from "@/app/api/intel/companies/route";
+import { buildDataQuality, getTranscriptQuarters } from "@/lib/intel/dataQuality";
 
 async function readJson<T>(filePath: string): Promise<T | null> {
   try { return JSON.parse(await fs.readFile(filePath, "utf-8")) as T; }
@@ -25,6 +26,7 @@ export async function buildIntelIndex(): Promise<{ total: number; withData: numb
     const base = path.join(process.cwd(), "data", "intelligence", symbol);
     const claims = await readJson<ClaimsArtifact>(path.join(base, "claims.json"));
     const checks  = await readJson<ChecksArtifact>(path.join(base, "checks.json"));
+    const txQuarters = getTranscriptQuarters(base);
 
     const totalClaims = claims
       ? Object.values(claims.byQuarter).reduce((s, c) => s + c.length, 0)
@@ -43,6 +45,8 @@ export async function buildIntelIndex(): Promise<{ total: number; withData: numb
       }
     }
 
+    const dataQuality = buildDataQuality(symbol, txQuarters, claims, checks);
+
     summaries.push({
       symbol,
       sector,
@@ -55,6 +59,7 @@ export async function buildIntelIndex(): Promise<{ total: number; withData: numb
       quarters,
       lastUpdated: claims?.generatedAt ?? null,
       hasChecks: !!checks,
+      dataQuality,
     });
   }
 
