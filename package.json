@@ -14,7 +14,8 @@
     "intel:crosscheck": "npx tsx scripts/_one-off-crosscheck.ts",
     "intel:summaries": "npx tsx scripts/generate-summaries.ts",
     "intel:index": "npx tsx scripts/intel-build-index.ts",
-    "intel:auto-ingest": "npx tsx scripts/intel-auto-ingest.ts"
+    "intel:auto-ingest": "npx tsx scripts/intel-auto-ingest.ts",
+    "collect:flows": "npx tsx scripts/collect-flows.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",

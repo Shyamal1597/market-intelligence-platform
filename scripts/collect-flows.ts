@@ -172,48 +172,70 @@ async function main() {
   }
 
   // Fetch today's snapshot
-  let snapshotEntry = null;
   if (cookie) {
     try {
       const snap = await fetchSnapshot(cookie);
       if (snap) {
-        snapshotEntry = {
-          date: today,
-          ...snap,
-          fiiDebtBuy:0, fiiDebtSell:0, fiiDebtNet:0,
-          diiDebtBuy:0, diiDebtSell:0, diiDebtNet:0,
-        };
-        console.log(`[collect-flows] today snapshot: FII net=${snap.fiiEquityNet} DII net=${snap.diiEquityNet}`);
+        console.log(`[collect-flows] snapshot: FII net=${snap.fiiEquityNet} DII net=${snap.diiEquityNet}`);
+
+        // Staleness check: if values match the last stored entry, NSE hasn't updated yet.
+        // Don't write stale data -- the script is scheduled for 19:30 but NSE can be later.
+        const sorted = [...history].sort((a,b) => {
+          const x = a as {date:string}; const y = b as {date:string};
+          return x.date < y.date ? -1 : 1;
+        });
+        const last = sorted[sorted.length - 1] as { fiiEquityBuy:number; fiiEquitySell:number; diiEquityBuy:number; diiEquitySell:number } | undefined;
+        const isStale = last &&
+          snap.fiiEquityBuy  === last.fiiEquityBuy  &&
+          snap.fiiEquitySell === last.fiiEquitySell &&
+          snap.diiEquityBuy  === last.diiEquityBuy  &&
+          snap.diiEquitySell === last.diiEquitySell;
+
+        if (isStale) {
+          console.warn("[collect-flows] snapshot matches last stored entry -- NSE not yet updated, skipping today's entry");
+        } else {
+          const snapshotEntry = {
+            date: today,
+            ...snap,
+            fiiDebtBuy:0, fiiDebtSell:0, fiiDebtNet:0,
+            diiDebtBuy:0, diiDebtSell:0, diiDebtNet:0,
+          };
+          history = mergeEntries(history, [snapshotEntry]) as typeof history;
+          console.log(`[collect-flows] stored today's snapshot for ${today}`);
+        }
+      } else {
+        console.warn("[collect-flows] snapshot returned null -- NSE session may have failed");
       }
     } catch (e) {
       console.error("[collect-flows] snapshot error:", e);
     }
   }
 
-  // Attempt historical backfill for the current FY (April 1 onwards)
+  // Attempt historical backfill for the last 30 days to fill any gaps
+  // (covers holiday periods when the script or server was offline)
+  const gapFillFrom = new Date(today);
+  gapFillFrom.setDate(gapFillFrom.getDate() - 30);
   const fyYear = new Date(today).getMonth() >= 3
     ? new Date(today).getFullYear()
     : new Date(today).getFullYear() - 1;
   const fyStart = `${fyYear}-04-01`;
+  const backfillFrom = gapFillFrom.toISOString().slice(0, 10) > fyStart
+    ? gapFillFrom.toISOString().slice(0, 10)
+    : fyStart;
 
   if (cookie) {
     try {
-      console.log(`[collect-flows] attempting backfill from ${fyStart} to ${today}...`);
-      const fetched = await fetchHistorical(fyStart, today, cookie);
+      console.log(`[collect-flows] attempting gap-fill from ${backfillFrom} to ${today}...`);
+      const fetched = await fetchHistorical(backfillFrom, today, cookie);
       if (Array.isArray(fetched) && fetched.length > 0) {
         history = mergeEntries(history, fetched as unknown[]) as typeof history;
-        console.log(`[collect-flows] backfill: ${fetched.length} entries merged`);
+        console.log(`[collect-flows] gap-fill: ${fetched.length} entries merged`);
       } else {
-        console.warn("[collect-flows] backfill returned 0 entries (NSE bot protection active)");
+        console.warn("[collect-flows] gap-fill returned 0 entries (NSE bot protection active -- gaps must be filled manually)");
       }
     } catch (e) {
-      console.error("[collect-flows] backfill error:", e);
+      console.error("[collect-flows] gap-fill error:", e);
     }
-  }
-
-  // Merge today's snapshot
-  if (snapshotEntry) {
-    history = mergeEntries(history, [snapshotEntry]) as typeof history;
   }
 
   const saved = await saveHistory(history);
