@@ -457,20 +457,32 @@ function mergeEntries(existing: StoredEntry[], incoming: StoredEntry[]): StoredE
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// -- EOD gate ------------------------------------------------------------------
+// -- Staleness gate ------------------------------------------------------------
 
 /**
- * NSE publishes final EOD FII/DII data at ~18:30 IST.
- * Snapshots fetched before this time contain the PREVIOUS trading day's settled
- * figures -- storing them under today's date corrupts MTD calculations.
+ * Determines whether a fresh NSE snapshot actually contains new EOD data,
+ * or is still serving the previous trading day's settled figures.
  *
- * Rule:
- *   Before 18:30 IST  → snapshot is returned for live display but NOT written to history.
- *   After  18:30 IST  → always upsert today's entry, overwriting any stale intraday capture.
+ * NSE publishes final FII/DII data somewhere between 18:30 and 19:30 IST
+ * depending on the day. A hard time cutoff is fragile -- if NSE is late and
+ * an analyst checks at 6:45pm, a 6:30 cutoff would still store stale data.
+ *
+ * Approach: compare the snapshot's buy/sell values against the most recently
+ * stored entry. If they are identical, NSE hasn't updated yet -- the snapshot
+ * is a copy of yesterday's settled data. Don't persist it.
+ *
+ * Only persists when at least one value differs from the last stored entry,
+ * regardless of what time it is.
  */
-function isAfterNseEOD(): boolean {
-  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  return nowIST.getHours() * 60 + nowIST.getMinutes() >= 18 * 60 + 30;
+function isSnapshotFresh(snapshot: FlowsSnapshot, entries: StoredEntry[]): boolean {
+  if (entries.length === 0) return true; // nothing stored yet -- always accept
+  const last = entries[entries.length - 1]; // sorted ascending, last = most recent
+  return (
+    snapshot.fiiEquityBuy  !== last.fiiEquityBuy  ||
+    snapshot.fiiEquitySell !== last.fiiEquitySell ||
+    snapshot.diiEquityBuy  !== last.diiEquityBuy  ||
+    snapshot.diiEquitySell !== last.diiEquitySell
+  );
 }
 
 // -- Main Entry Point ----------------------------------------------------------
@@ -512,17 +524,18 @@ export async function fetchAllFlowData(): Promise<{
     }
   }
 
-  // Only persist today's snapshot after 18:30 IST when NSE publishes final EOD data.
-  // Before the cutoff, NSE still serves the previous trading day's figures -- writing
-  // them under today's date would corrupt MTD. After the cutoff, always overwrite so
-  // any stale intraday capture made earlier today is automatically corrected.
-  if (snapshot && isAfterNseEOD()) {
+  // Persist today's snapshot only when NSE has actually published new EOD data.
+  // Detected by comparing snapshot values against the last stored entry --
+  // if identical, NSE is still serving yesterday's figures (stale). Don't store.
+  // Once NSE updates (any time after ~18:30 IST), values differ and we upsert,
+  // overwriting any stale intraday capture that may have been written earlier.
+  if (snapshot && isSnapshotFresh(snapshot, entries)) {
     const todayEntry = snapshotToEntry(snapshot, today);
     entries = mergeEntries(entries, [todayEntry]); // overwrites any earlier stale capture
     dirty   = true;
     console.log(`[nse-flows] persisted EOD snapshot for ${today} (total: ${entries.length})`);
   } else if (snapshot) {
-    console.log(`[nse-flows] before 18:30 IST -- snapshot available for display, not persisted`);
+    console.log(`[nse-flows] snapshot unchanged from last entry -- NSE not yet updated, skipping persist`);
   }
 
   // Persist if changed
