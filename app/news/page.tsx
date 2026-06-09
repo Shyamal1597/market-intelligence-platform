@@ -52,7 +52,11 @@ export default function NewsPage() {
   useEffect(() => {
     setLoading(true);
     fetchNews();
-    const interval = setInterval(fetchNews, 10 * 60 * 1000);
+    const interval = setInterval(async () => {
+      // Pull fresh stories from RSS feeds, then update the display
+      await fetch("/api/fetch-market-news").catch(() => {});
+      fetchNews();
+    }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchNews]);
 
