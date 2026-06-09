@@ -457,6 +457,22 @@ function mergeEntries(existing: StoredEntry[], incoming: StoredEntry[]): StoredE
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// -- EOD gate ------------------------------------------------------------------
+
+/**
+ * NSE publishes final EOD FII/DII data at ~18:30 IST.
+ * Snapshots fetched before this time contain the PREVIOUS trading day's settled
+ * figures -- storing them under today's date corrupts MTD calculations.
+ *
+ * Rule:
+ *   Before 18:30 IST  → snapshot is returned for live display but NOT written to history.
+ *   After  18:30 IST  → always upsert today's entry, overwriting any stale intraday capture.
+ */
+function isAfterNseEOD(): boolean {
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  return nowIST.getHours() * 60 + nowIST.getMinutes() >= 18 * 60 + 30;
+}
+
 // -- Main Entry Point ----------------------------------------------------------
 
 export async function fetchAllFlowData(): Promise<{
@@ -496,12 +512,17 @@ export async function fetchAllFlowData(): Promise<{
     }
   }
 
-  // Append today's snapshot if not already present
-  if (snapshot && !entries.some((e) => e.date === today)) {
+  // Only persist today's snapshot after 18:30 IST when NSE publishes final EOD data.
+  // Before the cutoff, NSE still serves the previous trading day's figures -- writing
+  // them under today's date would corrupt MTD. After the cutoff, always overwrite so
+  // any stale intraday capture made earlier today is automatically corrected.
+  if (snapshot && isAfterNseEOD()) {
     const todayEntry = snapshotToEntry(snapshot, today);
-    entries = mergeEntries(entries, [todayEntry]);
+    entries = mergeEntries(entries, [todayEntry]); // overwrites any earlier stale capture
     dirty   = true;
-    console.log(`[nse-flows] appended ${today} (total: ${entries.length})`);
+    console.log(`[nse-flows] persisted EOD snapshot for ${today} (total: ${entries.length})`);
+  } else if (snapshot) {
+    console.log(`[nse-flows] before 18:30 IST -- snapshot available for display, not persisted`);
   }
 
   // Persist if changed
