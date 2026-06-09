@@ -19,10 +19,11 @@ const HISTORY_PATH = path.join(process.cwd(), "data", "fii-dii-history.json");
 // Known BSE market holidays FY 26-27 (Apr 2026 - Mar 2027)
 const KNOWN_HOLIDAYS_FY2627 = new Set([
   "2026-04-01", // Ram Navami
+  "2026-04-03", // Good Friday (Easter 2026 = Apr 5 → Good Friday = Apr 3)
   "2026-04-14", // Dr. B R Ambedkar Jayanti
-  "2026-04-17", // Good Friday
   "2026-05-01", // Maharashtra Day
   "2026-05-12", // Buddha Purnima
+  "2026-05-28", // Market holiday (confirmed)
   // Add more as they are declared
 ]);
 
@@ -36,6 +37,7 @@ const KNOWN_HOLIDAYS_FY2526 = new Set([
   "2026-01-26", // Republic Day
   "2026-02-19", // Chhatrapati Shivaji Maharaj Jayanti
   "2026-03-20", // Holi
+  "2026-03-31", // Market holiday (confirmed)
 ]);
 
 const ALL_HOLIDAYS = new Set([...KNOWN_HOLIDAYS_FY2627, ...KNOWN_HOLIDAYS_FY2526]);
