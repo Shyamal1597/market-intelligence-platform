@@ -1,4 +1,4 @@
-// BM25 Okapi implementation — pure TypeScript, no deps
+// BM25 Okapi implementation -- pure TypeScript, no deps
 // k1=1.5, b=0.75 (standard defaults)
 
 export interface BM25Doc {

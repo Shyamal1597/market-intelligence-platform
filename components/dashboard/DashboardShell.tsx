@@ -81,7 +81,7 @@ function saveLayout(widgets: WidgetConfig[]) {
   } catch { /* quota exceeded */ }
 }
 
-// ── Height-size config ────────────────────────────────────────────────────────
+// -- Height-size config --------------------------------------------------------
 // compact → clamps height, scrollable internally
 // normal  → natural height
 // full    → natural + subtle amber ring emphasis
@@ -91,7 +91,7 @@ const SIZE_CONTENT_CLASS: Record<WidgetSize, string> = {
   full:    "rounded-xl ring-1 ring-amber/20",
 };
 
-// ── Sortable widget wrapper ───────────────────────────────────────────────────
+// -- Sortable widget wrapper ---------------------------------------------------
 interface SortableWidgetProps {
   widget: WidgetConfig;
   children: React.ReactNode;
@@ -155,7 +155,7 @@ function SortableWidget({
             {widget.label}
           </span>
 
-          {/* Width toggle — Columns icon is amber when in half-width mode */}
+          {/* Width toggle -- Columns icon is amber when in half-width mode */}
           <button
             onClick={() => onToggleWidth(widget.id)}
             className={`p-1 transition-colors ${
@@ -190,7 +190,7 @@ function SortableWidget({
         </div>
       )}
 
-      {/* Widget content — height controlled by size, scrollable in compact */}
+      {/* Widget content -- height controlled by size, scrollable in compact */}
       <div className={`relative transition-all duration-300 ${SIZE_CONTENT_CLASS[widget.size]}`}>
         {children}
       </div>
@@ -198,7 +198,7 @@ function SortableWidget({
   );
 }
 
-// ── Settings panel ────────────────────────────────────────────────────────────
+// -- Settings panel ------------------------------------------------------------
 interface SettingsPanelProps {
   widgets: WidgetConfig[];
   onClose: () => void;
@@ -304,7 +304,7 @@ function SettingsPanel({
   );
 }
 
-// ── Main DashboardShell ───────────────────────────────────────────────────────
+// -- Main DashboardShell -------------------------------------------------------
 interface DashboardShellProps {
   children: Record<string, React.ReactNode>;
 }
@@ -406,7 +406,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         />
       )}
 
-      {/* 2-column widget grid — full widgets span both columns, half spans one */}
+      {/* 2-column widget grid -- full widgets span both columns, half spans one */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-2 gap-6" style={{ gridAutoFlow: "dense" }}>

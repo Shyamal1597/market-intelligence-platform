@@ -7,7 +7,7 @@ const STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface EarningsQuarter {
   quarterLabel: string; // "Q3 FY26"
@@ -24,9 +24,9 @@ export interface EarningsData {
   fetchedAt: string;
 }
 
-// ── Quarter Label ─────────────────────────────────────────────────────────────
+// -- Quarter Label -------------------------------------------------------------
 
-/** "2025-12-31" → "Q3 FY26" (Indian fiscal year: Apr–Mar) */
+/** "2025-12-31" → "Q3 FY26" (Indian fiscal year: Apr-Mar) */
 function toFYLabel(endDate: string): string {
   const d = new Date(endDate);
   const month = d.getMonth() + 1; // 1-12
@@ -40,7 +40,7 @@ function toFYLabel(endDate: string): string {
   return `${quarter} FY${String(fy).slice(2)}`;
 }
 
-// ── Cache ─────────────────────────────────────────────────────────────────────
+// -- Cache ---------------------------------------------------------------------
 
 async function loadCached(symbol: string): Promise<EarningsData | null> {
   try {
@@ -67,7 +67,7 @@ async function saveCache(data: EarningsData): Promise<void> {
   );
 }
 
-// ── Yahoo Crumb Auth ──────────────────────────────────────────────────────────
+// -- Yahoo Crumb Auth ----------------------------------------------------------
 
 interface YahooAuth {
   cookie: string;
@@ -118,7 +118,7 @@ async function getYahooAuth(): Promise<YahooAuth | null> {
   }
 }
 
-// ── Yahoo Finance Fetch ───────────────────────────────────────────────────────
+// -- Yahoo Finance Fetch -------------------------------------------------------
 
 interface YahooStatement {
   endDate?: { raw: number };
@@ -162,7 +162,7 @@ export async function fetchEarnings(symbol: string): Promise<EarningsData | null
         return {
           quarterLabel: endDate ? toFYLabel(endDate) : "Unknown",
           endDate,
-          // Yahoo returns values in absolute rupees — convert to crores
+          // Yahoo returns values in absolute rupees -- convert to crores
           totalRevenue: Math.round((s.totalRevenue?.raw ?? 0) / 1e7),
           ebit: Math.round((s.ebit?.raw ?? 0) / 1e7),
           netIncome: Math.round((s.netIncome?.raw ?? 0) / 1e7),

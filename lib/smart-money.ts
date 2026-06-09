@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { InsiderDisclosure } from "@/app/api/insider/[symbol]/route";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 
 export interface FiiDiiDay {
   date: string;
@@ -56,7 +56,7 @@ export interface CachedSignal {
   generatedAt: string;
 }
 
-// ── Cache ──────────────────────────────────────────────────────────────────────
+// -- Cache ----------------------------------------------------------------------
 
 const CACHE_PATH = path.join(process.cwd(), "data", "smart-money-cache.json");
 const STALE_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -75,7 +75,7 @@ export function readCache(): CacheStore {
 export function writeCache(store: CacheStore): void {
   try {
     fs.writeFileSync(CACHE_PATH, JSON.stringify(store, null, 2));
-  } catch { /* disk error — silent */ }
+  } catch { /* disk error -- silent */ }
 }
 
 export function getCached(symbol: string): CachedSignal | null {
@@ -92,7 +92,7 @@ export function setCached(signal: CachedSignal): void {
   writeCache(store);
 }
 
-// ── File readers ───────────────────────────────────────────────────────────────
+// -- File readers ---------------------------------------------------------------
 
 const FII_DII_PATH = path.join(process.cwd(), "data", "fii-dii-history.json");
 const NEWS_PATH = path.join(process.cwd(), "data", "market-news.json");
@@ -188,7 +188,7 @@ const MARKET_NEWS_KEYWORDS = [
 ];
 
 /**
- * Returns macro/market-relevant news only — filters out company-specific articles.
+ * Returns macro/market-relevant news only -- filters out company-specific articles.
  * Used exclusively for the MARKET-mode Smart Money Signal.
  */
 export function getMarketNews(limit = 15): NewsHeadline[] {
@@ -196,7 +196,7 @@ export function getMarketNews(limit = 15): NewsHeadline[] {
     const raw = fs.readFileSync(NEWS_PATH, "utf-8");
     const data = JSON.parse(raw) as { news: { title: string; source?: string; pubDate: string; content?: string }[] };
     const matches = data.news.filter(n => {
-      // Match on title only — content-body matching produces too many false positives
+      // Match on title only -- content-body matching produces too many false positives
       // (unrelated articles incidentally mention financial terms in passing).
       const title = (n.title ?? "").toUpperCase();
       return MARKET_NEWS_KEYWORDS.some(kw => title.includes(kw));
@@ -229,7 +229,7 @@ export function getRecentNews(limit = 10): NewsHeadline[] {
   }
 }
 
-// ── Headline classifier (server-side, deterministic) ──────────────────────────
+// -- Headline classifier (server-side, deterministic) --------------------------
 
 const BULLISH_KW = [
   "RATE CUT","RATE CUTS","REPO RATE CUT","CUT RATES","RATE REDUCTION",
@@ -270,7 +270,7 @@ function classifyHeadline(title: string): "bullish" | "bearish" | "neutral" {
   return "neutral";
 }
 
-// ── Prompt Builders ────────────────────────────────────────────────────────────
+// -- Prompt Builders ------------------------------------------------------------
 
 export function buildMarketPrompt(data: MarketStreamData): string {
   const { fiiDii, newsHeadlines } = data;
@@ -292,7 +292,7 @@ export function buildMarketPrompt(data: MarketStreamData): string {
       (diiAbsorptionRatio > 0 ? ` | DII absorbed ${diiAbsorptionRatio}% of FII outflows` : "")
     : "No FII/DII data";
 
-  // Pre-classify headlines server-side — LLM receives facts, not a classification task
+  // Pre-classify headlines server-side -- LLM receives facts, not a classification task
   const classified = newsHeadlines.map(n => ({ ...n, tone: classifyHeadline(n.title) }));
   const bullishCount = classified.filter(n => n.tone === "bullish").length;
   const bearishCount = classified.filter(n => n.tone === "bearish").length;
@@ -303,10 +303,10 @@ export function buildMarketPrompt(data: MarketStreamData): string {
   const topBullish = classified.find(n => n.tone === "bullish");
   const topBearish = classified.find(n => n.tone === "bearish");
   const topHeadlineForInsight = dominantTone === "BULLISH"
-    ? (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : "—")
+    ? (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : "--")
     : dominantTone === "BEARISH"
-    ? (topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "—")
-    : (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "—");
+    ? (topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "--")
+    : (topBullish ? `"${topBullish.title}" [${topBullish.source}]` : topBearish ? `"${topBearish.title}" [${topBearish.source}]` : "--");
 
   const newsBlock = newsHeadlines.length
     ? classified.map((n, i) => `${i + 1}. [${n.tone.toUpperCase()}] [${n.source}] ${n.title}`).join("\n")
@@ -321,7 +321,7 @@ export function buildMarketPrompt(data: MarketStreamData): string {
     "🔴 BEARISH";
 
   return `You are a senior equity research analyst. Today: ${new Date().toISOString().split("T")[0]}.
-Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX. All classification is pre-computed — your job is to write clear, specific insights using the facts below.
+Task: Produce a Smart Money Signal for NIFTY 50 / SENSEX. All classification is pre-computed -- your job is to write clear, specific insights using the facts below.
 
 ━━━ PRE-COMPUTED SIGNALS (do NOT override or recompute) ━━━
 
@@ -336,10 +336,10 @@ NEWS SENTIMENT SIGNAL: ${dominantEmoji} ${dominantTone}
 - Most impactful headline: ${topHeadlineForInsight}
 
 ━━━ RULES ━━━
-- Use the pre-computed signals above verbatim in your scorecard — do not change the signal icons or direction.
+- Use the pre-computed signals above verbatim in your scorecard -- do not change the signal icons or direction.
 - FII/DII is the PRIMARY signal. If FII/DII and News conflict → final call follows FII/DII, confidence = MEDIUM.
 - If both agree → final call follows both, confidence = HIGH.
-- Cite exact ₹ figures from the data — no rounding, no paraphrasing.
+- Cite exact ₹ figures from the data -- no rounding, no paraphrasing.
 BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait and watch", "market participants", "broader trends", "navigating", "could potentially"
 
 ━━━ OUTPUT FORMAT (follow exactly) ━━━
@@ -348,16 +348,16 @@ BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait a
 | Stream                | Signal | Key Fact |
 |-----------------------|--------|----------|
 | FII/DII Flows         | ${fiiSignal} | 7-day FII: ${fiiCumulative >= 0 ? "+" : ""}${fiiCumulative.toFixed(0)}Cr, ${fiiSellingDays}/${fiiDii.length} selling days${diiAbsorptionRatio > 0 ? `, DII absorbed ${diiAbsorptionRatio}%` : ""} |
-| Market News Sentiment | ${dominantEmoji} ${dominantTone} | ${bullishCount} bullish, ${bearishCount} bearish — ${topHeadlineForInsight} |
+| Market News Sentiment | ${dominantEmoji} ${dominantTone} | ${bullishCount} bullish, ${bearishCount} bearish -- ${topHeadlineForInsight} |
 
 ## Stream Insights
 Two sentences only. Start each with the exact label.
 
-FII/DII Flows: [use the exact numbers above — FII cumulative ₹, selling days count, DII cumulative ₹, DII absorption %. State direction with "because".]
+FII/DII Flows: [use the exact numbers above -- FII cumulative ₹, selling days count, DII cumulative ₹, DII absorption %. State direction with "because".]
 Market News Sentiment: [state "${bullishCount} bullish vs ${bearishCount} bearish headlines", cite the most impactful headline with source in brackets, and state what it implies for NIFTY.]
 
 ## Smart Money Signal
-One sentence — start with BULLISH / BEARISH / NEUTRAL. Cite the specific ₹ figure or headline that drives the call.
+One sentence -- start with BULLISH / BEARISH / NEUTRAL. Cite the specific ₹ figure or headline that drives the call.
 
 ## Confidence: HIGH / MEDIUM / LOW
 Reason: [state whether FII/DII and news agree or conflict; if conflict, name the specific tension]
@@ -367,7 +367,7 @@ Reason: [state whether FII/DII and news agree or conflict; if conflict, name the
 FII/DII EQUITY FLOWS (${fiiDii.length} trading days):
 ${fiiBlock}
 
-MARKET NEWS HEADLINES (pre-classified — ${newsHeadlines.length} total):
+MARKET NEWS HEADLINES (pre-classified -- ${newsHeadlines.length} total):
 ${newsBlock}
 
 ━━━ END ━━━`;
@@ -376,7 +376,7 @@ ${newsBlock}
 export function buildSymbolPrompt(data: SymbolStreamData): string {
   const { symbol, bulkBlockDeals, insiders, stockNews } = data;
 
-  // Only actual transactions — filter 0-share disclosure artifacts
+  // Only actual transactions -- filter 0-share disclosure artifacts
   const activeInsiders = insiders.filter(i => i.sharesTransacted > 0);
 
   // Compute insider conviction signals
@@ -402,7 +402,7 @@ export function buildSymbolPrompt(data: SymbolStreamData): string {
 
   const newsBlock = stockNews.length
     ? stockNews.slice(0, 6).map((n, i) => {
-        const snippet = n.content ? ` — ${n.content}` : "";
+        const snippet = n.content ? ` -- ${n.content}` : "";
         return `${i + 1}. [${n.source}] ${n.title}${snippet}`;
       }).join("\n")
     : `No recent news found mentioning ${symbol}`;
@@ -413,30 +413,30 @@ Task: Produce a Smart Money Signal for ${symbol} from the four data streams belo
 ━━━ HARD INTERPRETATION RULES ━━━
 
 INSIDER ACTIVITY RULES:
-- Promoter or Director BUYING > 10,000 shares = 🟢 HIGH CONVICTION BULLISH — they have inside knowledge of fundamentals; name them and state exact stake increase
-- Multiple insiders (2+) buying simultaneously = 🟢 VERY BULLISH — convergent insider confidence
-- KMP or Director SELLING > 0.5% of their stake = 🔴 BEARISH — note timing vs results dates
+- Promoter or Director BUYING > 10,000 shares = 🟢 HIGH CONVICTION BULLISH -- they have inside knowledge of fundamentals; name them and state exact stake increase
+- Multiple insiders (2+) buying simultaneously = 🟢 VERY BULLISH -- convergent insider confidence
+- KMP or Director SELLING > 0.5% of their stake = 🔴 BEARISH -- note timing vs results dates
 - Pledge creation by promoter = 🔴 BEARISH (funding stress signal)
 - "Other" category with any shares = interpret based on direction (buy/sell)
 - Net buy shares > net sell shares → lean bullish despite mixed activity
 - NEVER skip this stream if any data exists
 
 BULK/BLOCK DEALS RULES:
-- Named institution (Mutual Fund, FII, Insurance company) BUY > ₹50Cr = 🟢 BULLISH conviction entry — name the institution
-- Named institution SELL > ₹50Cr = 🔴 BEARISH distribution — note if at discount to CMP
+- Named institution (Mutual Fund, FII, Insurance company) BUY > ₹50Cr = 🟢 BULLISH conviction entry -- name the institution
+- Named institution SELL > ₹50Cr = 🔴 BEARISH distribution -- note if at discount to CMP
 - Multiple institutions buying same stock same day = 🟢 VERY BULLISH
 - HNI / individual name without institutional tag = ⚪ NEUTRAL signal weight
 - State the largest single deal ₹ value and buyer/seller name explicitly
 
-STOCK NEWS RULES — read every article and extract the most price-relevant event:
-- Results beat (revenue/profit above estimates) = 🟢 BULLISH — quantify the beat if figures are in the text
-- Results miss = 🔴 BEARISH — quantify
-- Large order win / contract announcement = 🟢 BULLISH — state contract value if mentioned
-- SEBI notice / regulatory action / government penalty = 🔴 BEARISH — state the penalty/action
+STOCK NEWS RULES -- read every article and extract the most price-relevant event:
+- Results beat (revenue/profit above estimates) = 🟢 BULLISH -- quantify the beat if figures are in the text
+- Results miss = 🔴 BEARISH -- quantify
+- Large order win / contract announcement = 🟢 BULLISH -- state contract value if mentioned
+- SEBI notice / regulatory action / government penalty = 🔴 BEARISH -- state the penalty/action
 - Management guidance upgrade = 🟢 BULLISH; downgrade = 🔴 BEARISH
 - M&A: being acquired/merged = 🟢 BULLISH (premium); acquiring = ⚪ NEUTRAL (depends on price)
 - Debt restructuring / default risk = 🔴 BEARISH
-- If no news: mark "—" and skip insight
+- If no news: mark "--" and skip insight
 
 CONVERGENCE RULE: If 2+ streams point the same direction → HIGH confidence. If streams conflict → MEDIUM confidence and explicitly state which streams diverge and why.
 
@@ -447,32 +447,32 @@ BANNED PHRASES: "mixed signals", "cautious optimism", "remain watchful", "wait a
 ## Stream Scorecard
 | Stream            | Signal | Key Fact |
 |-------------------|--------|----------|
-| Insider Activity  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [name + shares + stake change, or —] |
-| Bulk/Block Deals  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [institution name + side + ₹ value, or —] |
-| Stock News        | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / — | [event type + source + price implication, or —] |
+| Insider Activity  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / -- | [name + shares + stake change, or --] |
+| Bulk/Block Deals  | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / -- | [institution name + side + ₹ value, or --] |
+| Stock News        | 🟢 Bullish / 🔴 Bearish / ⚪ Neutral / -- | [event type + source + price implication, or --] |
 
 ## Stream Insights
 One sentence per stream that has data. Start with the exact label. No preamble, no numbering.
 
 Insider Activity: [name the specific insider(s), their role/category, exact shares transacted and stake % change, and state the directional implication with the word "because" or "indicating"]
-Bulk/Block Deals: [name the institution, exact ₹ value and side, and state what this positioning implies — "accumulating", "exiting", "taking profit"]
+Bulk/Block Deals: [name the institution, exact ₹ value and side, and state what this positioning implies -- "accumulating", "exiting", "taking profit"]
 Stock News: [state the single most price-relevant event for ${symbol} from the news, cite the headline and source, and state the expected price direction with reasoning]
 
 ## Smart Money Signal
-One sentence — lead with BULLISH / BEARISH / NEUTRAL, then cite the single strongest convergent data point with a ₹ figure or % or name. No hedging if Confidence is HIGH or MEDIUM.
+One sentence -- lead with BULLISH / BEARISH / NEUTRAL, then cite the single strongest convergent data point with a ₹ figure or % or name. No hedging if Confidence is HIGH or MEDIUM.
 
 ## Confidence: HIGH / MEDIUM / LOW
 Reason: [state exactly how many streams converge, which direction, and what the key risk to this call is]
 
 ━━━ DATA ━━━
 
-INSIDER TRADING DISCLOSURES — ${symbol} (last 90 days):
+INSIDER TRADING DISCLOSURES -- ${symbol} (last 90 days):
 ${insidersBlock}
 
-BULK/BLOCK DEALS — ${symbol} (today):
+BULK/BLOCK DEALS -- ${symbol} (today):
 ${dealsBlock}
 
-RECENT NEWS — articles mentioning ${symbol} (${stockNews.length} found):
+RECENT NEWS -- articles mentioning ${symbol} (${stockNews.length} found):
 ${newsBlock}
 
 ━━━ END ━━━`;

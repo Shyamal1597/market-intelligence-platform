@@ -9,11 +9,11 @@ import type { QuoteData } from "@/lib/yahoo-finance";
 import type { BseSectorQuote } from "@/lib/bse-sectors";
 
 export default function SectorsPage() {
-  // ── Nifty sectors (Yahoo Finance) ─────────────────────────────────────────
+  // -- Nifty sectors (Yahoo Finance) -----------------------------------------
   const [niftyQuotes, setNiftyQuotes] = useState<QuoteData[]>([]);
   const [niftyLoading, setNiftyLoading] = useState(true);
 
-  // ── BSE SENSEX sectors ────────────────────────────────────────────────────
+  // -- BSE SENSEX sectors ----------------------------------------------------
   const [bseSectors, setBseSectors] = useState<BseSectorQuote[]>([]);
   const [bseLoading, setBseLoading] = useState(true);
   const [bseFetchedAt, setBseFetchedAt] = useState("");
@@ -95,12 +95,12 @@ export default function SectorsPage() {
         ))}
       </div>
 
-      {/* ── BSE SENSEX tab ──────────────────────────────────────────────────── */}
+      {/* -- BSE SENSEX tab ---------------------------------------------------- */}
       {tab === "bse" && (
         <BseSectorGrid sectors={bseSectors} loading={bseLoading} />
       )}
 
-      {/* ── Nifty tab ───────────────────────────────────────────────────────── */}
+      {/* -- Nifty tab --------------------------------------------------------- */}
       {tab === "nifty" && (
         <>
           {niftyLoading ? (

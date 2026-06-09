@@ -12,7 +12,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "short", label: "Short Selling" },
 ];
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+// -- Formatters ----------------------------------------------------------------
 
 function fmtQty(n: number): string {
   if (n >= 10_000_000) return `${(n / 10_000_000).toFixed(2)} Cr`;
@@ -27,7 +27,7 @@ function fmtValue(cr: number): string {
   return `₹${(cr * 100).toFixed(1)} L`;
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+// -- Skeleton ------------------------------------------------------------------
 
 function SkeletonRow({ cols }: { cols: number }) {
   return (
@@ -41,7 +41,7 @@ function SkeletonRow({ cols }: { cols: number }) {
   );
 }
 
-// ── Deal Row ──────────────────────────────────────────────────────────────────
+// -- Deal Row ------------------------------------------------------------------
 
 function DealRow({ deal }: { deal: Deal }) {
   const isBuy = deal.side === "BUY";
@@ -50,7 +50,7 @@ function DealRow({ deal }: { deal: Deal }) {
   return (
     <tr className="border-b border-border/40 last:border-0 text-[11px] font-mono hover:bg-white/[0.02] transition-colors group">
       <td className="px-4 py-2.5 text-muted whitespace-nowrap">
-        {deal.date || <span className="text-muted/40">—</span>}
+        {deal.date || <span className="text-muted/40">--</span>}
       </td>
       <td className="px-4 py-2.5">
         <div className="text-primary font-semibold group-hover:text-amber transition-colors">
@@ -61,11 +61,11 @@ function DealRow({ deal }: { deal: Deal }) {
         </div>
       </td>
       <td className="px-4 py-2.5 text-muted truncate max-w-[180px]">
-        {deal.client || <span className="text-muted/40">—</span>}
+        {deal.client || <span className="text-muted/40">--</span>}
       </td>
       <td className="px-4 py-2.5">
         {deal.side === "UNKNOWN" ? (
-          <span className="text-muted/40">—</span>
+          <span className="text-muted/40">--</span>
         ) : (
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
@@ -86,22 +86,22 @@ function DealRow({ deal }: { deal: Deal }) {
       <td className="px-4 py-2.5 text-right text-primary tabular-nums">
         {deal.price > 0
           ? `₹${deal.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
-          : <span className="text-muted/40">—</span>
+          : <span className="text-muted/40">--</span>
         }
       </td>
       <td className="px-4 py-2.5 text-right font-semibold text-amber tabular-nums">
-        {deal.valueCr > 0 ? fmtValue(deal.valueCr) : <span className="text-muted/40">—</span>}
+        {deal.valueCr > 0 ? fmtValue(deal.valueCr) : <span className="text-muted/40">--</span>}
       </td>
     </tr>
   );
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
+// -- Empty State ---------------------------------------------------------------
 
 function EmptyState({ tab }: { tab: TabId }) {
   const msgs: Record<TabId, string> = {
     bulk: "No bulk deals found.",
-    block: "No block deals for this date. Block deals only execute in the 8:45–9:00 AM and 2:05–2:20 PM windows.",
+    block: "No block deals for this date. Block deals only execute in the 8:45-9:00 AM and 2:05-2:20 PM windows.",
     short: "No short selling data available.",
   };
   return (
@@ -113,7 +113,7 @@ function EmptyState({ tab }: { tab: TabId }) {
   );
 }
 
-// ── Table Header ──────────────────────────────────────────────────────────────
+// -- Table Header --------------------------------------------------------------
 
 function TableHead() {
   return (
@@ -129,7 +129,7 @@ function TableHead() {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// -- Page ----------------------------------------------------------------------
 
 export default function DealsPage() {
   const today = new Date().toISOString().split("T")[0];

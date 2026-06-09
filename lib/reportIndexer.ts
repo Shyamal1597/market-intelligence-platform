@@ -1,13 +1,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
-// unpdf handles Node.js/edge environments correctly — no DOMMatrix dependency
+// unpdf handles Node.js/edge environments correctly -- no DOMMatrix dependency
 
-// ── Types (re-exported from client-safe module) ───────────────────────────────
+// -- Types (re-exported from client-safe module) -------------------------------
 export type { ReportMeta, Chunk } from "./reportTypes";
 import type { ReportMeta, Chunk } from "./reportTypes";
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 const REPORTS_BASE = process.env.REPORTS_BASE || path.join(process.cwd(), "research-reports");
 const DATA_DIR = path.join(process.cwd(), "data", "reports");
@@ -23,7 +23,7 @@ const MONTH_MAP: Record<string, string> = {
   sep: "09", oct: "10", nov: "11", dec: "12",
 };
 
-// ── Filename parsing ─────────────────────────────────────────────────────────
+// -- Filename parsing ---------------------------------------------------------
 
 function parseFilename(filename: string, analystFolder: string): Partial<ReportMeta> {
   const base = path.basename(filename, ".pdf");
@@ -72,14 +72,14 @@ function parseFilename(filename: string, analystFolder: string): Partial<ReportM
   };
 }
 
-// ── PDF text extraction + metadata regex ────────────────────────────────────
+// -- PDF text extraction + metadata regex ------------------------------------
 
 function parseNumber(raw: string): number {
   return parseFloat(raw.replace(/,/g, "")) || 0;
 }
 
 function extractMetaFromText(text: string): Pick<ReportMeta, "rating" | "cmp" | "targetPrice"> {
-  const ratingMatch = text.match(/(?:recommendation|rating)\s*[:\-–]?\s*([A-Za-z][^\n]{2,30})/i);
+  const ratingMatch = text.match(/(?:recommendation|rating)\s*[:\--]?\s*([A-Za-z][^\n]{2,30})/i);
   const cmpMatch = text.match(/CMP\s*\(₹\)\s*([\d,]+(?:\.\d+)?)/i);
   const tpMatch = text.match(/Price\s*Target\s*\(₹\)\s*([\d,]+(?:\.\d+)?)/i);
 
@@ -90,7 +90,7 @@ function extractMetaFromText(text: string): Pick<ReportMeta, "rating" | "cmp" | 
   };
 }
 
-// ── Chunking ─────────────────────────────────────────────────────────────────
+// -- Chunking -----------------------------------------------------------------
 
 const CHUNK_SIZE = 1200;   // chars (~400 tokens)
 const CHUNK_OVERLAP = 150; // chars (~50 tokens)
@@ -118,7 +118,7 @@ function chunkText(text: string, reportId: string): Chunk[] {
   return chunks;
 }
 
-// ── Main indexer ─────────────────────────────────────────────────────────────
+// -- Main indexer -------------------------------------------------------------
 
 export async function indexReports(
   onProgress?: (msg: string) => void
@@ -149,7 +149,7 @@ export async function indexReports(
         // PDF extraction is handled by scripts/extract-single.mjs (child process)
         // when called via the indexing script. This path is unused at runtime.
         const buffer = await fs.readFile(filePath);
-        void buffer; // suppress unused warning — extraction done via child process
+        void buffer; // suppress unused warning -- extraction done via child process
         const text: string = "";
 
         if (!text || text.length < 100) {
@@ -178,7 +178,7 @@ export async function indexReports(
         allChunks.push(...chunkText(text, id));
         indexed++;
       } catch (err) {
-        onProgress?.(`  SKIP (parse error): ${pdf} — ${err}`);
+        onProgress?.(`  SKIP (parse error): ${pdf} -- ${err}`);
         skipped++;
       }
     }
@@ -190,7 +190,7 @@ export async function indexReports(
   return { indexed, skipped };
 }
 
-// ── Read helpers ─────────────────────────────────────────────────────────────
+// -- Read helpers -------------------------------------------------------------
 
 export async function readMetadata(): Promise<ReportMeta[]> {
   try {

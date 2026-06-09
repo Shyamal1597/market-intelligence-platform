@@ -16,7 +16,7 @@ interface FlowsData {
   fetchedAt: string;
 }
 
-// Escape a single CSV cell — wrap in quotes if it contains comma, quote, or newline.
+// Escape a single CSV cell -- wrap in quotes if it contains comma, quote, or newline.
 function csvCell(v: string | number): string {
   const s = String(v);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -24,7 +24,7 @@ function csvCell(v: string | number): string {
 }
 
 function buildCsv(entries: FiiDiiEntry[]): string {
-  // Period totals (FII Equity Net) — computed from the same entries shown in the UI
+  // Period totals (FII Equity Net) -- computed from the same entries shown in the UI
   const totals = computePeriodTotals(entries);
   const exportedAt = new Date().toLocaleString("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
@@ -33,7 +33,7 @@ function buildCsv(entries: FiiDiiEntry[]): string {
 
   // Section 1: header metadata + period totals
   const meta: (string | number)[][] = [
-    ["Research Intelligence — FII / DII Flows"],
+    ["Research Intelligence -- FII / DII Flows"],
     ["Exported", exportedAt],
     ["Rows", entries.length],
     [],
@@ -169,7 +169,7 @@ export default function FlowsPage() {
         </div>
       )}
 
-      {/* Data quality warning — shown whenever history has gaps */}
+      {/* Data quality warning -- shown whenever history has gaps */}
       <div className="mb-4">
         <FlowsGapAlert onPatched={reloadFlows} />
       </div>

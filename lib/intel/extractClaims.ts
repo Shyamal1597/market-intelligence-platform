@@ -17,34 +17,34 @@ export function buildExtractPrompt(a: BuildPromptArgs): { system: string; user: 
   const system = `You are a senior equity research analyst extracting forward-looking management guidance from earnings call transcripts.
 
 A CLAIM is only valid when ALL THREE conditions are met:
-1. FORWARD-LOOKING — management is committing to a future outcome. The target period must be AFTER this quarter. Statements describing what already happened this quarter are NOT claims, even if they mention a metric.
-2. SPECIFIC — there is at least one operational anchor: a direction with a qualifier ("compress slightly", "normalize from current levels"), an explicit number or range, or a named future period. Pure sentiment ("we feel good", "we remain confident", "we are well-positioned") is NOT a claim.
-3. METRIC-MAPPED — maps to exactly one key in the registered metrics list.
+1. FORWARD-LOOKING -- management is committing to a future outcome. The target period must be AFTER this quarter. Statements describing what already happened this quarter are NOT claims, even if they mention a metric.
+2. SPECIFIC -- there is at least one operational anchor: a direction with a qualifier ("compress slightly", "normalize from current levels"), an explicit number or range, or a named future period. Pure sentiment ("we feel good", "we remain confident", "we are well-positioned") is NOT a claim.
+3. METRIC-MAPPED -- maps to exactly one key in the registered metrics list.
 
-REJECT these — they are NOT claims:
+REJECT these -- they are NOT claims:
 - Current-quarter results reported as facts: "NIM was 3.5% this quarter", "PAT grew 22%"
 - Vague reassurance with no operational content: "we are optimistic", "momentum is strong"
 - Industry/macro commentary not specific to this company
 - Any statement where the only supporting evidence is about a DIFFERENT metric
 
-DEDUPLICATION — one claim per (metricKey × target period):
+DEDUPLICATION -- one claim per (metricKey × target period):
 If management mentions the same metric for the same target period more than once, extract the SINGLE most specific instance. Prefer a quote with an explicit number over one that is purely directional. Do not emit duplicate (metricKey, targetQuarter) pairs.
 
 CONFIDENCE:
-- "high"   — explicit number or range target ("NIM will be ~3.5%", "credit cost below 2%")
-- "medium" — directional with a specific qualifier ("compress slightly next quarter", "normalize from elevated levels")
-- "low"    — bare directional with no qualifier ("will improve", "expected to grow") — only extract if no better evidence exists for this metric in this call
+- "high"   -- explicit number or range target ("NIM will be ~3.5%", "credit cost below 2%")
+- "medium" -- directional with a specific qualifier ("compress slightly next quarter", "normalize from elevated levels")
+- "low"    -- bare directional with no qualifier ("will improve", "expected to grow") -- only extract if no better evidence exists for this metric in this call
 
 FIELD RULES:
-- quote      : verbatim from transcript, ≤300 chars, must be the sentence(s) that directly state the forward guidance for THIS metric — not a nearby sentence about a different metric
-- targetText : ≤60-char synthesis of what management is specifically committing to for this metric (e.g. "below 2% by Q2 FY26", "stable next 2 quarters", "ROE above 22% this FY") — NOT a copy of the quote
-- value      : the explicit FUTURE target number management is committing to — null if no number stated. DO NOT use the current quarter's reported actual number.
+- quote      : verbatim from transcript, ≤300 chars, must be the sentence(s) that directly state the forward guidance for THIS metric -- not a nearby sentence about a different metric
+- targetText : ≤60-char synthesis of what management is specifically committing to for this metric (e.g. "below 2% by Q2 FY26", "stable next 2 quarters", "ROE above 22% this FY") -- NOT a copy of the quote
+- value      : the explicit FUTURE target number management is committing to -- null if no number stated. DO NOT use the current quarter's reported actual number.
 - rangeMin/rangeMax : use when management gives a range target; null otherwise
-- direction  : "value" if a specific number, "range" if a range, "up"/"down"/"stable" for directional — reflects the GUIDED direction, not what happened this quarter
+- direction  : "value" if a specific number, "range" if a range, "up"/"down"/"stable" for directional -- reflects the GUIDED direction, not what happened this quarter
 - targetQuarter : resolve to "Q{n}-FY{yy}" if determinable (e.g. "next quarter" from Q1-FY26 → "Q2-FY26"); null for multi-quarter or fiscal-year targets
 - conditional : capture the condition if guidance is explicitly contingent ("if rate cuts materialise")
 
-OUTPUT: Respond ONLY with the JSON object below — no preamble, no explanation, no markdown fences.
+OUTPUT: Respond ONLY with the JSON object below -- no preamble, no explanation, no markdown fences.
 { "claims": [Claim, ...] }`;
 
   const registryJson = JSON.stringify(
@@ -56,9 +56,9 @@ OUTPUT: Respond ONLY with the JSON object below — no preamble, no explanation,
   );
 
   const user = `COMPANY: ${a.symbol}
-SOURCE QUARTER (when this call took place — all claims must target a period AFTER this quarter): ${a.quarter}
+SOURCE QUARTER (when this call took place -- all claims must target a period AFTER this quarter): ${a.quarter}
 
-TRACKED METRICS (only extract claims about these — match by key, label, aliases, or description):
+TRACKED METRICS (only extract claims about these -- match by key, label, aliases, or description):
 ${registryJson}
 
 TRANSCRIPT:
@@ -82,7 +82,7 @@ export function validateClaim(
   return { valid: true };
 }
 
-/** Numeric score for claim specificity — used for deduplication. Higher = keep. */
+/** Numeric score for claim specificity -- used for deduplication. Higher = keep. */
 function specificityScore(c: Partial<ExtractedClaim>): number {
   if (c.direction === "value" || c.direction === "range") return 3;
   if (c.confidence === "high") return 2;
@@ -133,7 +133,7 @@ export interface ExtractClaimsResult {
 
 // Max concurrent Haiku calls per symbol. When intel-rebuild runs multiple symbols
 // in parallel, total concurrent calls = STAGE3_CONCURRENCY × symbols. Keep low to
-// avoid 429s — Haiku's burst limit is ~10 rpm on most Anthropic tiers.
+// avoid 429s -- Haiku's burst limit is ~10 rpm on most Anthropic tiers.
 const STAGE3_CONCURRENCY = 2;
 
 // Delay between batch starts (ms). Gives rate-limiter headroom when symbols run together.
@@ -155,7 +155,7 @@ async function processQuarter(
   const model = defaultExtractionModel();
   const localWarnings: string[] = [];
   let result: Awaited<ReturnType<typeof callJson<{ claims: Partial<ExtractedClaim>[] }>>>;
-  // callJson wraps withRetry (3 attempts, exponential backoff) — no outer loop needed.
+  // callJson wraps withRetry (3 attempts, exponential backoff) -- no outer loop needed.
   try {
     result = await callJson<{ claims: Partial<ExtractedClaim>[] }>({
       model,
@@ -166,7 +166,7 @@ async function processQuarter(
       ...(args.maxTokens !== undefined && { maxTokens: args.maxTokens }),
     });
   } catch (err) {
-    localWarnings.push(`${quarter}: LLM error — ${(err as Error).message.slice(0, 120)}`);
+    localWarnings.push(`${quarter}: LLM error -- ${(err as Error).message.slice(0, 120)}`);
     return { quarter, claims: [], warnings: localWarnings, cost: 0 };
   }
   const cost = estimateCostUsd(model, result);
@@ -219,10 +219,10 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
     const q = f.replace(/\.txt$/i, "");
     const qi = quarterToInt(q);
     if (qi === 0) {
-      warnings0.push(`Skipping "${f}" — filename is not a valid Q{n}-FY{yy} label`);
+      warnings0.push(`Skipping "${f}" -- filename is not a valid Q{n}-FY{yy} label`);
       return false;
     }
-    // Never extract claims from transcripts before Q4-FY25 — too old to be actionable
+    // Never extract claims from transcripts before Q4-FY25 -- too old to be actionable
     // and wastes API credits. onlyQuarters is an additional optional narrowing on top.
     if (qi < MIN_QUARTER_INT) return false;
     if (args.onlyQuarters) return args.onlyQuarters.includes(q);
@@ -239,7 +239,7 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
       const existing = JSON.parse(await fs.readFile(args.outFile, "utf-8")) as ClaimsArtifact;
       existingByQuarter = existing.byQuarter ?? {};
       existingWarnings = existing.warnings ?? [];
-    } catch { /* no existing file — start fresh */ }
+    } catch { /* no existing file -- start fresh */ }
   }
 
   const byQuarter: Record<string, ExtractedClaim[]> = { ...existingByQuarter };

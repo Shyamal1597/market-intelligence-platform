@@ -43,7 +43,7 @@ export interface SectorRegistry {
   segmentDescriptions?: Record<string, string>;
 }
 
-// ── Fundamentals (Stage 1 output) ───────────────────────────────────────────
+// -- Fundamentals (Stage 1 output) -------------------------------------------
 export interface QuarterFundamentals {
   endDate: string;
   metrics: { [registryKey: string]: number | null };
@@ -58,7 +58,7 @@ export interface Fundamentals {
   warnings: string[];
 }
 
-// ── Claims (Stage 3 output) ─────────────────────────────────────────────────
+// -- Claims (Stage 3 output) -------------------------------------------------
 export type ClaimDirection = "value" | "range" | "up" | "down" | "stable";
 export type Confidence = "high" | "medium" | "low";
 
@@ -88,7 +88,7 @@ export interface ClaimsArtifact {
   warnings: string[];
 }
 
-// ── Checks (Stage 4 output) ─────────────────────────────────────────────────
+// -- Checks (Stage 4 output) -------------------------------------------------
 /** Verdict rendered by reading the target quarter's earnings transcript. */
 export type Verdict = "met" | "moving" | "miss" | "pending" | "ambiguous";
 
@@ -141,10 +141,10 @@ export interface QuarterSummary {
   onTrackPct: number;
 }
 
-// ── Symbol → sector ─────────────────────────────────────────────────────────
+// -- Symbol → sector ---------------------------------------------------------
 // NIFTY 50 + NIFTY Next 50 universe (~100 stocks)
 export const SYMBOL_SECTOR: Record<string, SectorKey> = {
-  // ── Banking ───────────────────────────────────────────────────────────────
+  // -- Banking ---------------------------------------------------------------
   HDFCBANK:    "bank",
   ICICIBANK:   "bank",
   SBIN:        "bank",
@@ -155,14 +155,14 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   PNB:         "bank",
   CANBK:       "bank",
 
-  // ── Insurance — Holding / Diversified ─────────────────────────────────────
+  // -- Insurance -- Holding / Diversified -------------------------------------
   BAJAJFINSV:  "insurance-holding",
 
-  // ── Insurance — Life ──────────────────────────────────────────────────────
+  // -- Insurance -- Life ------------------------------------------------------
   SBILIFE:     "insurance-life",
   HDFCLIFE:    "insurance-life",
 
-  // ── NBFC / Lending ────────────────────────────────────────────────────────
+  // -- NBFC / Lending --------------------------------------------------------
   BAJFINANCE:  "nbfc",
   SHRIRAMFIN:  "nbfc",
   CHOLAFIN:    "nbfc",
@@ -171,13 +171,13 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   RECLTD:      "nbfc",
   IRFC:        "nbfc",
 
-  // ── Financial Services (AMC / Holding / Diversified) ──────────────────────
+  // -- Financial Services (AMC / Holding / Diversified) ----------------------
   JIOFIN:      "financial-services",
   BAJAJHLDNG:  "financial-services",
   HDFCAMC:     "financial-services",
   TATACAP:     "financial-services",
 
-  // ── IT Services ───────────────────────────────────────────────────────────
+  // -- IT Services -----------------------------------------------------------
   TCS:         "it-services",
   INFY:        "it-services",
   HCLTECH:     "it-services",
@@ -185,7 +185,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   TECHM:       "it-services",
   LTM:         "it-services",
 
-  // ── Pharma & Healthcare ───────────────────────────────────────────────────
+  // -- Pharma & Healthcare ---------------------------------------------------
   SUNPHARMA:   "pharma",
   CIPLA:       "pharma",
   DRREDDY:     "pharma",
@@ -195,7 +195,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   TORNTPHARM:  "pharma",
   ZYDUSLIFE:   "pharma",
 
-  // ── Auto & Ancillaries ────────────────────────────────────────────────────
+  // -- Auto & Ancillaries ----------------------------------------------------
   MARUTI:      "auto",
   "M&M":       "auto",
   "BAJAJ-AUTO":"auto",
@@ -208,7 +208,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   MOTHERSON:   "auto",
   BOSCHLTD:    "auto",
 
-  // ── FMCG ──────────────────────────────────────────────────────────────────
+  // -- FMCG ------------------------------------------------------------------
   HINDUNILVR:  "fmcg",
   ITC:         "fmcg",
   NESTLEIND:   "fmcg",
@@ -218,7 +218,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   VBL:         "fmcg",
   UNITDSPR:    "fmcg",
 
-  // ── Oil, Gas & Energy ─────────────────────────────────────────────────────
+  // -- Oil, Gas & Energy -----------------------------------------------------
   RELIANCE:    "oil-gas-energy",
   ONGC:        "oil-gas-energy",
   COALINDIA:   "oil-gas-energy",
@@ -230,7 +230,7 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   ADANIENSOL:  "oil-gas-energy",
   ADANIGREEN:  "oil-gas-energy",
 
-  // ── Metals & Mining ───────────────────────────────────────────────────────
+  // -- Metals & Mining -------------------------------------------------------
   JSWSTEEL:    "metals-mining",
   TATASTEEL:   "metals-mining",
   HINDALCO:    "metals-mining",
@@ -238,21 +238,21 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   VEDL:        "metals-mining",
   JINDALSTEL:  "metals-mining",
 
-  // ── Power & Utilities ─────────────────────────────────────────────────────
+  // -- Power & Utilities -----------------------------------------------------
   NTPC:        "power-utilities",
   POWERGRID:   "power-utilities",
 
-  // ── Telecom ───────────────────────────────────────────────────────────────
+  // -- Telecom ---------------------------------------------------------------
   BHARTIARTL:  "telecom",
 
-  // ── Cement & Building Materials ───────────────────────────────────────────
+  // -- Cement & Building Materials -------------------------------------------
   ULTRACEMCO:  "cement-building",
   AMBUJACEM:   "cement-building",
   SHREECEM:    "cement-building",
   GRASIM:      "cement-building",
   PIDILITIND:  "cement-building",
 
-  // ── Capital Goods & Infra ─────────────────────────────────────────────────
+  // -- Capital Goods & Infra -------------------------------------------------
   LT:          "capital-goods-infra",
   ABB:         "capital-goods-infra",
   SIEMENS:     "capital-goods-infra",
@@ -261,13 +261,13 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   ADANIPORTS:  "capital-goods-infra",
   ADANIENT:    "capital-goods-infra",
 
-  // ── Defence ───────────────────────────────────────────────────────────────
+  // -- Defence ---------------------------------------------------------------
   BEL:         "defence",
   HAL:         "defence",
   MAZDOCK:     "defence",
   SOLARINDS:   "defence",
 
-  // ── Consumer & Retail ─────────────────────────────────────────────────────
+  // -- Consumer & Retail -----------------------------------------------------
   TITAN:       "consumer-retail",
   ETERNAL:     "consumer-retail",
   TRENT:       "consumer-retail",
@@ -275,10 +275,10 @@ export const SYMBOL_SECTOR: Record<string, SectorKey> = {
   ASIANPAINT:  "consumer-retail",
   INDHOTEL:    "consumer-retail",
 
-  // ── Aviation ──────────────────────────────────────────────────────────────
+  // -- Aviation --------------------------------------------------------------
   INDIGO:      "aviation",
 
-  // ── Real Estate ───────────────────────────────────────────────────────────
+  // -- Real Estate -----------------------------------------------------------
   DLF:         "real-estate",
   LODHA:       "real-estate",
 };

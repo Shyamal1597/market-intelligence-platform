@@ -29,7 +29,7 @@ export async function GET(
     const summary = JSON.parse(raw) as QuarterSummary;
     return NextResponse.json(summary);
   } catch {
-    // Not generated yet — return pending instead of 404 so UI can show placeholder
+    // Not generated yet -- return pending instead of 404 so UI can show placeholder
     return NextResponse.json({ pending: true }, { status: 200 });
   }
 }

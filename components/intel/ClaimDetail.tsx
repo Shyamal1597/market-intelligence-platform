@@ -30,11 +30,11 @@ const VERDICT_ACCENT: Record<Verdict, string> = {
 function claimValueDisplay(c: EnrichedClaim): string {
   if (c.direction === "value" && c.value !== null) return `${c.value}${c.metricUnit}`;
   if (c.direction === "range" && c.rangeMin !== null && c.rangeMax !== null)
-    return `${c.rangeMin}–${c.rangeMax}${c.metricUnit}`;
+    return `${c.rangeMin}-${c.rangeMax}${c.metricUnit}`;
   if (c.direction === "up")     return "↑ improve";
   if (c.direction === "down")   return "↓ decline";
   if (c.direction === "stable") return "→ stable";
-  return c.qualitativeText ?? "—";
+  return c.qualitativeText ?? "--";
 }
 
 export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) {
@@ -58,7 +58,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
         <div className="shrink-0 w-36 flex flex-col gap-1.5">
           <StatusBadge status={verdict} />
           <span className="text-[11px] font-mono text-amber leading-tight truncate">{claim.metricLabel}</span>
-          <span className="text-[10px] font-mono text-muted">{claim.resolvedTargetQuarter ?? "—"}</span>
+          <span className="text-[10px] font-mono text-muted">{claim.resolvedTargetQuarter ?? "--"}</span>
         </div>
 
         <div className="shrink-0 w-28 flex flex-col gap-0.5 pt-0.5">
@@ -76,7 +76,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
             <span className="text-xs font-mono text-muted italic self-center mt-2">
               {verdict === "pending"
                 ? claim.check?.verifiedInQuarter === "unknown" || !claim.resolvedTargetQuarter
-                  ? "Forward guidance — no target quarter yet"
+                  ? "Forward guidance -- no target quarter yet"
                   : "Awaiting next quarter's results"
                 : "Not discussed in transcript"}
             </span>
@@ -103,7 +103,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
 
           {/* Two-column before/after */}
           <div className="grid grid-cols-2 gap-3">
-            {/* LEFT — Source quarter promise */}
+            {/* LEFT -- Source quarter promise */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold text-amber/70 uppercase tracking-wider">{sourceQuarter}</span>
@@ -112,12 +112,12 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
               <blockquote className="border-l-2 border-amber/30 pl-3 text-xs text-muted font-sans italic leading-relaxed flex-1">
                 &ldquo;{claim.quote}&rdquo;
                 {claim.speaker && (
-                  <span className="block not-italic text-primary/70 text-[10px] mt-1">— {claim.speaker}</span>
+                  <span className="block not-italic text-primary/70 text-[10px] mt-1">-- {claim.speaker}</span>
                 )}
               </blockquote>
             </div>
 
-            {/* RIGHT — Target quarter actuals */}
+            {/* RIGHT -- Target quarter actuals */}
             {claim.check ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -139,7 +139,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
                     &ldquo;{claim.check.quote}&rdquo;
                     {(claim.check as { speaker?: string | null }).speaker && (
                       <span className="block not-italic text-primary/70 text-[10px] mt-1">
-                        — {(claim.check as { speaker?: string | null }).speaker}
+                        -- {(claim.check as { speaker?: string | null }).speaker}
                         {(claim.check as { section?: string | null }).section && (
                           <span className="text-muted"> · {(claim.check as { section?: string | null }).section}</span>
                         )}
@@ -147,7 +147,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
                     )}
                   </blockquote>
                 ) : (
-                  <p className="text-xs font-mono text-muted italic">{displayActual ?? "—"}</p>
+                  <p className="text-xs font-mono text-muted italic">{displayActual ?? "--"}</p>
                 )}
               </div>
             ) : (
@@ -157,7 +157,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
             )}
           </div>
 
-          {/* Transcript context — collapsible */}
+          {/* Transcript context -- collapsible */}
           {(claim.check as { context?: string | null } | null)?.context && (
             <div>
               <button
@@ -186,7 +186,7 @@ export function ClaimDetail({ claim, sourceQuarter, longitudinalTrack }: Props) 
           {longitudinalTrack.length > 1 && (
             <div className="border-t border-border/40 pt-3">
               <span className="text-[10px] font-mono text-muted uppercase tracking-wider block mb-2">
-                {claim.metricLabel} — history
+                {claim.metricLabel} -- history
               </span>
               <div className="flex items-center gap-2 flex-wrap">
                 {longitudinalTrack.map((pt, i) => (

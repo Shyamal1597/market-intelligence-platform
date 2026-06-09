@@ -1,5 +1,5 @@
 /**
- * Stage 5 — Quarterly summary generation.
+ * Stage 5 -- Quarterly summary generation.
  * Uses the LLM to write an analyst-quality narrative brief for a given quarter,
  * grounded in both the source and target transcripts + all verified claims.
  */
@@ -103,7 +103,7 @@ OUTPUT: Return a JSON object with exactly this structure:
 {
   "headline": "2-3 sentences covering overall guidance delivery for all major segments",
   "segments": {
-    "<SegmentName>": "1-2 sentences on that segment's performance vs guidance — only include segments that had claims this quarter"
+    "<SegmentName>": "1-2 sentences on that segment's performance vs guidance -- only include segments that had claims this quarter"
   },
   "keyThemes": ["max 4 short themes or watchpoints for the next quarter"]
 }`;

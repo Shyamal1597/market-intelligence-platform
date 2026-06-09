@@ -27,6 +27,7 @@ const VERDICT_PILL: Record<string, string> = {
 
 export function GuidanceClaimCard({ claim }: Props) {
   const [reasoningOpen, setReasoningOpen] = useState(false);
+  const [actualsOpen, setActualsOpen] = useState(false);
 
   const verdict: Verdict =
     claim.check?.verdict ?? (claim.resolvedTargetQuarter ? "pending" : "ambiguous");
@@ -37,7 +38,7 @@ export function GuidanceClaimCard({ claim }: Props) {
   return (
     <div className={`border-l-2 ${borderClass} pl-4 py-3 rounded-sm`}>
 
-      {/* ── Row 1: verdict badge + metric label ── */}
+      {/* -- Row 1: verdict badge + metric label -- */}
       <div className="flex items-center gap-2 mb-2">
         <span
           className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border shrink-0 ${pillClass}`}
@@ -49,22 +50,22 @@ export function GuidanceClaimCard({ claim }: Props) {
         </span>
       </div>
 
-      {/* ── Row 2: guided target ── */}
+      {/* -- Row 2: guided target -- */}
       {claim.targetText && (
         <p className="text-xs font-mono text-primary/70 mb-2 leading-snug">
           ↗ {claim.targetText}
         </p>
       )}
 
-      {/* ── Row 3: guidance quote ── */}
+      {/* -- Row 3: guidance quote -- */}
       <blockquote className="text-sm font-sans text-primary/65 italic leading-relaxed mb-1">
         &ldquo;{snippetQuote(claim.quote)}&rdquo;
       </blockquote>
       {claim.speaker && (
-        <p className="text-[11px] font-mono text-muted/45 mb-2">— {claim.speaker}</p>
+        <p className="text-[11px] font-mono text-muted/45 mb-2">-- {claim.speaker}</p>
       )}
 
-      {/* ── Verification block (decisive/moving claims only) ── */}
+      {/* -- Verification block (decisive/moving claims only) -- */}
       {claim.check ? (
         <div className="mt-3 pt-3 border-t border-border/25 space-y-2">
           <span className="text-[10px] font-mono text-muted/50 uppercase tracking-wider block">
@@ -100,6 +101,32 @@ export function GuidanceClaimCard({ claim }: Props) {
           </span>
         </div>
       ) : null}
+
+      {/* -- Actuals: transcript evidence from target quarter (zero-cost keyword search) -- */}
+      {claim.actuals && claim.actuals.snippets.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-border/25">
+          <button
+            onClick={() => setActualsOpen(p => !p)}
+            className="flex items-center gap-1.5 text-[10px] font-mono text-muted/60 hover:text-teal/70 transition-colors w-full text-left"
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal/50 shrink-0" />
+            <span>
+              {quarterDisplay(claim.actuals.targetQuarter)} transcript mention
+              {claim.actuals.snippets.length > 1 ? `s (${claim.actuals.snippets.length})` : ""}
+            </span>
+            <span className="ml-1 text-muted/30">{actualsOpen ? "▲" : "▾"}</span>
+          </button>
+          {actualsOpen && (
+            <div className="mt-2 space-y-2">
+              {claim.actuals.snippets.map((s, i) => (
+                <p key={i} className="text-[11px] font-sans text-muted/70 leading-relaxed pl-3 border-l border-teal/20 italic">
+                  {s.length > 220 ? s.slice(0, 220) + "…" : s}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

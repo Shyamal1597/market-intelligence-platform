@@ -11,10 +11,10 @@
  * Stage 4 (cross-verification) for newly ingested symbols.
  *
  * Body (JSON):
- *   symbols?: string[]      — specific symbols to check (default: all SYMBOL_SECTOR)
- *   lookbackDays?: number   — how many days back to search BSE (default: 14)
- *   runPipeline?: boolean   — run Stage 3+4 after ingestion (default: false)
- *   screenerFallback?: boolean — try Screener for 0-result BSE symbols (default: true)
+ *   symbols?: string[]      -- specific symbols to check (default: all SYMBOL_SECTOR)
+ *   lookbackDays?: number   -- how many days back to search BSE (default: 14)
+ *   runPipeline?: boolean   -- run Stage 3+4 after ingestion (default: false)
+ *   screenerFallback?: boolean -- try Screener for 0-result BSE symbols (default: true)
  *
  * Response:
  *   { ingested, skipped, errors, pipelineTriggered, symbols: [...] }
@@ -40,7 +40,7 @@ const MIN_USEFUL_CHARS = 5_000; // below this → junk filing (press release/age
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
-// ── PDF download ─────────────────────────────────────────────────────────────
+// -- PDF download -------------------------------------------------------------
 
 function downloadPdf(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -100,7 +100,7 @@ async function downloadWithFallback(attachment: string): Promise<Buffer> {
   }
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+// -- Route handler -------------------------------------------------------------
 
 export async function POST(req: Request) {
   try {
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
 
     for (const symbol of targetSymbols) {
       const scripCodes = SYMBOL_TO_SCRIP[symbol] ?? [];
-      // No early-exit for missing scrip codes — fall through to Screener fallback.
+      // No early-exit for missing scrip codes -- fall through to Screener fallback.
 
       let bseFilings: Awaited<ReturnType<typeof fetchHistoricalTranscripts>> = [];
       for (const scrip of scripCodes) {
@@ -146,11 +146,11 @@ export async function POST(req: Request) {
           const filings = await fetchHistoricalTranscripts(scrip, startDate);
           bseFilings.push(...filings);
         } catch {
-          // BSE API error — continue
+          // BSE API error -- continue
         }
       }
 
-      // ── BSE source ─────────────────────────────────────────────────────────
+      // -- BSE source ---------------------------------------------------------
       let bseUsefulIngested = 0; // count of transcripts above MIN_USEFUL_CHARS threshold
       for (const filing of bseFilings) {
         const attachment = filing.ATTACHMENTNAME?.trim();
@@ -209,9 +209,9 @@ export async function POST(req: Request) {
         }
       }
 
-      // ── Screener supplement ───────────────────────────────────────────────
+      // -- Screener supplement -----------------------------------------------
       // Always runs (unless screenerFallback=false) as an additive supplement to BSE.
-      // BSE is not a reliable source for the latest transcript — subcategories shift,
+      // BSE is not a reliable source for the latest transcript -- subcategories shift,
       // attachments get purged. Screener aggregates from multiple sources and
       // consistently has the latest. alreadyExisted quarters are skipped, so this is safe.
       if (screenerFallback) {
@@ -219,11 +219,11 @@ export async function POST(req: Request) {
         try {
           screenerConcalls = await fetchScreenerConcalls(symbol);
         } catch {
-          // Screener fetch failed — skip
+          // Screener fetch failed -- skip
         }
 
         for (const concall of screenerConcalls) {
-          // Re-validate URL server-side — scraper validation runs client-side
+          // Re-validate URL server-side -- scraper validation runs client-side
           // but the download happens from the server's network context.
           try {
             const p = new URL(concall.pdfUrl);
@@ -276,13 +276,13 @@ export async function POST(req: Request) {
         }
       }
 
-      // ── Trigger pipeline for newly ingested symbols ────────────────────────
+      // -- Trigger pipeline for newly ingested symbols ------------------------
       const wasNewlyIngested = result.symbols.some(
         (s) => s.symbol === symbol && s.status === "ingested",
       );
 
       if (wasNewlyIngested && runPipeline) {
-        // Fire-and-forget — pipeline runs asynchronously
+        // Fire-and-forget -- pipeline runs asynchronously
         runFullPipeline(symbol).catch(console.error);
         result.pipelineTriggered.push(symbol);
       }

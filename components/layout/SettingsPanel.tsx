@@ -3,7 +3,7 @@
 import { useTheme, FONT_SIZE_PX, type FontSize, type ThemeMode, type CustomColors } from "@/lib/theme";
 import { X, Sun, Moon, Palette, ALargeSmall, Check, RotateCcw, Monitor } from "lucide-react";
 
-// ── Option definitions ─────────────────────────────────────────────────────────
+// -- Option definitions ---------------------------------------------------------
 const FONT_OPTIONS: { key: FontSize; symbol: string; label: string }[] = [
   { key: "sm", symbol: "A", label: "Compact" },
   { key: "md", symbol: "A", label: "Default" },
@@ -49,7 +49,7 @@ const CUSTOM_FIELDS: { key: keyof CustomColors; label: string; hint: string }[] 
   { key: "background", label: "Background", hint: "Page base colour" },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 export function SettingsPanel() {
   const {
     settingsOpen, setSettingsOpen,
@@ -112,7 +112,7 @@ export function SettingsPanel() {
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-8">
 
-          {/* ── Font Size ─────────────────────────────────────── */}
+          {/* -- Font Size --------------------------------------- */}
           <section>
             <p
               className="font-mono text-[10px] tracking-widest uppercase mb-3"
@@ -159,7 +159,7 @@ export function SettingsPanel() {
           {/* Divider */}
           <div className="h-px" style={{ background: "var(--color-border)" }} />
 
-          {/* ── Theme ─────────────────────────────────────────── */}
+          {/* -- Theme ------------------------------------------- */}
           <section>
             <p
               className="font-mono text-[10px] tracking-widest uppercase mb-3"
@@ -206,7 +206,7 @@ export function SettingsPanel() {
             </div>
           </section>
 
-          {/* ── Custom Colours (only when mode === "custom") ───── */}
+          {/* -- Custom Colours (only when mode === "custom") ----- */}
           {mode === "custom" && (
             <>
               <div className="h-px" style={{ background: "var(--color-border)" }} />

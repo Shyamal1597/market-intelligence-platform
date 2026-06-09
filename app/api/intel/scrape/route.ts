@@ -8,8 +8,8 @@ import { scrapeBSETranscripts, readScrapeLog } from "@/lib/intel/bse-transcript-
  * transcript PDFs for tracked stocks, downloads them, and triggers the pipeline.
  *
  * Body (optional JSON):
- *   { "symbols": ["HDFCBANK", "TCS"] }  — filter to specific symbols
- *   { "dryRun": true }                  — scan but don't trigger pipeline
+ *   { "symbols": ["HDFCBANK", "TCS"] }  -- filter to specific symbols
+ *   { "dryRun": true }                  -- scan but don't trigger pipeline
  *
  * This endpoint is designed to be called by:
  *   1. A system cron job (every 4 hours during results season)
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       }
       if (body?.dryRun === true) dryRun = true;
     } catch {
-      // No body or invalid JSON — run with defaults
+      // No body or invalid JSON -- run with defaults
     }
 
     const result = await scrapeBSETranscripts({
@@ -51,9 +51,9 @@ export async function POST(req: Request) {
 /**
  * GET /api/intel/scrape
  *
- * Returns the scrape log — history of past scrape runs.
+ * Returns the scrape log -- history of past scrape runs.
  * Query params:
- *   ?limit=10  — number of recent entries (default: 20)
+ *   ?limit=10  -- number of recent entries (default: 20)
  */
 export async function GET(req: Request) {
   try {

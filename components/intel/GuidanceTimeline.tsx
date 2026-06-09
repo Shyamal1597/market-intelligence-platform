@@ -31,7 +31,7 @@ export function GuidanceTimeline({
   if (quarters.length === 0) {
     return (
       <div className="rounded border border-border bg-surface p-12 text-center text-muted font-mono text-sm">
-        No claims data yet — run the pipeline to extract guidance.
+        No claims data yet -- run the pipeline to extract guidance.
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function GuidanceTimeline({
       {/* Verdict filter */}
       <VerdictFilterBar active={verdictFilter} onChange={setVerdictFilter} />
 
-      {/* Quarter chapters — newest first */}
+      {/* Quarter chapters -- newest first */}
       <div className="space-y-2">
         {quarters.map((q, i) => (
           <QuarterChapter

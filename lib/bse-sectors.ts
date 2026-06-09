@@ -12,7 +12,7 @@
 import https from "node:https";
 import zlib from "node:zlib";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 
 export interface BseSectorQuote {
   code: string;          // BSE index code, e.g. "BSECG"
@@ -40,7 +40,7 @@ interface BseRawItem {
   MktcapPerc?: number;
 }
 
-// ── EOD template sector grid ───────────────────────────────────────────────────
+// -- EOD template sector grid ---------------------------------------------------
 //
 // 24 sectors displayed as 6 rows × 4 paired (Index | %) columns.
 // Order matches the original Sunidhi Excel template exactly.
@@ -81,7 +81,7 @@ export const EOD_SENSEX_SECTORS: ReadonlyArray<{ label: string; code: string }> 
   { label: "Focused IT",              code: "FOCIT"   }, // cat=2
 ];
 
-// ── BSE HTTP fetch (insecureHTTPParser for malformed headers) ─────────────────
+// -- BSE HTTP fetch (insecureHTTPParser for malformed headers) -----------------
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
@@ -126,7 +126,7 @@ function bseFetch(url: string, timeoutMs = 15_000): Promise<string> {
   });
 }
 
-// ── Core fetch ────────────────────────────────────────────────────────────────
+// -- Core fetch ----------------------------------------------------------------
 
 async function fetchCategory(cat: 2 | 3): Promise<BseRawItem[]> {
   const url = `https://api.bseindia.com/BseIndiaAPI/api/MktCapBoard_indstream/w?type=2&cat=${cat}`;

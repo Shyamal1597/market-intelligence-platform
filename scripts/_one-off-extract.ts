@@ -95,7 +95,7 @@ try {
       }
       return;
     } catch {
-      console.warn("[WARN] could not merge with existing artifact — writing fresh");
+      console.warn("[WARN] could not merge with existing artifact -- writing fresh");
     }
   }
 

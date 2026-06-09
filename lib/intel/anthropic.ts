@@ -24,7 +24,7 @@ let _client: Anthropic | null = null;
 function client(): Anthropic {
   if (_client) return _client;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY missing — see .env.local.example");
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY missing -- see .env.local.example");
   _client = new Anthropic({ apiKey });
   return _client;
 }
@@ -36,9 +36,9 @@ export interface CallJsonOpts {
   maxTokens?: number;
   temperature?: number;
   cacheControl?: boolean;
-  /** Override retry behaviour — useful in tests to skip backoff delays. */
+  /** Override retry behaviour -- useful in tests to skip backoff delays. */
   retryOpts?: RetryOptions;
-  /** Override context window size (Ollama-only — ignored by Anthropic). */
+  /** Override context window size (Ollama-only -- ignored by Anthropic). */
   numCtx?: number;
 }
 
@@ -69,7 +69,7 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
   if (!block || block.type !== "text") throw new Error("Anthropic response had no text block");
   let parsed: T;
   try {
-    // Extract JSON object from response — strip preamble text, markdown fences
+    // Extract JSON object from response -- strip preamble text, markdown fences
     let raw = block.text.trim();
     raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     // If model wrote text before the JSON, find the first '{'

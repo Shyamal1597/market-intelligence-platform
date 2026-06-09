@@ -6,7 +6,7 @@
  * Coverage: NSE 500 constituents + common short-forms.
  */
 export const COMPANY_ALIASES: Record<string, string[]> = {
-  // ── Nifty 50 ──────────────────────────────────────────────────────────────
+  // -- Nifty 50 --------------------------------------------------------------
   reliance:       ["reliance industries", "reliance"],
   ril:            ["reliance industries", "ril"],
   tcs:            ["tata consultancy", "tcs"],
@@ -82,7 +82,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   ltim:           ["ltimindtree", "mindtree"],
   ltimindtree:    ["ltimindtree", "mindtree"],
 
-  // ── Nifty Next 50 ────────────────────────────────────────────────────────
+  // -- Nifty Next 50 --------------------------------------------------------
   dmart:          ["avenue supermarts", "dmart"],
   avenue:         ["avenue supermarts"],
   siemens:        ["siemens india", "siemens"],
@@ -130,7 +130,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   ucobank:        ["uco bank"],
   indianb:        ["indian bank"],
 
-  // ── IT & Tech ─────────────────────────────────────────────────────────────
+  // -- IT & Tech -------------------------------------------------------------
   mphasis:        ["mphasis"],
   coforge:        ["coforge"],
   ltts:           ["l&t technology services", "l&t tech"],
@@ -156,7 +156,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   infoedge:       ["info edge", "naukri"],
   naukri:         ["info edge", "naukri"],
 
-  // ── Pharma & Healthcare ───────────────────────────────────────────────────
+  // -- Pharma & Healthcare ---------------------------------------------------
   auropharma:     ["aurobindo pharma", "aurobindo"],
   aurobindo:      ["aurobindo pharma"],
   lupin:          ["lupin"],
@@ -189,7 +189,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   sudarshan:      ["sudarshan chemical"],
   sequent:        ["sequent scientific"],
 
-  // ── Auto & Auto Ancillaries ───────────────────────────────────────────────
+  // -- Auto & Auto Ancillaries -----------------------------------------------
   ashokley:       ["ashok leyland"],
   ashok:          ["ashok leyland"],
   tvsmotor:       ["tvs motor company", "tvs motor"],
@@ -225,7 +225,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   swaraj:         ["swaraj engines"],
   wabco:          ["wabco india"],
 
-  // ── FMCG & Consumer ───────────────────────────────────────────────────────
+  // -- FMCG & Consumer -------------------------------------------------------
   colpal:         ["colgate-palmolive", "colgate"],
   colgate:        ["colgate-palmolive", "colgate"],
   emamiltd:       ["emami"],
@@ -254,7 +254,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   bata:           ["bata india"],
   khadim:         ["khadim india"],
 
-  // ── Chemicals ─────────────────────────────────────────────────────────────
+  // -- Chemicals -------------------------------------------------------------
   deepaknis:      ["deepak nitrite"],
   deepak:         ["deepak nitrite", "deepak fertilisers"],
   fineorg:        ["fine organic industries"],
@@ -281,7 +281,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   rossari:        ["rossari biotech"],
   aartisurf:      ["aarti surfactants"],
 
-  // ── Infrastructure & Real Estate ──────────────────────────────────────────
+  // -- Infrastructure & Real Estate ------------------------------------------
   dlf:            ["dlf"],
   godrejprop:     ["godrej properties"],
   oberoirlty:     ["oberoi realty"],
@@ -318,7 +318,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   amber:          ["amber enterprises"],
   pgel:           ["pg electroplast"],
 
-  // ── Power & Energy ────────────────────────────────────────────────────────
+  // -- Power & Energy --------------------------------------------------------
   tatapower:      ["tata power"],
   adanipower:     ["adani power"],
   torntpower:     ["torrent power"],
@@ -330,7 +330,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   jppower:        ["jaiprakash power"],
   jswenergy:      ["jsw energy"],
 
-  // ── Telecom & Media ───────────────────────────────────────────────────────
+  // -- Telecom & Media -------------------------------------------------------
   idea:           ["vodafone idea"],
   vodafone:       ["vodafone idea"],
   tatacomm:       ["tata communications"],
@@ -348,7 +348,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   shemaroo:       ["shemaroo entertainment"],
   balaji:         ["balaji telefilms"],
 
-  // ── Oil & Gas ─────────────────────────────────────────────────────────────
+  // -- Oil & Gas -------------------------------------------------------------
   ioc:            ["indian oil corporation", "ioc"],
   indianoil:      ["indian oil corporation"],
   mgl:            ["mahanagar gas"],
@@ -363,7 +363,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   gulfoillub:     ["gulf oil lubricants", "gulf oil"],
   gulfoil:        ["gulf oil lubricants"],
 
-  // ── Metals & Mining ───────────────────────────────────────────────────────
+  // -- Metals & Mining -------------------------------------------------------
   vedl:           ["vedanta"],
   vedanta:        ["vedanta"],
   nmdc:           ["nmdc"],
@@ -385,7 +385,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   tin:            ["tinplate company"],
   tinsec:         ["tin sector"],
 
-  // ── Cement ────────────────────────────────────────────────────────────────
+  // -- Cement ----------------------------------------------------------------
   jkcement:       ["jk cement"],
   jklakshmi:      ["jk lakshmi cement"],
   ramcocem:       ["the ramco cements", "ramco cements"],
@@ -402,7 +402,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   jkpaper:        ["jk paper"],
   tnpl:           ["tamil nadu newsprint", "tnpl"],
 
-  // ── Insurance ────────────────────────────────────────────────────────────
+  // -- Insurance ------------------------------------------------------------
   starhealth:     ["star health and allied insurance", "star health"],
   godigit:        ["go digit general insurance"],
   niacl:          ["new india assurance"],
@@ -413,7 +413,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   maxlife:        ["max financial services", "max life"],
   maxfin:         ["max financial services"],
 
-  // ── Finance / NBFC / MFI ─────────────────────────────────────────────────
+  // -- Finance / NBFC / MFI -------------------------------------------------
   bajajhldng:     ["bajaj holdings"],
   cholafin:       ["cholamandalam finance", "chola"],
   chola:          ["cholamandalam"],
@@ -457,7 +457,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   nambiamc:       ["360 one wam"],
   groww:          ["groww"],
 
-  // ── Railways & Defence ────────────────────────────────────────────────────
+  // -- Railways & Defence ----------------------------------------------------
   irfc:           ["indian railway finance corporation", "irfc"],
   irctc:          ["indian railway catering and tourism", "irctc"],
   rvnl:           ["rail vikas nigam", "rvnl"],
@@ -476,7 +476,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   cochin:         ["cochin shipyard"],
   mazagon:        ["mazagon dock"],
 
-  // ── Logistics & Shipping ─────────────────────────────────────────────────
+  // -- Logistics & Shipping -------------------------------------------------
   concor:         ["container corporation of india", "concor"],
   bluedart:       ["blue dart express", "blue dart"],
   delhivery:      ["delhivery"],
@@ -491,7 +491,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   gangotri:       ["gangotri textiles"],
   seamecltd:      ["seamec"],
 
-  // ── Textile & Apparel ─────────────────────────────────────────────────────
+  // -- Textile & Apparel -----------------------------------------------------
   welspuntex:     ["welspun india"],
   trident:        ["trident"],
   vardhman:       ["vardhman textiles"],
@@ -503,7 +503,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   mafatlal:       ["mafatlal industries"],
   pageind:        ["page industries"],
 
-  // ── Hospitality & Travel ──────────────────────────────────────────────────
+  // -- Hospitality & Travel --------------------------------------------------
   ihcl:           ["indian hotels", "taj hotels"],
   indianhotels:   ["indian hotels", "taj hotels"],
   taj:            ["indian hotels", "taj hotels"],
@@ -521,7 +521,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   cox:            ["cox & kings"],
   mktourism:      ["mahindra holidays"],
 
-  // ── Agriculture & Food Processing ────────────────────────────────────────
+  // -- Agriculture & Food Processing ----------------------------------------
   uflex:          ["uflex"],
   avantifeed:     ["avanti feeds"],
   waterbase:      ["waterbase"],
@@ -532,7 +532,7 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   jain:           ["jain irrigation"],
   mahkseeds:      ["mahyco"],
 
-  // ── Diversified & Others ─────────────────────────────────────────────────
+  // -- Diversified & Others -------------------------------------------------
   abcapital:      ["aditya birla capital", "aditya birla"],
   aditya:         ["aditya birla"],
   birla:          ["aditya birla", "birla"],
@@ -557,20 +557,20 @@ export const COMPANY_ALIASES: Record<string, string[]> = {
   rajeshexpo:     ["rajesh exports"],
   goldiam:        ["goldiam international"],
 
-  // ── Micro Finance & Small Finance ────────────────────────────────────────
+  // -- Micro Finance & Small Finance ----------------------------------------
   arohan:         ["arohan financial services"],
   satin:          ["satin creditcare network"],
   fusion:         ["fusion micro finance"],
   asianbmb:       ["asian market corporation"],
   chaitanya:      ["chaitanya india"],
 
-  // ── Real Estate Investment Trusts ────────────────────────────────────────
+  // -- Real Estate Investment Trusts ----------------------------------------
   embassy:        ["embassy office parks"],
   mindspace:      ["mindspace business parks"],
   brookfield:     ["brookfield india real estate"],
   nexus:          ["nexus select trust"],
 
-  // ── Miscellaneous ─────────────────────────────────────────────────────────
+  // -- Miscellaneous ---------------------------------------------------------
   kec:            ["kec international"],
   kalpataru:      ["kalpataru projects", "kalpataru"],
   pnc:            ["pnc infratech"],
@@ -611,7 +611,7 @@ export function expandSearch(raw: string): string[] {
   const exact = COMPANY_ALIASES[term];
   if (exact) return [...new Set([term, ...exact])];
 
-  // 2. Substring match — if the user types "mta", match keys/values containing it
+  // 2. Substring match -- if the user types "mta", match keys/values containing it
   const results = new Set<string>([term]);
   for (const [key, aliases] of Object.entries(COMPANY_ALIASES)) {
     if (key.includes(term) || aliases.some((a) => a.includes(term))) {

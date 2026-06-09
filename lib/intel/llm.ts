@@ -13,7 +13,7 @@ import * as ollamaAdapter    from "./ollama";
 export type { CallJsonOpts, CallJsonResult } from "./anthropic";
 export { withRetry } from "./anthropic";
 
-// ── Model constants ───────────────────────────────────────────────────────────
+// -- Model constants -----------------------------------------------------------
 export const {
   MODEL_HAIKU,
   MODEL_SONNET,
@@ -24,7 +24,7 @@ export const {
   MODEL_LLAMA3,
 } = ollamaAdapter;
 
-// ── Backend detection ─────────────────────────────────────────────────────────
+// -- Backend detection ---------------------------------------------------------
 export type Backend = "anthropic" | "ollama";
 
 export function activeBackend(): Backend {
@@ -35,7 +35,7 @@ export function activeBackend(): Backend {
 }
 
 /**
- * The model to use for extraction (Stage 3 — many small calls).
+ * The model to use for extraction (Stage 3 -- many small calls).
  * Anthropic: claude-haiku-4-5  |  Ollama: qwen2.5:7b
  */
 export function defaultExtractionModel(): string {
@@ -45,7 +45,7 @@ export function defaultExtractionModel(): string {
 }
 
 /**
- * The model to use for cross-checking (Stage 4 — fewer, richer calls).
+ * The model to use for cross-checking (Stage 4 -- fewer, richer calls).
  * Anthropic: claude-sonnet-4-6  |  Ollama: qwen2.5:7b (same; no bigger local model)
  */
 export function defaultVerificationModel(): string {
@@ -54,7 +54,7 @@ export function defaultVerificationModel(): string {
     : ollamaAdapter.MODEL_QWEN;
 }
 
-// ── Unified callJson ──────────────────────────────────────────────────────────
+// -- Unified callJson ----------------------------------------------------------
 export async function callJson<T>(
   opts: anthropicAdapter.CallJsonOpts,
 ): Promise<anthropicAdapter.CallJsonResult<T>> {
@@ -62,7 +62,7 @@ export async function callJson<T>(
   return ollamaAdapter.callJson<T>(opts);
 }
 
-// ── Unified cost estimation ───────────────────────────────────────────────────
+// -- Unified cost estimation ---------------------------------------------------
 export function estimateCostUsd(
   model: string,
   r: {

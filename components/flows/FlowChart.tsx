@@ -149,7 +149,7 @@ export function FlowChart({ entries }: FlowChartProps) {
         </div>
       </div>
 
-      {/* ── Chart 1: Daily net ─────────────────────────────────────────── */}
+      {/* -- Chart 1: Daily net ------------------------------------------- */}
       <div className="mb-2 flex items-center gap-5 flex-wrap">
         <span className="font-mono text-[10px] text-muted uppercase tracking-wider">
           {isCompare ? "Daily Net · FII vs DII" : `Daily Net · ${entityLabel}`}
@@ -239,7 +239,7 @@ export function FlowChart({ entries }: FlowChartProps) {
         </ComposedChart>
       </ResponsiveContainer>
 
-      {/* ── Chart 2: Cumulative — only for single entity ────────────────── */}
+      {/* -- Chart 2: Cumulative -- only for single entity ------------------ */}
       {!isCompare && (
         <>
           <div className="mt-5 mb-2 flex items-center gap-5 flex-wrap">

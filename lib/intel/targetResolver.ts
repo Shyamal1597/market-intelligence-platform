@@ -1,5 +1,5 @@
 /**
- * targetResolver — converts free-text management guidance target expressions
+ * targetResolver -- converts free-text management guidance target expressions
  * into canonical quarter labels ("Q3-FY27") relative to a source quarter.
  *
  * Handles patterns found in Indian earnings concalls:
@@ -10,7 +10,7 @@
  *   "H1 FY27"                   → Q2-FY27 (end of first half)
  *   "H2 FY27"                   → Q4-FY27 (end of second half)
  *   "exit rate by FY27"         → Q4-FY27
- *   "2–3 quarters"              → sourceQuarter + 2 (midpoint, rounded down)
+ *   "2-3 quarters"              → sourceQuarter + 2 (midpoint, rounded down)
  *   "near term" / "short term"  → sourceQuarter + 1
  *   "medium term"               → sourceQuarter + 4 (~1 year)
  *   null / "" / unrecognised    → null
@@ -24,7 +24,7 @@ export interface ResolveResult {
   confidence: "exact" | "inferred" | "approximate";
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// -- helpers -------------------------------------------------------------------
 
 function fyFromText(text: string): number | null {
   const m = text.match(/FY\s*(\d{2,4})/i);
@@ -33,7 +33,7 @@ function fyFromText(text: string): number | null {
   return n > 100 ? n % 100 : n; // collapse 4-digit to 2-digit
 }
 
-// ── main export ───────────────────────────────────────────────────────────────
+// -- main export ---------------------------------------------------------------
 
 /**
  * Resolve a management guidance target expression to a canonical quarter label.
@@ -50,7 +50,7 @@ export function resolveTargetQuarter(
 
   const t = targetText.trim().toLowerCase();
 
-  // ── 1. Exact canonical Q label already in the text ────────────────────────
+  // -- 1. Exact canonical Q label already in the text ------------------------
   // "Q3-FY27", "Q3 FY27", "Q3FY27", "Q3 of FY27"
   const exactMatch = targetText.match(/Q\s*([1-4])[\s-]*(?:of\s+)?FY\s*(\d{2,4})/i);
   if (exactMatch) {
@@ -61,17 +61,17 @@ export function resolveTargetQuarter(
     return { quarter: label, confidence: "exact" };
   }
 
-  // ── 2. "this quarter" / "current quarter" ────────────────────────────────
+  // -- 2. "this quarter" / "current quarter" --------------------------------
   if (/\b(this|current)\s+quarter\b/.test(t)) {
     return { quarter: sourceQuarter, confidence: "exact" };
   }
 
-  // ── 3. "next quarter" / "following quarter" ───────────────────────────────
+  // -- 3. "next quarter" / "following quarter" -------------------------------
   if (/\bnext\s+quarter\b|\bfollowing\s+quarter\b/.test(t)) {
     return { quarter: quarterAddOffset(sourceQuarter, 1), confidence: "exact" };
   }
 
-  // ── 4. Half-year: "H1 FY27", "first half FY27", "H2 FY27", "second half FY27"
+  // -- 4. Half-year: "H1 FY27", "first half FY27", "H2 FY27", "second half FY27"
   const halfMatch = t.match(/\b(h1|h2|first\s+half|second\s+half)\b.*?fy\s*(\d{2,4})/i);
   if (halfMatch) {
     const fy = fyFromText(t);
@@ -83,7 +83,7 @@ export function resolveTargetQuarter(
     }
   }
 
-  // ── 5. Full fiscal year: "FY27", "full year FY27", "end of FY27", "by FY27"
+  // -- 5. Full fiscal year: "FY27", "full year FY27", "end of FY27", "by FY27"
   //    Treat as Q4 of that FY (last quarter of the year)
   if (/\bfy\s*\d{2,4}\b/i.test(t) && !/\bq[1-4]\b/i.test(t) && !/\bh[12]\b/i.test(t)) {
     const fy = fyFromText(t);
@@ -93,10 +93,10 @@ export function resolveTargetQuarter(
     }
   }
 
-  // ── 6. "exit rate by <period>" — treat same as FY/Q reference above (already caught)
+  // -- 6. "exit rate by <period>" -- treat same as FY/Q reference above (already caught)
 
-  // ── 7. "2–3 quarters" / "two quarters" / "a couple of quarters" ──────────
-  const rangeMatch = t.match(/(\d+)[\s–-]+(\d+)\s+quarters?/);
+  // -- 7. "2-3 quarters" / "two quarters" / "a couple of quarters" ----------
+  const rangeMatch = t.match(/(\d+)[\s--]+(\d+)\s+quarters?/);
   if (rangeMatch) {
     const lo = parseInt(rangeMatch[1]);
     const hi = parseInt(rangeMatch[2]);
@@ -108,7 +108,7 @@ export function resolveTargetQuarter(
     return { quarter: quarterAddOffset(sourceQuarter, parseInt(singleQMatch[1])), confidence: "approximate" };
   }
 
-  // ── 8. "two / three / four quarters" (word form) ─────────────────────────
+  // -- 8. "two / three / four quarters" (word form) -------------------------
   const wordNums: Record<string, number> = {
     one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
   };
@@ -118,17 +118,17 @@ export function resolveTargetQuarter(
     }
   }
 
-  // ── 9. "near term" / "short term" → +1 quarter ───────────────────────────
+  // -- 9. "near term" / "short term" → +1 quarter ---------------------------
   if (/\b(near[- ]?term|short[- ]?term)\b/.test(t)) {
     return { quarter: quarterAddOffset(sourceQuarter, 1), confidence: "approximate" };
   }
 
-  // ── 10. "medium term" → +4 quarters (~1 year) ────────────────────────────
+  // -- 10. "medium term" → +4 quarters (~1 year) ----------------------------
   if (/\bmedium[- ]?term\b/.test(t)) {
     return { quarter: quarterAddOffset(sourceQuarter, 4), confidence: "approximate" };
   }
 
-  // ── 11. "over the next year" / "12 months" → +4 quarters ─────────────────
+  // -- 11. "over the next year" / "12 months" → +4 quarters -----------------
   if (/\bnext\s+(1|one)\s+year\b|\b(over\s+the\s+next\s+year|next\s+12\s+months)\b/.test(t)) {
     return { quarter: quarterAddOffset(sourceQuarter, 4), confidence: "approximate" };
   }
@@ -142,7 +142,7 @@ export function resolveTargetQuarter(
  * accept it; otherwise fall back to resolving targetText.
  *
  * Special case: if the LLM set targetQuarter to the same quarter as sourceQuarter,
- * don't trust it — fall through to targetText resolution. This handles a common
+ * don't trust it -- fall through to targetText resolution. This handles a common
  * LLM error where historical current-period statements get targetQuarter = sourceQuarter
  * even though targetText says "next quarter".
  */

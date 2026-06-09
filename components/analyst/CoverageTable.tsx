@@ -78,7 +78,7 @@ export function CoverageTable({ reports, livePrices }: Props) {
   }
 
   function PctCell({ value }: { value: number | null }) {
-    if (value === null) return <span className="text-muted">—</span>;
+    if (value === null) return <span className="text-muted">--</span>;
     const color = value > 0 ? "text-teal" : value < 0 ? "text-danger" : "text-primary";
     return (
       <span className={`font-bold ${color}`}>
@@ -111,7 +111,7 @@ export function CoverageTable({ reports, livePrices }: Props) {
                 Prev Close
               </th>
               <ColHeader label="Since Issue" k="sinceIssue" title="(current − CMP at issue) / CMP at issue" />
-              <ColHeader label="Vs Target" k="upside" title="(target − current) / current — remaining upside" />
+              <ColHeader label="Vs Target" k="upside" title="(target − current) / current -- remaining upside" />
               <th className="px-3 py-2" />
             </tr>
           </thead>
@@ -125,15 +125,15 @@ export function CoverageTable({ reports, livePrices }: Props) {
                   <td className="px-3 py-2 text-xs font-mono text-primary">{r.company}</td>
                   <td className="px-3 py-2 text-xs font-mono text-muted">{r.analyst}</td>
                   <td className="px-3 py-2 text-xs font-mono text-muted whitespace-nowrap">{r.date}</td>
-                  <td className="px-3 py-2 text-xs font-mono text-amber">{r.rating || "—"}</td>
+                  <td className="px-3 py-2 text-xs font-mono text-amber">{r.rating || "--"}</td>
                   <td className="px-3 py-2 text-xs font-mono text-primary">
-                    {r.cmp > 0 ? `\u20B9${r.cmp.toLocaleString("en-IN")}` : "—"}
+                    {r.cmp > 0 ? `\u20B9${r.cmp.toLocaleString("en-IN")}` : "--"}
                   </td>
                   <td className="px-3 py-2 text-xs font-mono text-primary">
-                    {r.targetPrice > 0 ? `\u20B9${r.targetPrice.toLocaleString("en-IN")}` : "—"}
+                    {r.targetPrice > 0 ? `\u20B9${r.targetPrice.toLocaleString("en-IN")}` : "--"}
                   </td>
                   <td className="px-3 py-2 text-xs font-mono text-primary">
-                    {live ? `\u20B9${live.toLocaleString("en-IN")}` : <span className="text-muted">—</span>}
+                    {live ? `\u20B9${live.toLocaleString("en-IN")}` : <span className="text-muted">--</span>}
                   </td>
                   <td className="px-3 py-2 text-xs font-mono">
                     <PctCell value={since} />

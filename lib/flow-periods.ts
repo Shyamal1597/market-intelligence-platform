@@ -1,7 +1,7 @@
 // lib/flow-periods.ts
 //
 // Period helpers for FII/DII flow aggregation.
-// All math is done on local-time year-month strings — no toISOString() round-trips
+// All math is done on local-time year-month strings -- no toISOString() round-trips
 // (which silently shift dates back a day in IST due to UTC conversion).
 
 import type { FiiDiiEntry } from "./nse-flows";

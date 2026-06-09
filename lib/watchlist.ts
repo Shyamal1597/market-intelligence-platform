@@ -14,7 +14,7 @@ const NSE_BASE_HEADERS: Record<string, string> = {
   "X-Requested-With": "XMLHttpRequest",
 };
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface WatchlistEntry {
   symbol: string;
@@ -29,7 +29,7 @@ export interface WatchlistEntry {
   addedAt: string;
 }
 
-// ── NSE Session (minimal — warm up homepage only) ─────────────────────────────
+// -- NSE Session (minimal -- warm up homepage only) -----------------------------
 
 async function getNseSession(): Promise<string> {
   try {
@@ -50,7 +50,7 @@ async function getNseSession(): Promise<string> {
   }
 }
 
-// ── NSE Nifty50 Seed ─────────────────────────────────────────────────────────
+// -- NSE Nifty50 Seed ---------------------------------------------------------
 
 interface NseIndexItem {
   symbol: string;
@@ -73,7 +73,7 @@ async function seedFromNse(): Promise<WatchlistEntry[]> {
     );
     if (!res.ok) return [];
     const json = await res.json();
-    // First element is the index itself — skip it
+    // First element is the index itself -- skip it
     const items: NseIndexItem[] = (json.data ?? []).slice(1);
     const today = new Date().toISOString().slice(0, 10);
     return items.map((item) => ({
@@ -94,7 +94,7 @@ async function seedFromNse(): Promise<WatchlistEntry[]> {
   }
 }
 
-// ── NSE Symbol Validation ─────────────────────────────────────────────────────
+// -- NSE Symbol Validation -----------------------------------------------------
 
 /** Returns true if symbol exists on NSE. Fails open (returns true) if NSE unreachable. */
 export async function validateNseSymbol(symbol: string): Promise<boolean> {
@@ -111,7 +111,7 @@ export async function validateNseSymbol(symbol: string): Promise<boolean> {
       }
     );
     if (res.status === 404) return false;
-    if (!res.ok) return true; // fail open — NSE may be blocked
+    if (!res.ok) return true; // fail open -- NSE may be blocked
     const json = await res.json();
     return !!(json?.info?.symbol || json?.priceInfo);
   } catch {
@@ -119,7 +119,7 @@ export async function validateNseSymbol(symbol: string): Promise<boolean> {
   }
 }
 
-// ── Persistence ───────────────────────────────────────────────────────────────
+// -- Persistence ---------------------------------------------------------------
 
 export async function loadWatchlist(): Promise<WatchlistEntry[]> {
   try {
@@ -132,7 +132,7 @@ export async function loadWatchlist(): Promise<WatchlistEntry[]> {
       console.error("[watchlist] loadWatchlist failed (not ENOENT):", err);
       throw err;
     }
-    // File genuinely missing — seed from NSE Nifty50
+    // File genuinely missing -- seed from NSE Nifty50
     const seeded = await seedFromNse();
     if (seeded.length > 0) {
       await saveWatchlist(seeded);

@@ -46,7 +46,7 @@ function fmtDate(iso: string) {
 }
 
 function fmtCr(n: number | null) {
-  if (n == null) return "—";
+  if (n == null) return "--";
   return "₹" + n.toFixed(2) + " Cr";
 }
 

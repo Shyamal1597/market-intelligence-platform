@@ -84,7 +84,7 @@ export function OptionChainPage() {
 
   useEffect(() => {
     if (!selectedExpiry) return;
-    // Don't start polling when market is closed — NSE data is frozen after 15:30 IST
+    // Don't start polling when market is closed -- NSE data is frozen after 15:30 IST
     if (!isMarketOpen()) return;
 
     intervalRef.current = setInterval(() => {
@@ -116,7 +116,7 @@ export function OptionChainPage() {
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 120px)" }}>
 
-      {/* ── Top bar ──────────────────────────────────────────────────── */}
+      {/* -- Top bar ---------------------------------------------------- */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border flex-wrap gap-y-2">
         <SymbolSearch symbol={symbol} onSymbolChange={setSymbol} />
 
@@ -171,7 +171,7 @@ export function OptionChainPage() {
         </div>
       </div>
 
-      {/* ── Expiry strip ─────────────────────────────────────────────── */}
+      {/* -- Expiry strip ----------------------------------------------- */}
       <div className="px-4 py-2.5 border-b border-border overflow-x-auto">
         <ExpiryStrip
           expiries={expiries}
@@ -183,10 +183,10 @@ export function OptionChainPage() {
         />
       </div>
 
-      {/* ── Summary strip ────────────────────────────────────────────── */}
+      {/* -- Summary strip ---------------------------------------------- */}
       {data && <ChainSummary data={data} />}
 
-      {/* ── Loading / error states ───────────────────────────────────── */}
+      {/* -- Loading / error states ------------------------------------- */}
       {!data && loading && (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted font-mono text-sm animate-pulse">Loading option chain…</p>
@@ -209,7 +209,7 @@ export function OptionChainPage() {
         </div>
       )}
 
-      {/* ── Main content ─────────────────────────────────────────────── */}
+      {/* -- Main content ----------------------------------------------- */}
       {!error && data && tab === "chain" && (
         <OptionChainTable data={data} barMode={barMode} columns={columns} />
       )}

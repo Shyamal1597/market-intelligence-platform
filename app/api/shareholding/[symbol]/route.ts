@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    await params; // symbol not needed — BSE uses bseCode
+    await params; // symbol not needed -- BSE uses bseCode
     const bseCode = req.nextUrl.searchParams.get("bseCode");
     if (!bseCode) {
       return NextResponse.json({ error: "bseCode query param required" }, { status: 400 });

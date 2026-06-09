@@ -1,10 +1,10 @@
 /**
  * UI formatting helpers for the Intel Dashboard.
- * Pure functions — no React deps — safe to import in both server and client contexts.
+ * Pure functions -- no React deps -- safe to import in both server and client contexts.
  */
 import type { Verdict } from "./types";
 
-// ── Verdict display ───────────────────────────────────────────────────────────
+// -- Verdict display -----------------------------------------------------------
 
 export const VERDICT_LABEL: Record<Verdict, string> = {
   met:       "Met",
@@ -24,14 +24,14 @@ export const VERDICT_COLOR: Record<Verdict, string> = {
 
 /** Compute on-track percentage string: (met + moving) / decisive. */
 export function onTrackDisplay(met: number, moving: number, decisive: number): string {
-  if (decisive === 0) return "—";
+  if (decisive === 0) return "--";
   return `${Math.round(((met + moving) / decisive) * 100)}%`;
 }
 
-// ── Value formatting ──────────────────────────────────────────────────────────
+// -- Value formatting ----------------------------------------------------------
 
 export function formatMetricValue(value: number | null, unit: string): string {
-  if (value === null) return "—";
+  if (value === null) return "--";
   if (unit === "%") return `${value.toFixed(2)}%`;
   if (unit === "Cr") {
     if (value >= 100_000) return `₹${(value / 100_000).toFixed(2)}L Cr`;
@@ -53,7 +53,7 @@ export function deltaDisplay(actual: number, guided: number, unit: string): stri
   return `${sign}${diff.toFixed(2)}`;
 }
 
-// ── Quarter helpers ───────────────────────────────────────────────────────────
+// -- Quarter helpers -----------------------------------------------------------
 
 /** "Q3-FY26" → "Q3 FY26" for display */
 export function quarterDisplay(q: string): string {
@@ -70,7 +70,7 @@ export function sortQuarters(quarters: string[]): string[] {
   });
 }
 
-// ── Quote helpers ─────────────────────────────────────────────────────────────
+// -- Quote helpers -------------------------------------------------------------
 
 /**
  * Return a readable quote snippet that ends at a sentence boundary.

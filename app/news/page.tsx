@@ -157,7 +157,7 @@ export default function NewsPage() {
         </div>
       ) : (
         <div>
-          {/* Top story — full-width editorial banner */}
+          {/* Top story -- full-width editorial banner */}
           {top && (
             <a
               href={top.link}
@@ -187,7 +187,7 @@ export default function NewsPage() {
             </a>
           )}
 
-          {/* Second row — 2 equal stories */}
+          {/* Second row -- 2 equal stories */}
           {secondRow.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 border-x border-b border-border mb-px">
               {secondRow.map((item) => (

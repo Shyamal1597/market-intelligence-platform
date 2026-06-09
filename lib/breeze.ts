@@ -1,5 +1,5 @@
 /**
- * Breeze API client — ICICI Direct
+ * Breeze API client -- ICICI Direct
  *
  * Auth flow:
  *  1. Direct user to getBreezeLoginUrl()
@@ -21,13 +21,13 @@ import fs from "fs";
 import https from "https";
 import path from "path";
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// -- Config --------------------------------------------------------------------
 
 const API_KEY = process.env.BREEZE_API_KEY ?? "";
 const API_SECRET = process.env.BREEZE_SECRET_KEY ?? "";
 
 const BASE_V1 = "https://api.icicidirect.com/breezeapi/api/v1";
-// V2 is on a different subdomain — used for historical charts (interval="day")
+// V2 is on a different subdomain -- used for historical charts (interval="day")
 const BASE_V2 = "https://breezeapi.icicidirect.com/api/v2";
 
 const SESSION_FILE = path.join(process.cwd(), "data", "breeze-session.json");
@@ -35,7 +35,7 @@ const CACHE_DIR = path.join(process.cwd(), "data", "breeze-cache");
 const SCRIP_CACHE_FILE = path.join(process.cwd(), "data", "breeze-scrip-map.json");
 const SCRIP_CSV_URL = "https://traderweb.icicidirect.com/Content/File/txtFile/ScripFile/StockScriptNew.csv";
 
-// ── Session persistence ───────────────────────────────────────────────────────
+// -- Session persistence -------------------------------------------------------
 
 interface StoredSession {
   sessionToken: string;
@@ -72,10 +72,10 @@ export function clearBreezeSession(): void {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 /**
- * GET request with a JSON body — bypasses the Fetch API's GET-body restriction.
+ * GET request with a JSON body -- bypasses the Fetch API's GET-body restriction.
  * Required because the Breeze /customerdetails endpoint expects GET + JSON body
  * (same as the official JS SDK which uses axios, which allows GET body).
  * Used only for session generation; historical data uses plain URL params.
@@ -112,7 +112,7 @@ function getWithBody(
   });
 }
 
-// ── Public auth helpers ───────────────────────────────────────────────────────
+// -- Public auth helpers -------------------------------------------------------
 
 export function getBreezeLoginUrl(): string {
   return `https://api.icicidirect.com/apiuser/login?api_key=${encodeURIComponent(API_KEY)}`;
@@ -153,7 +153,7 @@ export async function generateBreezeSession(
   }
 }
 
-// ── Historical data ───────────────────────────────────────────────────────────
+// -- Historical data -----------------------------------------------------------
 
 export interface DailyCandle {
   date: string;  // "YYYY-MM-DD"
@@ -167,7 +167,7 @@ interface CacheFile {
   candles: DailyCandle[];
 }
 
-// ── Scrip map (NSE symbol → Breeze stock_code) ────────────────────────────────
+// -- Scrip map (NSE symbol → Breeze stock_code) --------------------------------
 // Downloaded from the Breeze security master CSV, cached for 24h.
 // Many NSE symbols differ from Breeze codes: AXISBANK → AXIBAN, etc.
 
@@ -191,7 +191,7 @@ async function _fetchScripMap(): Promise<Record<string, string>> {
     const cache = JSON.parse(raw) as ScripCache;
     const ageH = (Date.now() - new Date(cache.fetchedAt).getTime()) / 3_600_000;
     if (ageH < 24) return cache.map;
-  } catch { /* cache missing or stale — download */ }
+  } catch { /* cache missing or stale -- download */ }
 
   try {
     const res = await fetch(SCRIP_CSV_URL);

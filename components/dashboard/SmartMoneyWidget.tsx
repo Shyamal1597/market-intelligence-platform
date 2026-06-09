@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Brain, RefreshCw, Search, AlertCircle, X } from "lucide-react";
 import type { CachedSignal, MarketStreamData, SymbolStreamData } from "@/lib/smart-money";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 
 interface SignalState {
   symbol: string;       // "MARKET" or NSE symbol
@@ -16,7 +16,7 @@ interface SignalState {
   noData?: boolean;     // true when no symbol-specific streams have data
 }
 
-// ── Parsing helpers ────────────────────────────────────────────────────────────
+// -- Parsing helpers ------------------------------------------------------------
 
 function parseScorecard(narrative: string): { label: string; signal: string; fact: string }[] {
   const rows: { label: string; signal: string; fact: string }[] = [];
@@ -79,7 +79,7 @@ function parseStreamInsights(text: string): Record<string, string> {
   return map;
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// -- Sub-components -------------------------------------------------------------
 
 function ConfidenceBadge({ level }: { level: string }) {
   const cls: Record<string, string> = {
@@ -103,7 +103,7 @@ function StreamHeader({
   signal: string;
   llmSignal?: string;
 }) {
-  const sigEmoji = signal.match(/^(🟢|🔴|⚪|—)/)?.[0] ?? signal;
+  const sigEmoji = signal.match(/^(🟢|🔴|⚪|--)/)?.[0] ?? signal;
   const badgeCls: Record<string, string> = {
     Bullish: "text-teal border-teal/30 bg-teal/10",
     Bearish: "text-danger border-danger/30 bg-danger/10",
@@ -150,7 +150,7 @@ function FiiDiiSection({
 }) {
   const fiiDii = data.fiiDii;
   const latest = fiiDii.at(-1);
-  const rawSignal = latest ? (latest.fiiEquityNet >= 0 ? "🟢" : "🔴") : "—";
+  const rawSignal = latest ? (latest.fiiEquityNet >= 0 ? "🟢" : "🔴") : "--";
   const cumFii = fiiDii.reduce((s, d) => s + d.fiiEquityNet, 0);
   const cumDii = fiiDii.reduce((s, d) => s + d.diiEquityNet, 0);
 
@@ -207,7 +207,7 @@ function DealFlowSection({
   streaming: boolean;
 }) {
   const { dealFlow } = data;
-  const rawSignal = dealFlow.totalDeals > 0 ? (dealFlow.netCr >= 0 ? "🟢" : "🔴") : "—";
+  const rawSignal = dealFlow.totalDeals > 0 ? (dealFlow.netCr >= 0 ? "🟢" : "🔴") : "--";
 
   return (
     <div className="mb-3 pb-3 border-b border-border/40">
@@ -229,7 +229,7 @@ function DealFlowSection({
               <span className={`px-1 py-px rounded text-[9px] font-bold ${d.side === "BUY" ? "bg-teal/10 text-teal" : "bg-danger/10 text-danger"}`}>
                 {d.side}
               </span>
-              <span className="text-primary/70 truncate flex-1">{d.institution || "—"}</span>
+              <span className="text-primary/70 truncate flex-1">{d.institution || "--"}</span>
               <span className="text-muted shrink-0">{d.symbol}</span>
               <span className="text-primary/80 shrink-0">₹{d.valueCr.toFixed(1)}Cr</span>
             </div>
@@ -252,7 +252,7 @@ function NewsSection({
   llmRawSignal?: string;
   streaming: boolean;
 }) {
-  const rawSignal = data.newsHeadlines.length > 0 ? "⚪" : "—";
+  const rawSignal = data.newsHeadlines.length > 0 ? "⚪" : "--";
 
   return (
     <div className="mb-3 pb-3 border-b border-border/40">
@@ -296,7 +296,7 @@ function FilingsSection({
   const filings = data.mode === "market"
     ? (data as MarketStreamData).keyFilings
     : (data as SymbolStreamData).announcements.map(a => ({ date: a.date, company: "", title: a.title }));
-  const rawSignal = filings.length > 0 ? "⚪" : "—";
+  const rawSignal = filings.length > 0 ? "⚪" : "--";
 
   return (
     <div className="mb-2">
@@ -307,7 +307,7 @@ function FilingsSection({
         <div className="space-y-1">
           {filings.slice(0, 6).map((f, i) => (
             <div key={i} className="flex items-start gap-2 text-[10px] font-mono">
-              <span className="text-muted shrink-0">{f.date ? f.date.slice(0, 10) : "—"}</span>
+              <span className="text-muted shrink-0">{f.date ? f.date.slice(0, 10) : "--"}</span>
               {f.company && <span className="text-amber/80 shrink-0 max-w-[80px] truncate">{f.company}</span>}
               <span className="text-primary/70 leading-snug">{f.title || "Filing"}</span>
             </div>
@@ -333,12 +333,12 @@ function InsiderSection({
   llmRawSignal?: string;
   streaming: boolean;
 }) {
-  // Filter out 0-share "Other" disclosure filings — only show actual buy/sell/pledge transactions
+  // Filter out 0-share "Other" disclosure filings -- only show actual buy/sell/pledge transactions
   const insiders = data.insiders.filter(i => i.sharesTransacted > 0);
   const first = insiders[0];
   const rawSignal = first
     ? (first.transactionType === "Buy" ? "🟢" : first.transactionType === "Sell" ? "🔴" : "⚪")
-    : "—";
+    : "--";
 
   return (
     <div className="mb-3 pb-3 border-b border-border/40">
@@ -383,7 +383,7 @@ function StockNewsSection({
   streaming: boolean;
 }) {
   const { stockNews, symbol } = data;
-  const rawSignal = stockNews.length > 0 ? "⚪" : "—";
+  const rawSignal = stockNews.length > 0 ? "⚪" : "--";
 
   return (
     <div className="mb-3 pb-3 border-b border-border/40">
@@ -425,7 +425,7 @@ function BulkBlockSection({
   streaming: boolean;
 }) {
   const { bulkBlockDeals } = data;
-  const rawSignal = bulkBlockDeals.length > 0 ? "⚪" : "—";
+  const rawSignal = bulkBlockDeals.length > 0 ? "⚪" : "--";
 
   return (
     <div className="mb-3 pb-3 border-b border-border/40">
@@ -516,11 +516,11 @@ function SignalCard({
         </div>
       </div>
 
-      {/* No data — symbol not found in any stream */}
+      {/* No data -- symbol not found in any stream */}
       {state.noData && (
         <div className="flex items-center gap-2 text-muted text-xs font-mono py-3">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-          No actionable data found for <span className="text-primary">{state.symbol}</span> — no insider disclosures, bulk/block deals, or filings in NSE/BSE feeds.
+          No actionable data found for <span className="text-primary">{state.symbol}</span> -- no insider disclosures, bulk/block deals, or filings in NSE/BSE feeds.
         </div>
       )}
 
@@ -610,7 +610,7 @@ function SkeletonCard() {
   );
 }
 
-// ── Main Widget ────────────────────────────────────────────────────────────────
+// -- Main Widget ----------------------------------------------------------------
 
 export function SmartMoneyWidget() {
   const [signals, setSignals] = useState<Record<string, SignalState>>({});
@@ -651,7 +651,7 @@ export function SmartMoneyWidget() {
       if (contentType.includes("application/json")) {
         const json = await res.json() as { cached: boolean; signal: CachedSignal; noData?: boolean };
 
-        // No symbol-specific data found — block hallucination
+        // No symbol-specific data found -- block hallucination
         if (json.noData) {
           setSignals(prev => ({
             ...prev,

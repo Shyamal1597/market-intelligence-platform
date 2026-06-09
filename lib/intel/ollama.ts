@@ -1,4 +1,4 @@
-// Ollama local-LLM adapter — same CallJson interface as anthropic.ts
+// Ollama local-LLM adapter -- same CallJson interface as anthropic.ts
 import type { CallJsonOpts, CallJsonResult } from "./anthropic";
 import { withRetry } from "./anthropic";
 // undici Agent: override headersTimeout (default 30s) for large-transcript prefill
@@ -13,12 +13,12 @@ export function ollamaBaseUrl(): string {
 
 /** Reusable Agent with extended timeouts for long inference calls. */
 const ollamaAgent = new Agent({
-  headersTimeout: 600_000,   // 10 min — long prompts take time to prefill
-  bodyTimeout: 1_200_000,    // 20 min — full generation can run long
+  headersTimeout: 600_000,   // 10 min -- long prompts take time to prefill
+  bodyTimeout: 1_200_000,    // 20 min -- full generation can run long
   keepAliveTimeout: 10_000,
 });
 
-// ── streaming response types ─────────────────────────────────────────────────
+// -- streaming response types -------------------------------------------------
 
 interface OllamaStreamChunk {
   model: string;
@@ -29,7 +29,7 @@ interface OllamaStreamChunk {
   eval_count?: number;
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// -- helpers -------------------------------------------------------------------
 
 /**
  * Read a streaming Ollama /api/chat response to completion.
@@ -80,7 +80,7 @@ async function readOllamaStream(body: ReadableStream<Uint8Array>): Promise<{
   return { content, promptTokens, evalTokens };
 }
 
-// ── main export ───────────────────────────────────────────────────────────────
+// -- main export ---------------------------------------------------------------
 
 export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>> {
   const reqBody = {
@@ -90,7 +90,7 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
       { role: "user",   content: opts.user },
     ],
     stream: true,     // stream=true: headers arrive immediately, avoids undici headersTimeout
-    format: "json",   // forces JSON-mode grammar — prevents prose responses
+    format: "json",   // forces JSON-mode grammar -- prevents prose responses
     options: {
       temperature: opts.temperature ?? 0,
       num_predict: opts.maxTokens ?? 8192,  // 8k output cap; enough for most quarters at 20k context
@@ -107,7 +107,7 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody),
-      // @ts-expect-error — undici dispatcher not in standard RequestInit types
+      // @ts-expect-error -- undici dispatcher not in standard RequestInit types
       dispatcher: ollamaAgent,
     });
     if (!res.ok) {
@@ -118,7 +118,7 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
     return readOllamaStream(res.body);
   }, opts.retryOpts);
 
-  // Strip markdown code fences — local models occasionally wrap JSON output
+  // Strip markdown code fences -- local models occasionally wrap JSON output
   const raw = content
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/,        "")
@@ -140,7 +140,7 @@ export async function callJson<T>(opts: CallJsonOpts): Promise<CallJsonResult<T>
   };
 }
 
-/** Local models are free — always returns 0. */
+/** Local models are free -- always returns 0. */
 export function estimateCostUsd(
   _model: string,
   _r: { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheCreateTokens?: number },

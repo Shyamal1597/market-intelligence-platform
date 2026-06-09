@@ -17,7 +17,7 @@ import { fetchBseSectors, mapEodSectors } from "@/lib/bse-sectors";
 
 export const dynamic = "force-dynamic";
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// -- Palette -------------------------------------------------------------------
 
 const A = (hex: string) => `FF${hex}`; // prepend full-opacity alpha
 
@@ -35,7 +35,7 @@ const C = {
   borderGray: A("BFBFBF"),
 };
 
-// ── Thin border helper ─────────────────────────────────────────────────────────
+// -- Thin border helper ---------------------------------------------------------
 
 const THIN = (c = C.borderGray) =>
   ({ style: "thin" as const, color: { argb: c } });
@@ -44,7 +44,7 @@ const BORDER = (c = C.borderGray) => ({
   top: THIN(c), bottom: THIN(c), left: THIN(c), right: THIN(c),
 });
 
-// ── Style appliers ─────────────────────────────────────────────────────────────
+// -- Style appliers -------------------------------------------------------------
 
 function darkHdr(cell: ExcelJS.Cell, text: string, fontSize = 10) {
   cell.value = text;
@@ -113,14 +113,14 @@ function coloredPct(cell: ExcelJS.Cell, value: number | null) {
   cell.border = BORDER(C.borderBlack);
 }
 
-// ── FY label: "FY 26-27" format ───────────────────────────────────────────────
+// -- FY label: "FY 26-27" format -----------------------------------------------
 
 function fyLongLabel(d: Date): string {
   const endYear = d.getMonth() >= 3 ? d.getFullYear() + 1 : d.getFullYear();
   return `FY ${String(endYear - 1).slice(-2)}-${String(endYear).slice(-2)}`;
 }
 
-// ── Main route ─────────────────────────────────────────────────────────────────
+// -- Main route -----------------------------------------------------------------
 
 export async function GET() {
   try {
@@ -169,7 +169,7 @@ export async function GET() {
         : dateStr;
     })();
 
-    // ── Workbook setup ────────────────────────────────────────────────────────
+    // -- Workbook setup --------------------------------------------------------
     const wb = new ExcelJS.Workbook();
     wb.creator = "Sunidhi Research";
     const ws = wb.addWorksheet("Sheet1");
@@ -178,21 +178,21 @@ export async function GET() {
     const WIDTHS = [2, 22, 17, 13, 10, 22, 17, 14, 14, 2];
     WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    // ── ROWS 1-7: Branded header ───────────────────────────────────────────────
+    // -- ROWS 1-7: Branded header -----------------------------------------------
 
-    // ── Fill header cells individually to avoid merge conflicts ─────────────
+    // -- Fill header cells individually to avoid merge conflicts -------------
     const blueFill = { type: "pattern" as const, pattern: "solid" as const,
                        fgColor: { argb: C.bannerBlue } };
     const redFill  = { type: "pattern" as const, pattern: "solid" as const,
                        fgColor: { argb: C.bannerRed  } };
 
-    // Rows 1-2: red strip — fill each cell
+    // Rows 1-2: red strip -- fill each cell
     for (const r of [1, 2]) {
       ws.getRow(r).height = 7;
       for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = redFill;
     }
 
-    // Rows 3-6: blue banner — fill each cell
+    // Rows 3-6: blue banner -- fill each cell
     for (const r of [3, 4, 5, 6]) {
       ws.getRow(r).height = 22;
       for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = blueFill;
@@ -206,7 +206,7 @@ export async function GET() {
     titleCell.font = { bold: true, size: 18, color: { argb: C.white }, name: "Calibri" };
     titleCell.alignment = { horizontal: "center", vertical: "middle" };
 
-    // Row 7: red bottom strip — fill each cell
+    // Row 7: red bottom strip -- fill each cell
     ws.getRow(7).height = 5;
     for (let c = 1; c <= 10; c++) ws.getCell(7, c).fill = redFill;
 
@@ -221,12 +221,12 @@ export async function GET() {
         br: { col: 9.8, row: 6.8 },
         editAs: "oneCell",
       } as any);
-    } catch { /* logo not found — skip */ }
+    } catch { /* logo not found -- skip */ }
 
-    // ── Row 8: blank spacer ───────────────────────────────────────────────────
+    // -- Row 8: blank spacer ---------------------------------------------------
     ws.getRow(8).height = 8;
 
-    // ── Row 9: Date ────────────────────────────────────────────────────────────
+    // -- Row 9: Date ------------------------------------------------------------
     ws.getRow(9).height = 20;
     ws.mergeCells(9, 2, 9, 9);
     const dateCell = ws.getCell(9, 2);
@@ -234,16 +234,16 @@ export async function GET() {
     dateCell.font = { bold: true, size: 12, name: "Calibri", color: { argb: C.black } };
     dateCell.alignment = { horizontal: "center", vertical: "middle" };
 
-    // ── Row 10: blank ─────────────────────────────────────────────────────────
+    // -- Row 10: blank ---------------------------------------------------------
     ws.getRow(10).height = 5;
 
-    // ── Row 11: FII section title ──────────────────────────────────────────────
+    // -- Row 11: FII section title ----------------------------------------------
     ws.getRow(11).height = 18;
     ws.mergeCells(11, 2, 11, 9);
     darkHdr(ws.getCell(11, 2),
-      "FII/FPI/DII trading activity across Indian Exchanges – CM (Rs. In Cr.)", 10);
+      "FII/FPI/DII trading activity across Indian Exchanges - CM (Rs. In Cr.)", 10);
 
-    // ── Row 12: column headers ─────────────────────────────────────────────────
+    // -- Row 12: column headers -------------------------------------------------
     ws.getRow(12).height = 30;
     ws.mergeCells(12, 2, 12, 3);
     colHdr(ws.getCell(12, 2), "Category");
@@ -251,7 +251,7 @@ export async function GET() {
        [7,"Net Value"], [8,`MTD\n(${fy})`], [9,`YTD\n(${fy})`] ] as [number,string][])
       .forEach(([c, t]) => colHdr(ws.getCell(12, c), t));
 
-    // ── Row 13: FII/FPI ────────────────────────────────────────────────────────
+    // -- Row 13: FII/FPI --------------------------------------------------------
     ws.getRow(13).height = 16;
     ws.mergeCells(13, 2, 13, 3);
     label(ws.getCell(13, 2), "FII/FPI", true);
@@ -264,7 +264,7 @@ export async function GET() {
     colored(ws.getCell(13, 8), fiiTotals.mtd);
     colored(ws.getCell(13, 9), fiiTotals.ytd);
 
-    // ── Row 14: DII ────────────────────────────────────────────────────────────
+    // -- Row 14: DII ------------------------------------------------------------
     ws.getRow(14).height = 16;
     ws.mergeCells(14, 2, 14, 3);
     label(ws.getCell(14, 2), "DII", true);
@@ -277,20 +277,20 @@ export async function GET() {
     colored(ws.getCell(14, 8), diiMtd);
     colored(ws.getCell(14, 9), diiYtd);
 
-    // ── Row 15: blank ─────────────────────────────────────────────────────────
+    // -- Row 15: blank ---------------------------------------------------------
     ws.getRow(15).height = 5;
 
-    // ── Row 16: Sectorial title ────────────────────────────────────────────────
+    // -- Row 16: Sectorial title ------------------------------------------------
     ws.getRow(16).height = 18;
     ws.mergeCells(16, 2, 16, 9);
     darkHdr(ws.getCell(16, 2), "Sectorial Contribution in SENSEX");
 
-    // ── Row 17: sectorial column headers ──────────────────────────────────────
+    // -- Row 17: sectorial column headers --------------------------------------
     ws.getRow(17).height = 16;
     ([2,4,6,8] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "Index"));
     ([3,5,7,9] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "(%)"));
 
-    // ── Rows 18-23: BSE SENSEX sectorial data (6 rows × 4 sector pairs) ───────
+    // -- Rows 18-23: BSE SENSEX sectorial data (6 rows × 4 sector pairs) -------
     //
     // Column layout per row:
     //   B(2)=sector1 name  C(3)=% | D(4)=sector2 name  E(5)=% |
@@ -329,23 +329,23 @@ export async function GET() {
           pctCell.alignment = { horizontal: "right", vertical: "middle" };
           pctCell.border = BORDER(C.borderBlack);
         } else {
-          // BSE didn't return this index — leave blank with border
+          // BSE didn't return this index -- leave blank with border
           labelCell.border = BORDER(C.borderBlack);
           pctCell.border   = BORDER(C.borderBlack);
         }
       });
     }
 
-    // ── Row 24: blank ─────────────────────────────────────────────────────────
+    // -- Row 24: blank ---------------------------------------------------------
     ws.getRow(24).height = 5;
 
-    // ── Row 25: Commodity + APAC headers ──────────────────────────────────────
+    // -- Row 25: Commodity + APAC headers --------------------------------------
     ws.getRow(25).height = 30;
     ([ [2,"Commodity"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
        [6,"Asia Pacific"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
       .forEach(([c, t]) => colHdr(ws.getCell(25, c), t));
 
-    // ── Rows 26-30: Commodities (B-E) + APAC (F-I) ────────────────────────────
+    // -- Rows 26-30: Commodities (B-E) + APAC (F-I) ----------------------------
     const COMMODITIES = [
       { label: "Gold",            sym: "GC=F",      fmt: "#,##0.000" },
       { label: "Silver",          sym: "SI=F",      fmt: "#,##0.000" },
@@ -393,23 +393,23 @@ export async function GET() {
       }
     }
 
-    // ── Row 31: blank ─────────────────────────────────────────────────────────
+    // -- Row 31: blank ---------------------------------------------------------
     ws.getRow(31).height = 5;
 
-    // ── Row 32: Europe + America headers ──────────────────────────────────────
+    // -- Row 32: Europe + America headers --------------------------------------
     ws.getRow(32).height = 18;
     ws.mergeCells(32, 2, 32, 5);
     darkHdr(ws.getCell(32, 2), "Europe");
     ws.mergeCells(32, 6, 32, 9);
     darkHdr(ws.getCell(32, 6), "America");
 
-    // ── Row 33: column headers ─────────────────────────────────────────────────
+    // -- Row 33: column headers -------------------------------------------------
     ws.getRow(33).height = 30;
     ([ [2,"Index"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
        [6,"Index"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
       .forEach(([c, t]) => colHdr(ws.getCell(33, c), t));
 
-    // ── Rows 34-36: Europe (B-E) + America (F-I) ──────────────────────────────
+    // -- Rows 34-36: Europe (B-E) + America (F-I) ------------------------------
     const EUROPE  = [
       { label: "FTSE 100",         sym: "^FTSE"  },
       { label: "DAX",              sym: "^GDAXI" },
@@ -448,17 +448,17 @@ export async function GET() {
       }
     }
 
-    // ── Row 37: blank ─────────────────────────────────────────────────────────
+    // -- Row 37: blank ---------------------------------------------------------
     ws.getRow(37).height = 6;
 
-    // ── Row 38: Disclaimer header ──────────────────────────────────────────────
+    // -- Row 38: Disclaimer header ----------------------------------------------
     ws.getRow(38).height = 16;
     ws.mergeCells(38, 2, 38, 9);
     const discHdr = ws.getCell(38, 2);
     discHdr.value = "Disclosures and Disclaimer:-";
     discHdr.font = { bold: true, underline: true, name: "Calibri", size: 10 };
 
-    // ── Row 39: Disclaimer text (tall) ────────────────────────────────────────
+    // -- Row 39: Disclaimer text (tall) ----------------------------------------
     ws.getRow(39).height = 320;
     ws.mergeCells(39, 2, 39, 9);
     const discBody = ws.getCell(39, 2);
@@ -473,17 +473,17 @@ export async function GET() {
     discBody.font = { name: "Calibri", size: 9, color: { argb: C.black } };
     discBody.alignment = { wrapText: true, vertical: "top" };
 
-    // ── Row 40: Company footer ─────────────────────────────────────────────────
+    // -- Row 40: Company footer -------------------------------------------------
     ws.getRow(40).height = 16;
     ws.mergeCells(40, 2, 40, 9);
     const footerCell = ws.getCell(40, 2);
-    footerCell.value = "Sunidhi Securities & Finance Ltd. – Research Analyst – INH000000000";
+    footerCell.value = "Sunidhi Securities & Finance Ltd. - Research Analyst - INH000000000";
     footerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.footerGray } };
     footerCell.font = { bold: true, name: "Calibri", size: 10 };
     footerCell.alignment = { horizontal: "center", vertical: "middle" };
     footerCell.border = BORDER(C.borderBlack);
 
-    // ── Row 41: Address ────────────────────────────────────────────────────────
+    // -- Row 41: Address --------------------------------------------------------
     ws.getRow(41).height = 14;
     ws.mergeCells(41, 2, 41, 9);
     const addrCell = ws.getCell(41, 2);
@@ -494,7 +494,7 @@ export async function GET() {
     addrCell.alignment = { horizontal: "center", vertical: "middle" };
     addrCell.border = BORDER(C.borderBlack);
 
-    // ── Rows 42-44: Registration table ────────────────────────────────────────
+    // -- Rows 42-44: Registration table ----------------------------------------
     const regFill = { type: "pattern" as const, pattern: "solid" as const,
                        fgColor: { argb: C.footerGray } };
 
@@ -523,7 +523,7 @@ export async function GET() {
       }
     }
 
-    // ── Serialize ──────────────────────────────────────────────────────────────
+    // -- Serialize --------------------------------------------------------------
     const buf = await wb.xlsx.writeBuffer();
 
     const dateSuffix = today

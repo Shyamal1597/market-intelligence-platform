@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import type { BseSectorQuote } from "@/lib/bse-sectors";
 import { EOD_SENSEX_SECTORS } from "@/lib/bse-sectors";
 
-// ── Single tile ───────────────────────────────────────────────────────────────
+// -- Single tile ---------------------------------------------------------------
 
 function BseTile({ s }: { s: BseSectorQuote }) {
   const up  = s.changePercent >= 0;
@@ -35,7 +35,7 @@ function BseTile({ s }: { s: BseSectorQuote }) {
   );
 }
 
-// ── EOD 6×4 grid (matches report template layout) ────────────────────────────
+// -- EOD 6×4 grid (matches report template layout) ----------------------------
 
 function EodGrid({ byCode }: { byCode: Map<string, BseSectorQuote> }) {
   const ROWS = 6;
@@ -67,7 +67,7 @@ function EodGrid({ byCode }: { byCode: Map<string, BseSectorQuote> }) {
                 return (
                   <>
                     <td key={`l${colIdx}`} className="py-2 px-2 font-sans text-[11px] text-primary">
-                      {sectorDef?.label ?? "—"}
+                      {sectorDef?.label ?? "--"}
                     </td>
                     <td
                       key={`p${colIdx}`}
@@ -77,7 +77,7 @@ function EodGrid({ byCode }: { byCode: Map<string, BseSectorQuote> }) {
                     >
                       {s
                         ? `${s.changePercent >= 0 ? "+" : ""}${s.changePercent.toFixed(2)}%`
-                        : "—"}
+                        : "--"}
                     </td>
                   </>
                 );
@@ -90,7 +90,7 @@ function EodGrid({ byCode }: { byCode: Map<string, BseSectorQuote> }) {
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// -- Main export ---------------------------------------------------------------
 
 interface Props {
   sectors: BseSectorQuote[];
@@ -111,7 +111,7 @@ export function BseSectorGrid({ sectors, loading }: Props) {
   if (sectors.length === 0) {
     return (
       <p className="text-muted text-sm font-mono">
-        BSE sector data unavailable — market may be closed.
+        BSE sector data unavailable -- market may be closed.
       </p>
     );
   }
@@ -141,11 +141,11 @@ export function BseSectorGrid({ sectors, loading }: Props) {
         <span className="text-[11px] font-mono text-danger">{declining} DOWN</span>
       </div>
 
-      {/* EOD template grid (6×4) — matches the report layout */}
+      {/* EOD template grid (6×4) -- matches the report layout */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="px-4 pt-3 pb-1 border-b border-border/60">
           <p className="font-mono text-[10px] tracking-widest text-muted uppercase">
-            Report Layout — Sectorial Contribution in SENSEX
+            Report Layout -- Sectorial Contribution in SENSEX
           </p>
         </div>
         <div className="px-4 py-3">

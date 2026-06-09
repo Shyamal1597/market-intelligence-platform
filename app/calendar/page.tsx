@@ -37,8 +37,8 @@ function formatDateLabel(dateStr: string): string {
 
   const formatted = fmt.format(entryDate);
 
-  if (sameDay(entryDate, today))    return `Today — ${formatted}`;
-  if (sameDay(entryDate, tomorrow)) return `Tomorrow — ${formatted}`;
+  if (sameDay(entryDate, today))    return `Today -- ${formatted}`;
+  if (sameDay(entryDate, tomorrow)) return `Tomorrow -- ${formatted}`;
   return formatted;
 }
 

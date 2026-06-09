@@ -13,7 +13,7 @@ interface Quote {
   history: number[];
 }
 
-// ── All selectable symbols ─────────────────────────────────────────────────────
+// -- All selectable symbols -----------------------------------------------------
 const ALL_SYMBOLS = [
   { symbol: "^NSEI", label: "Nifty 50", group: "India" },
   { symbol: "^BSESN", label: "Sensex", group: "India" },
@@ -76,7 +76,7 @@ function formatPrice(price: number, symbol: string): string {
   return price.toFixed(2);
 }
 
-// ── Metric tile ───────────────────────────────────────────────────────────────
+// -- Metric tile ---------------------------------------------------------------
 function MetricTile({ quote }: { quote: Quote }) {
   const up = quote.changePercent >= 0;
   return (
@@ -116,7 +116,7 @@ function SkeletonTile() {
   );
 }
 
-// ── Customize panel ───────────────────────────────────────────────────────────
+// -- Customize panel -----------------------------------------------------------
 interface CustomizePanelProps {
   selected: string[];
   onChange: (next: string[]) => void;
@@ -206,7 +206,7 @@ function CustomizePanel({ selected, onChange, onClose }: CustomizePanelProps) {
   );
 }
 
-// ── MetricsRow ────────────────────────────────────────────────────────────────
+// -- MetricsRow ----------------------------------------------------------------
 export function MetricsRow() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +223,7 @@ export function MetricsRow() {
     if (mounted) saveSelectedSymbols(selectedSymbols);
   }, [selectedSymbols, mounted]);
 
-  // Fetch both APIs independently — one failure must not block the other
+  // Fetch both APIs independently -- one failure must not block the other
   useEffect(() => {
     let alive = true;
 

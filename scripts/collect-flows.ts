@@ -153,11 +153,11 @@ function mergeEntries(existing: unknown[], incoming: unknown[]): unknown[] {
   return [...map.values()];
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// -- Main ---------------------------------------------------------------------
 
 async function main() {
   const today = new Date().toISOString().slice(0, 10);
-  console.log(`[collect-flows] ${today} — starting`);
+  console.log(`[collect-flows] ${today} -- starting`);
 
   let history = await loadHistory();
   console.log(`[collect-flows] loaded ${history.length} existing entries`);

@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.48.102"],
 
   // Prevent webpack from bundling pdf2json (and its pdfjs-dist dependency) into
-  // API routes — it must be loaded natively by Node.js. Without this, pdfjs-dist
+  // API routes -- it must be loaded natively by Node.js. Without this, pdfjs-dist
   // initialises a "fake worker" on every route cold-start and floods the dev console.
   serverExternalPackages: ["pdf2json", "exceljs"],
 

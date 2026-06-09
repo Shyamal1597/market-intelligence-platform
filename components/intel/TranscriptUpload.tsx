@@ -95,7 +95,7 @@ export function TranscriptUpload({ onComplete }: { onComplete?: () => void }) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
       } catch {
-        // Network error — keep polling
+        // Network error -- keep polling
       }
     }, 3000);
   }, [onComplete]);

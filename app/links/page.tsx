@@ -48,7 +48,7 @@ export default function LinksPage() {
                     rel="noopener noreferrer"
                     className="group relative flex flex-col justify-between p-4 rounded-xl border border-border bg-surface hover:bg-surface/80 hover:border-amber/30 transition-all overflow-hidden"
                   >
-                    {/* Amber left accent bar — animates on hover */}
+                    {/* Amber left accent bar -- animates on hover */}
                     <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber scale-y-0 group-hover:scale-y-100 transition-transform duration-200 origin-bottom rounded-r-full" />
 
                     <div>

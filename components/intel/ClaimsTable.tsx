@@ -10,7 +10,7 @@ import type { Verdict } from "@/lib/intel/types";
 interface Props {
   byQuarter: Record<string, EnrichedClaim[]>;
   filters: IntelFilters;
-  /** All registry metrics — needed for segment lookup */
+  /** All registry metrics -- needed for segment lookup */
   registry: Array<{ key: string; segment: string }>;
 }
 
@@ -120,7 +120,7 @@ export function ClaimsTable({ byQuarter, filters, registry }: Props) {
     return (
       <div className="rounded border border-border bg-surface p-8 text-center text-muted font-mono text-sm">
         {total === 0
-          ? "No claims extracted yet — run intel:rebuild first."
+          ? "No claims extracted yet -- run intel:rebuild first."
           : "No claims match the current filters."}
       </div>
     );

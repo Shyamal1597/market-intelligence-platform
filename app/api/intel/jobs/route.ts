@@ -7,8 +7,8 @@ import { listJobs } from "@/lib/intel/pipeline";
  *
  * List recent pipeline jobs.
  * Query params:
- *   ?symbol=HDFCBANK  — filter by symbol
- *   ?limit=20         — max results (default: 20, max: 100)
+ *   ?symbol=HDFCBANK  -- filter by symbol
+ *   ?limit=20         -- max results (default: 20, max: 100)
  */
 export async function GET(req: Request) {
   try {

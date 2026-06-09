@@ -6,7 +6,7 @@ import { dateToQuarter, normalizeQuarter, quarterAddOffset } from "./quarters";
 
 const _require = createRequire(import.meta.url);
 
-// ── Quarter detection ─────────────────────────────────────────────────────────
+// -- Quarter detection ---------------------------------------------------------
 
 export function detectQuarterFromFilename(filename: string): string | null {
   const m = filename.match(/Q\s*([1-4])\s*-?\s*FY\s*(\d{2})/i);
@@ -29,18 +29,18 @@ export function dateToQuarterLabel(iso: string): string {
 }
 
 /** Convert a call date to the quarter the call is REPORTING ON.
- *  Heuristic: subtract one quarter — calls are held a few weeks after a quarter ends. */
+ *  Heuristic: subtract one quarter -- calls are held a few weeks after a quarter ends. */
 export function reportingQuarterFromCallDate(iso: string): string {
   const callQ = dateToQuarter(iso);
   return quarterAddOffset(callQ, -1);
 }
 
-// ── PDF text extraction ───────────────────────────────────────────────────────
+// -- PDF text extraction -------------------------------------------------------
 
 const MIN_CHARS_PER_KB = 100;
 
 // pdfjs-dist (used internally by pdf2json) writes diagnostic noise to console.warn.
-// These are not errors — filter them during PDF parsing so they don't flood the
+// These are not errors -- filter them during PDF parsing so they don't flood the
 // Next.js dev server log on every ingestion request.
 const PDF_WARN_NOISE = /Setting up fake worker|TT: (undefined function|invalid function)|Unsupported: field\.type|NOT valid form element/;
 
@@ -112,7 +112,7 @@ export async function extractPdfText(pdfPath: string): Promise<{ text: string; m
   return { text, method };
 }
 
-// ── Text cleaning ─────────────────────────────────────────────────────────────
+// -- Text cleaning -------------------------------------------------------------
 
 const COVER_TRIGGERS = [/^Moderator\s*:/im, /^Operator\s*:/im, /Earnings Conference Call/i];
 
@@ -148,7 +148,7 @@ export function stripRepeatingFooters(text: string): string {
   }).join("\n");
 }
 
-// ── Ingest driver ─────────────────────────────────────────────────────────────
+// -- Ingest driver -------------------------------------------------------------
 
 export interface TranscriptManifest {
   symbol: string;

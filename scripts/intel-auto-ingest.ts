@@ -1,7 +1,7 @@
 /**
  * scripts/intel-auto-ingest.ts
  *
- * Scheduled auto-ingest script — calls the running Next.js server's
+ * Scheduled auto-ingest script -- calls the running Next.js server's
  * /api/intel/auto-ingest endpoint to pull new BSE/Screener transcripts
  * and trigger Stage 3+4 for any newly found symbols.
  *
@@ -13,7 +13,7 @@
  * Or via npm: npm run intel:auto-ingest
  *
  * Environment:
- *   INTRANET_URL — base URL of the Next.js server (default: http://localhost:3000)
+ *   INTRANET_URL -- base URL of the Next.js server (default: http://localhost:3000)
  */
 
 import https from "node:https";
@@ -73,7 +73,7 @@ async function main() {
     if (result.pipelineTriggered?.length) {
       console.log(`  Pipeline triggered for: ${result.pipelineTriggered.join(", ")}`);
     } else {
-      console.log(`  No new transcripts — nothing to process`);
+      console.log(`  No new transcripts -- nothing to process`);
     }
   } catch (e) {
     console.error(`  Failed: ${(e as Error).message}`);

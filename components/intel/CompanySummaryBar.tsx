@@ -6,7 +6,7 @@ import type { EnrichedClaim } from "./ClaimRow";
 
 interface Props {
   symbol: string;
-  /** Human-readable sector label, e.g. "Insurance — Holding" */
+  /** Human-readable sector label, e.g. "Insurance -- Holding" */
   sectorLabel: string;
   byQuarter: Record<string, EnrichedClaim[]>;
 }

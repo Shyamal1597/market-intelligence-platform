@@ -17,7 +17,7 @@ import type { InsiderDisclosure } from "@/app/api/insider/[symbol]/route";
 
 export const dynamic = "force-dynamic";
 
-// ── Market-mode helpers ────────────────────────────────────────────────────────
+// -- Market-mode helpers --------------------------------------------------------
 
 async function buildMarketData(): Promise<MarketStreamData> {
   const fiiDii = getRecentFiiDii(7);
@@ -41,7 +41,7 @@ async function buildMarketData(): Promise<MarketStreamData> {
         if (d.side === "BUY") totalBuyCr += d.valueCr;
         else if (d.side === "SELL") totalSellCr += d.valueCr;
       }
-      // fetchDeals() returns pre-sorted by valueCr desc — slice gives top 10 by value
+      // fetchDeals() returns pre-sorted by valueCr desc -- slice gives top 10 by value
       const topDeals = deals.slice(0, 10).map(d => ({
         institution: d.client,
         side: d.side,
@@ -55,7 +55,7 @@ async function buildMarketData(): Promise<MarketStreamData> {
   return { mode: "market", fiiDii, newsHeadlines, keyFilings, dealFlow };
 }
 
-// ── Symbol-mode helpers ────────────────────────────────────────────────────────
+// -- Symbol-mode helpers --------------------------------------------------------
 
 async function buildSymbolData(symbol: string): Promise<SymbolStreamData> {
   const [dealsResult, filingsResult, insidersResult] = await Promise.allSettled([
@@ -93,7 +93,7 @@ async function buildSymbolData(symbol: string): Promise<SymbolStreamData> {
   };
 }
 
-// ── Ollama streaming ───────────────────────────────────────────────────────────
+// -- Ollama streaming -----------------------------------------------------------
 
 function streamOllama(
   prompt: string,
@@ -158,7 +158,7 @@ function streamOllama(
   });
 }
 
-// ── Route ──────────────────────────────────────────────────────────────────────
+// -- Route ----------------------------------------------------------------------
 
 export async function GET(
   req: NextRequest,
@@ -182,7 +182,7 @@ export async function GET(
   const rawData = isMarket ? await buildMarketData() : await buildSymbolData(upper);
 
   // For symbol mode: refuse to generate if no symbol-specific data exists.
-  // FII/DII is market-wide — it cannot produce valid stock-specific insights.
+  // FII/DII is market-wide -- it cannot produce valid stock-specific insights.
   if (!isMarket) {
     const sd = rawData as SymbolStreamData;
     const hasData = sd.insiders.length > 0 || sd.bulkBlockDeals.length > 0 || sd.announcements.length > 0 || sd.stockNews.length > 0;

@@ -19,7 +19,7 @@ function ratingDirection(rating: string): 1 | -1 | 0 {
 export function AnalystScorecard({ analyst, reports, livePrices }: Props) {
   const totalCalls = reports.length;
 
-  // ── Directional accuracy ──────────────────────────────────────────────────
+  // -- Directional accuracy --------------------------------------------------
   // A "hit" = stock moved in the direction the analyst predicted, measured
   // from the CMP at time of report vs current price.
   // Only include reports where we have both r.cmp > 0 and a live price.
@@ -39,7 +39,7 @@ export function AnalystScorecard({ analyst, reports, livePrices }: Props) {
       ? ((hits.length / directionalReports.length) * 100).toFixed(0)
       : null;
 
-  // ── Avg return since issue ────────────────────────────────────────────────
+  // -- Avg return since issue ------------------------------------------------
   // (currentPrice - cmpAtIssue) / cmpAtIssue × 100, averaged
   const returnReports = reports.filter((r) => {
     const live = r.symbol ? livePrices[r.symbol] : null;
@@ -54,7 +54,7 @@ export function AnalystScorecard({ analyst, reports, livePrices }: Props) {
         }, 0) / returnReports.length
       : null;
 
-  // ── Remaining upside to target ────────────────────────────────────────────
+  // -- Remaining upside to target --------------------------------------------
   // (targetPrice - currentPrice) / currentPrice × 100, averaged across BUY calls
   const upsideReports = reports.filter((r) => {
     const live = r.symbol ? livePrices[r.symbol] : null;
@@ -80,7 +80,7 @@ export function AnalystScorecard({ analyst, reports, livePrices }: Props) {
     if (value === null) {
       return (
         <div className="bg-background rounded-lg p-2 text-center">
-          <div className="text-lg font-mono text-muted">—</div>
+          <div className="text-lg font-mono text-muted">--</div>
           <div className="text-[9px] font-mono text-muted tracking-wider uppercase">{label}</div>
         </div>
       );
@@ -114,14 +114,14 @@ export function AnalystScorecard({ analyst, reports, livePrices }: Props) {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        {/* Hit rate — directional accuracy */}
+        {/* Hit rate -- directional accuracy */}
         <div className="bg-background rounded-lg p-2 text-center">
           <div className={`text-lg font-mono ${
             hitRate === null ? "text-muted" :
             Number(hitRate) >= 60 ? "text-teal" :
             Number(hitRate) >= 40 ? "text-amber" : "text-danger"
           }`}>
-            {hitRate !== null ? `${hitRate}%` : "—"}
+            {hitRate !== null ? `${hitRate}%` : "--"}
           </div>
           <div className="text-[9px] font-mono text-muted tracking-wider uppercase">Hit Rate</div>
         </div>

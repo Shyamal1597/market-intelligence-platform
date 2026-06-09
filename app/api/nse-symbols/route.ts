@@ -4,7 +4,7 @@ import path from "path";
 
 const SCRIP_MAP_PATH = path.join(process.cwd(), "data", "breeze-scrip-map.json");
 
-// ── NIFTY 500 priority set ─────────────────────────────────────────────────────
+// -- NIFTY 500 priority set -----------------------------------------------------
 // These rank above the rest of the universe in autocomplete results.
 const NIFTY500: ReadonlySet<string> = new Set([
   // NIFTY 50
@@ -110,7 +110,7 @@ function getEquitySymbols(): string[] {
     const raw = fs.readFileSync(SCRIP_MAP_PATH, "utf-8");
     const data = JSON.parse(raw) as { map: Record<string, string> };
     // NSE equity symbols are purely alphabetic (plus & and -).
-    // Reject anything containing a digit — those are bonds/G-sec codes.
+    // Reject anything containing a digit -- those are bonds/G-sec codes.
     _cachedSymbols = Object.keys(data.map)
       .filter(k => /^[A-Z][A-Z&\-]{0,18}[A-Z]$/.test(k) || /^[A-Z]{2,4}$/.test(k))
       .sort();

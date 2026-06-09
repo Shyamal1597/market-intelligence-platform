@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const NEWS_PATH = path.join(process.cwd(), "data", "market-news.json");
 
-// Common aliases for well-known NSE symbols — maps symbol → extra search terms
+// Common aliases for well-known NSE symbols -- maps symbol → extra search terms
 // These are abbreviations/names that appear in news articles but not in NSE tickers
 const SYMBOL_ALIASES: Record<string, string[]> = {
   RELIANCE:    ["RIL", "RELIANCE INDUSTRIES", "RELIANCE JIO", "MUKESH AMBANI"],
@@ -74,7 +74,7 @@ const SYMBOL_ALIASES: Record<string, string[]> = {
 function buildSearchTerms(symbol: string): string[] {
   const base = getSearchTerms(symbol);               // suffix-stripping variants
   const aliases = [...(SYMBOL_ALIASES[symbol] ?? [])];
-  // Handle M&M specially — symbol is "M&M" in NSE
+  // Handle M&M specially -- symbol is "M&M" in NSE
   if (symbol === "M&M") aliases.push(...(SYMBOL_ALIASES["M_M"] ?? []));
   return [...new Set([...base, ...aliases])];
 }
@@ -131,7 +131,7 @@ function getPortfolioNews(symbol: string, limit = 15) {
 
     const matches = data.news.filter((n) => {
       const title = (n.title ?? "").toUpperCase();
-      // Title-only, whole-word match — prevents "RIL" ⊂ "APRIL", "LT" ⊂ "RESULT", etc.
+      // Title-only, whole-word match -- prevents "RIL" ⊂ "APRIL", "LT" ⊂ "RESULT", etc.
       return terms.some((t) => titleContainsTerm(title, t));
     });
 
@@ -164,7 +164,7 @@ export async function GET(
   const sym = symbol.toUpperCase().trim();
 
   const [filingsResult, dealsResult] = await Promise.allSettled([
-    fetchNSEFilings(2000), // ~333 per feed — covers a full day of NSE filings
+    fetchNSEFilings(2000), // ~333 per feed -- covers a full day of NSE filings
     fetchAllDeals(),       // single NSE session → bulk + block + short in one shot
   ]);
 
@@ -191,7 +191,7 @@ export async function GET(
 
   const symbolShort = short.filter((d) => d.symbol === sym);
 
-  // Enrich short deals for this symbol with the live price (one fetch — symbol is known)
+  // Enrich short deals for this symbol with the live price (one fetch -- symbol is known)
   let enrichedShort = symbolShort;
   if (symbolShort.length > 0) {
     try {
@@ -219,7 +219,7 @@ export async function GET(
         }
       }
     } catch {
-      // non-fatal — fall back to unenriched short deals
+      // non-fatal -- fall back to unenriched short deals
     }
   }
 

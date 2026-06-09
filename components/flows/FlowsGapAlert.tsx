@@ -122,7 +122,7 @@ export function FlowsGapAlert({ onPatched }: { onPatched?: () => void }) {
               {gaps.gapCount} missing trading day{gaps.gapCount !== 1 ? "s" : ""} in history
             </span>
             <span className="text-xs font-mono text-muted ml-2">
-              — MTD uses {mtdDays} day{mtdDays !== 1 ? "s" : ""}, YTD uses {ytdDays} days
+              -- MTD uses {mtdDays} day{mtdDays !== 1 ? "s" : ""}, YTD uses {ytdDays} days
             </span>
           </div>
         </div>
@@ -191,7 +191,7 @@ export function FlowsGapAlert({ onPatched }: { onPatched?: () => void }) {
                         </td>
                       ))}
                       <td className={`py-1.5 px-2 text-right tabular-nums ${fiiNet === null ? "text-muted" : fiiNet >= 0 ? "text-teal" : "text-danger"}`}>
-                        {fiiNet !== null ? (fiiNet >= 0 ? "+" : "") + fiiNet.toFixed(2) : "—"}
+                        {fiiNet !== null ? (fiiNet >= 0 ? "+" : "") + fiiNet.toFixed(2) : "--"}
                       </td>
                       {(["diiEquityBuy","diiEquitySell"] as const).map((f) => (
                         <td key={f} className="py-1 px-1">
@@ -206,7 +206,7 @@ export function FlowsGapAlert({ onPatched }: { onPatched?: () => void }) {
                         </td>
                       ))}
                       <td className={`py-1.5 px-2 text-right tabular-nums ${diiNet === null ? "text-muted" : diiNet >= 0 ? "text-teal" : "text-danger"}`}>
-                        {diiNet !== null ? (diiNet >= 0 ? "+" : "") + diiNet.toFixed(2) : "—"}
+                        {diiNet !== null ? (diiNet >= 0 ? "+" : "") + diiNet.toFixed(2) : "--"}
                       </td>
                     </tr>
                   );

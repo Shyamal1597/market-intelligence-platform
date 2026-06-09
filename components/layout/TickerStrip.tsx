@@ -55,7 +55,7 @@ export function TickerStrip() {
       const data = await res.json();
       setQuotes(data.quotes ?? []);
     } catch {
-      // silent fail — ticker is cosmetic
+      // silent fail -- ticker is cosmetic
     }
   };
 

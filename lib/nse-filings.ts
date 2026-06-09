@@ -11,7 +11,7 @@ export interface NSEFiling {
   filingType: string;
   category: FilingCategory;
   description: string;
-  pdfUrl: string | null;   // Direct NSE filing link — always populated
+  pdfUrl: string | null;   // Direct NSE filing link -- always populated
   submittedAt: string;
 }
 
@@ -80,7 +80,7 @@ function parseNSETitle(raw: string): { symbol: string; description: string } {
       description: raw.slice(sep + 3).trim(),
     };
   }
-  // New format: title is the company name only — symbol is unknown from title alone
+  // New format: title is the company name only -- symbol is unknown from title alone
   return { symbol: "", description: raw.trim() };
 }
 
@@ -103,7 +103,7 @@ function extractFilingSubject(content: string | undefined): string {
  * Fetch the 6 key NSE RSS feeds in parallel and return a merged,
  * date-sorted array of NSEFiling objects.
  *
- * Each item's `link` field is a direct NSE filing page URL — pdfUrl is
+ * Each item's `link` field is a direct NSE filing page URL -- pdfUrl is
  * always populated, solving the core "useless" problem with the BSE feed.
  */
 export async function fetchNSEFilings(limit = 50): Promise<NSEFiling[]> {
@@ -125,7 +125,7 @@ export async function fetchNSEFilings(limit = 50): Promise<NSEFiling[]> {
         const companyName = parsedSymbol || rawTitle;
 
         // scripCode: if the title had the old SYMBOL format use that;
-        // otherwise use the company name — the portfolio matching layer does
+        // otherwise use the company name -- the portfolio matching layer does
         // alias lookup against this field.
         const scripCode = parsedSymbol || rawTitle;
 

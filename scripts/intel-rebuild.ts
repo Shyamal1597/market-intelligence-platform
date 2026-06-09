@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * intel-rebuild — CLI orchestrator for the Intel Dashboard pipeline.
+ * intel-rebuild -- CLI orchestrator for the Intel Dashboard pipeline.
  *
  * Usage:
  *   npx tsx scripts/intel-rebuild.ts <SYMBOL> [options]
@@ -15,9 +15,9 @@
  *   --dry-run           Print plan without executing
  *
  * Environment variables:
- *   ANTHROPIC_API_KEY   — enables Anthropic backend (set in .env.local)
- *   LLM_BACKEND=ollama  — force local Ollama even if API key is present
- *   OLLAMA_BASE_URL     — override Ollama endpoint (default: http://localhost:11434)
+ *   ANTHROPIC_API_KEY   -- enables Anthropic backend (set in .env.local)
+ *   LLM_BACKEND=ollama  -- force local Ollama even if API key is present
+ *   OLLAMA_BASE_URL     -- override Ollama endpoint (default: http://localhost:11434)
  */
 
 import path from "node:path";
@@ -43,7 +43,7 @@ import { claimsHash } from "@/lib/intel/extractClaims";
 import { activeBackend, defaultExtractionModel, defaultVerificationModel } from "@/lib/intel/llm";
 import type { ClaimsArtifact } from "@/lib/intel/types";
 
-// ── CLI parsing ───────────────────────────────────────────────────────────────
+// -- CLI parsing ---------------------------------------------------------------
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -72,7 +72,7 @@ function parseArgs() {
   };
 }
 
-// ── data paths ────────────────────────────────────────────────────────────────
+// -- data paths ----------------------------------------------------------------
 
 function dataPaths(symbol: string) {
   const base = path.join("data/intelligence", symbol);
@@ -106,7 +106,7 @@ function transcriptDir(symbol: string): string {
   return path.join("Concall Data", symbol);
 }
 
-// ── stage runners ─────────────────────────────────────────────────────────────
+// -- stage runners -------------------------------------------------------------
 
 async function runStage1(symbol: string, opts: ReturnType<typeof parseArgs>): Promise<import("@/lib/intel/types").Fundamentals | null> {
   const paths = dataPaths(symbol);
@@ -120,7 +120,7 @@ async function runStage1(symbol: string, opts: ReturnType<typeof parseArgs>): Pr
 
   const xlsxFile = excelGlob(symbol);
   if (!xlsxFile) {
-    log(symbol, "stage1", `SKIP — no Excel file found in Concall Data/Fundamental data/`);
+    log(symbol, "stage1", `SKIP -- no Excel file found in Concall Data/Fundamental data/`);
     return null;
   }
 
@@ -142,7 +142,7 @@ async function runStage2(symbol: string, opts: ReturnType<typeof parseArgs>): Pr
   const srcDir = transcriptDir(symbol);
 
   if (!existsSync(srcDir)) {
-    log(symbol, "stage2", `SKIP — no transcript source dir: ${srcDir}`);
+    log(symbol, "stage2", `SKIP -- no transcript source dir: ${srcDir}`);
     return;
   }
 
@@ -183,7 +183,7 @@ async function runStage3(
   }
 
   if (!existsSync(paths.transcripts)) {
-    log(symbol, "stage3", "SKIP — run stage 2 first");
+    log(symbol, "stage3", "SKIP -- run stage 2 first");
     return null;
   }
 
@@ -223,11 +223,11 @@ async function runStage4(
   const reg = loadRegistry(sector);
 
   if (!existsSync(paths.claims)) {
-    log(symbol, "stage4", "SKIP — run stage 3 first");
+    log(symbol, "stage4", "SKIP -- run stage 3 first");
     return;
   }
   if (!existsSync(paths.transcripts)) {
-    log(symbol, "stage4", "SKIP — run stage 2 first (no transcripts dir)");
+    log(symbol, "stage4", "SKIP -- run stage 2 first (no transcripts dir)");
     return;
   }
 
@@ -263,13 +263,13 @@ async function runStage4(
   log(symbol, "stage4", `${all.length} checks | met ${met} moving ${mov} miss ${miss} | cost ~$${r.totalCostUsd.toFixed(3)}`);
 }
 
-// ── logging ───────────────────────────────────────────────────────────────────
+// -- logging -------------------------------------------------------------------
 
 function log(symbol: string, stage: string, msg: string) {
   console.log(`[${symbol}][${stage}] ${msg}`);
 }
 
-// ── Concurrency semaphore ─────────────────────────────────────────────────────
+// -- Concurrency semaphore -----------------------------------------------------
 
 function makeSemaphore(n: number) {
   let active = 0;
@@ -286,7 +286,7 @@ function makeSemaphore(n: number) {
   };
 }
 
-// ── main ──────────────────────────────────────────────────────────────────────
+// -- main ----------------------------------------------------------------------
 
 (async () => {
   const opts = parseArgs();
@@ -329,14 +329,14 @@ function makeSemaphore(n: number) {
         if (runStages.includes(2)) await runStage2(sym, opts);
         if (runStages.includes(3)) {
           if (totalCost.v > opts.costCap) {
-            log(sym, "stage3", `SKIP — cost cap $${opts.costCap} exceeded`);
+            log(sym, "stage3", `SKIP -- cost cap $${opts.costCap} exceeded`);
             return;
           }
           await runStage3(sym, opts, totalCost);
         }
         if (runStages.includes(4)) {
           if (totalCost.v > opts.costCap) {
-            log(sym, "stage4", `SKIP — cost cap $${opts.costCap} exceeded`);
+            log(sym, "stage4", `SKIP -- cost cap $${opts.costCap} exceeded`);
             return;
           }
           await runStage4(sym, opts, totalCost);

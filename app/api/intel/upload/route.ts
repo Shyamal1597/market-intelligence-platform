@@ -21,7 +21,7 @@ const MAX_SIZE = 20 * 1024 * 1024;
  * Request: multipart/form-data
  *   - file: PDF file (required)
  *   - symbol: NSE ticker (required, must exist in SYMBOL_SECTOR)
- *   - quarter: e.g. "Q1-FY27" (optional — auto-detected if omitted)
+ *   - quarter: e.g. "Q1-FY27" (optional -- auto-detected if omitted)
  *
  * Response: { jobId, symbol, quarter, status: "processing" }
  */
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       ? String(formData.get("quarter")).trim()
       : undefined;
 
-    // ── Validation ─────────────────────────────────────────────────────────
+    // -- Validation ---------------------------------------------------------
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       quarterOverride = normalized;
     }
 
-    // ── Ingest ─────────────────────────────────────────────────────────────
+    // -- Ingest -------------------------------------------------------------
 
     const ingestResult = await ingestPdfTranscript(
       pdfBuffer,
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       quarterOverride,
     );
 
-    // ── Create job and trigger pipeline ────────────────────────────────────
+    // -- Create job and trigger pipeline ------------------------------------
 
     const jobId = generateJobId();
     const job: PipelineJob = {

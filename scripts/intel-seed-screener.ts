@@ -2,7 +2,7 @@
  * scripts/intel-seed-screener.ts
  *
  * Download earnings call transcripts from Screener.in for tracked symbols.
- * Screener.in is publicly accessible — NO login or cookie required.
+ * Screener.in is publicly accessible -- NO login or cookie required.
  * Transcript links point to BSE historical archive PDFs (AttachHis).
  *
  * Usage:
@@ -21,7 +21,7 @@ import { load as cheerioLoad } from "cheerio";
 import { ingestPdfTranscript } from "@/lib/intel/pipeline";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// -- Config --------------------------------------------------------------------
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -34,19 +34,19 @@ const DELAY_MS = 1200; // polite delay between requests
  * URL-encoded at request time so no override needed for those.
  */
 const SCREENER_SLUG: Record<string, string> = {
-  // No overrides currently needed — special chars are encoded in fetchConcalls
+  // No overrides currently needed -- special chars are encoded in fetchConcalls
 };
 
-// ── Quarter helpers ───────────────────────────────────────────────────────────
+// -- Quarter helpers -----------------------------------------------------------
 
 /**
  * Convert a Screener.in concall month label to our quarter key.
  * Screener shows the *publication* month, not the quarter period.
  *
- *   Feb YYYY → Q3-FY{YY}    (Oct–Dec YYYY-1 results, published Jan/Feb)
- *   May YYYY → Q4-FY{YY}    (Jan–Mar YYYY results,   published Apr/May)
- *   Aug YYYY → Q1-FY{YY+1}  (Apr–Jun YYYY results,   published Jul/Aug)
- *   Nov YYYY → Q2-FY{YY+1}  (Jul–Sep YYYY results,   published Oct/Nov)
+ *   Feb YYYY → Q3-FY{YY}    (Oct-Dec YYYY-1 results, published Jan/Feb)
+ *   May YYYY → Q4-FY{YY}    (Jan-Mar YYYY results,   published Apr/May)
+ *   Aug YYYY → Q1-FY{YY+1}  (Apr-Jun YYYY results,   published Jul/Aug)
+ *   Nov YYYY → Q2-FY{YY+1}  (Jul-Sep YYYY results,   published Oct/Nov)
  *   Jan/Mar  → treated as Q3 (early/late Q3 season)
  *   Apr/Jun  → treated as Q4
  *   Jul/Sep  → treated as Q1
@@ -61,19 +61,19 @@ function labelToQuarter(label: string): string | null {
 
   let q: number;
   let fy: number;
-  if (mo <= 3) {            // Jan–Mar: Q3 season, FY ends this year
+  if (mo <= 3) {            // Jan-Mar: Q3 season, FY ends this year
     q = 3; fy = year % 100;
-  } else if (mo <= 6) {    // Apr–Jun: Q4 season, FY ends this year
+  } else if (mo <= 6) {    // Apr-Jun: Q4 season, FY ends this year
     q = 4; fy = year % 100;
-  } else if (mo <= 9) {    // Jul–Sep: Q1 season, FY ends next year
+  } else if (mo <= 9) {    // Jul-Sep: Q1 season, FY ends next year
     q = 1; fy = (year + 1) % 100;
-  } else {                  // Oct–Dec: Q2 season, FY ends next year
+  } else {                  // Oct-Dec: Q2 season, FY ends next year
     q = 2; fy = (year + 1) % 100;
   }
   return `Q${q}-FY${String(fy).padStart(2, "0")}`;
 }
 
-// ── HTTP helpers ──────────────────────────────────────────────────────────────
+// -- HTTP helpers --------------------------------------------------------------
 
 function fetchHtml(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -133,7 +133,7 @@ function fetchPdf(url: string): Promise<Buffer> {
 
 function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
-// ── Screener parsing ──────────────────────────────────────────────────────────
+// -- Screener parsing ----------------------------------------------------------
 
 interface ConcallEntry {
   label: string;          // e.g. "Feb 2026"
@@ -149,7 +149,7 @@ async function fetchConcalls(symbol: string): Promise<ConcallEntry[]> {
   const entries: ConcallEntry[] = [];
   const seen = new Set<string>();
 
-  // Find the concalls block — it's a <ul class="list-links"> inside a div near h3 "Concalls"
+  // Find the concalls block -- it's a <ul class="list-links"> inside a div near h3 "Concalls"
   // Each <li> has: <div style="width: 74px">DATE</div> + <a title="Raw Transcript" href="...">
 
   // Walk every <li> that contains a "Raw Transcript" link
@@ -178,7 +178,7 @@ async function fetchConcalls(symbol: string): Promise<ConcallEntry[]> {
   return entries;
 }
 
-// ── Args ──────────────────────────────────────────────────────────────────────
+// -- Args ----------------------------------------------------------------------
 
 const args = process.argv.slice(2);
 const symbols: string[] = [];
@@ -207,13 +207,13 @@ if (symbols.length > 0)    targetSymbols = symbols.filter((s) => SYMBOL_SECTOR[s
 else if (allMissing)       targetSymbols = Object.keys(SYMBOL_SECTOR);
 else                       targetSymbols = [...Q4_ONLY, "CANBK"];
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// -- Main ----------------------------------------------------------------------
 
 async function main() {
   console.log(`Screener transcript seeder (no auth required)`);
   console.log(`  Symbols:  ${targetSymbols.length}`);
   console.log(`  Quarters: ${targetQuarters.join(", ")}`);
-  if (dryRun) console.log(`  DRY RUN — no downloads or writes\n`);
+  if (dryRun) console.log(`  DRY RUN -- no downloads or writes\n`);
   console.log();
 
   let ingested = 0, skipped = 0, errors = 0, notFound = 0;
@@ -287,7 +287,7 @@ async function main() {
     await sleep(DELAY_MS);
   }
 
-  console.log(`\n${"─".repeat(60)}`);
+  console.log(`\n${"-".repeat(60)}`);
   console.log(`Done.`);
   console.log(`  Ingested:  ${ingested} new transcripts`);
   console.log(`  Skipped:   ${skipped} (already existed)`);

@@ -3,15 +3,15 @@
  *
  * Extracts structured financial data from equity research PDF text chunks.
  * Reports contain 4 parseable table types:
- *  1. Annual P&L rows  — FY\d\d label with values (mid-line due to 2-column PDF layout)
- *  2. Quarterly table  — line containing 3+ Q[1-4]FY\d\d quarter labels
- *  3. Valuations table — "Year End-March" header with FY columns
- *  4. Balance Sheet    — interleaved on same lines as Valuations (last N numbers per line)
+ *  1. Annual P&L rows  -- FY\d\d label with values (mid-line due to 2-column PDF layout)
+ *  2. Quarterly table  -- line containing 3+ Q[1-4]FY\d\d quarter labels
+ *  3. Valuations table -- "Year End-March" header with FY columns
+ *  4. Balance Sheet    -- interleaved on same lines as Valuations (last N numbers per line)
  *
  * Note: Some research reports use "EBIDTA" (typo) instead of "EBITDA" in places.
  */
 
-// ── Public interfaces ─────────────────────────────────────────────────────────
+// -- Public interfaces ---------------------------------------------------------
 
 export interface AnnualRow {
   fy: string;              // "FY24", "FY25E", "FY26E"
@@ -59,7 +59,7 @@ export interface FinancialSnapshot {
   balanceSheet: BalanceSeries | null;
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// -- Internal helpers ----------------------------------------------------------
 
 interface Token {
   val: number;
@@ -96,7 +96,7 @@ function normFY(base: string, estChar?: string): string {
   return estChar ? `${base}${estChar}` : base;
 }
 
-// ── Annual table ──────────────────────────────────────────────────────────────
+// -- Annual table --------------------------------------------------------------
 //
 // In research ICs the annual summary block on the cover page looks like:
 //
@@ -182,7 +182,7 @@ function parseAnnualRows(text: string): AnnualRow[] {
   return [...byFY.values()].sort((a, b) => a.fy.localeCompare(b.fy));
 }
 
-// ── Quarterly table ───────────────────────────────────────────────────────────
+// -- Quarterly table -----------------------------------------------------------
 //
 // Header formats seen in the wild:
 //   "Quarterly (₹ mn)     Q1 FY23 Q2 FY23 ... Q4FY25 YoY(%) QoQ(%)"  (JASH)
@@ -220,7 +220,7 @@ function parseQuarterlyRows(text: string): QuarterlyRow[] {
   // Stop early if we hit the valuations/balance sheet section ("Year End-March")
   // to prevent ratios-section rows from overwriting quarterly data.
   const rawSegment = lines.slice(hdrIdx + 1, hdrIdx + 80);
-  const termIdx = rawSegment.findIndex(l => /Year\s+End[-–\s]*March/i.test(l));
+  const termIdx = rawSegment.findIndex(l => /Year\s+End[--\s]*March/i.test(l));
   const segment = termIdx >= 0 ? rawSegment.slice(0, termIdx) : rawSegment;
 
   const revenues: (number | null)[] = new Array(N).fill(null);
@@ -257,7 +257,7 @@ function parseQuarterlyRows(text: string): QuarterlyRow[] {
   }));
 }
 
-// ── Valuations + Balance Sheet ────────────────────────────────────────────────
+// -- Valuations + Balance Sheet ------------------------------------------------
 //
 // Valuations table format (CEMPROINDIA):
 //   Year End-March   FY24   FY25   FY26E   FY27E   FY28E   Year End-March   FY24   ...
@@ -267,14 +267,14 @@ function parseQuarterlyRows(text: string): QuarterlyRow[] {
 //   ROAE              20.0   22.4    25.6    30.2    30.2   Grand Total     58,877 64,591  ...
 //
 // The 2-column PDF layout repeats "Year End-March FY24..." on both left and right,
-// so years appear TWICE in the header line — we deduplicate them.
+// so years appear TWICE in the header line -- we deduplicate them.
 // Left N values = ratio column; right N values (last N) = balance sheet column.
 
 function parseRatioAndBS(text: string): {
   ratios: RatioTimeSeries | null;
   balanceSheet: BalanceSeries | null;
 } {
-  const hdrRe = /Year\s+End[-–\s]*March([^\n]+)/i;
+  const hdrRe = /Year\s+End[--\s]*March([^\n]+)/i;
   const hdrMatch = hdrRe.exec(text);
   if (!hdrMatch) return { ratios: null, balanceSheet: null };
 
@@ -321,7 +321,7 @@ function parseRatioAndBS(text: string): {
 
     const lt = line.trim().toLowerCase();
 
-    // ── Ratio metric rows ────────────────────────────────────────────────────
+    // -- Ratio metric rows ----------------------------------------------------
     // EPS: "EPS (adj.)", "A-EPS", "Adj. EPS", "EPS"
     if (/^(?:a-?|adj\.?\s+)?eps\b|^eps\s*\(adj/i.test(lt)) {
       ratioVals.forEach((v, i) => { eps[i] = v; });
@@ -338,13 +338,13 @@ function parseRatioAndBS(text: string): {
     if (/ebi[dt]{2}a\s*margin/.test(lt)) {
       ratioVals.forEach((v, i) => { ebitdaPct[i] = v; });
     }
-    // ROE / ROAE / RoAE — return-on-equity variants only; ROACE is capital-employed, skip it
+    // ROE / ROAE / RoAE -- return-on-equity variants only; ROACE is capital-employed, skip it
     if (/\broae?\b|return on (avg\.?|average)?\s*equity/i.test(lt)) {
       ratioVals.forEach((v, i) => { roe[i] = v; });
     }
 
-    // ── Balance sheet keywords (appear mid-line, right column = last N nums) ─
-    // "net worth", "net-worth", "networth", "Total net-worth" — hyphen variant seen in CEMPROINDIA
+    // -- Balance sheet keywords (appear mid-line, right column = last N nums) -
+    // "net worth", "net-worth", "networth", "Total net-worth" -- hyphen variant seen in CEMPROINDIA
     if (/net[-\s]*worth\b|shareholders'?\s*equity\b|total\s*equity\b/i.test(line)) {
       bsVals.forEach((v, i) => { equity[i] = v; });
     }
@@ -365,7 +365,7 @@ function parseRatioAndBS(text: string): {
   };
 }
 
-// ── Main entry point ──────────────────────────────────────────────────────────
+// -- Main entry point ----------------------------------------------------------
 
 // PARSER_VERSION = "v2-mid-line"
 

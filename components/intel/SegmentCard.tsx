@@ -12,7 +12,7 @@ interface Props {
   segment: string;
   note: string | null;
   claims: EnrichedClaim[];
-  /** Full byQuarter data — used to compute longitudinal tracks per metric. */
+  /** Full byQuarter data -- used to compute longitudinal tracks per metric. */
   byQuarter: Record<string, EnrichedClaim[]>;
   sourceQuarter: string;
   registry: Array<{ key: string; label: string; unit: string; segment: string }>;
@@ -105,7 +105,7 @@ export function SegmentCard({ segment, note, claims, byQuarter, sourceQuarter, r
       {/* Drill-down */}
       {open && (
         <div className="border-t border-border/60">
-          {/* Filters — scoped to this segment */}
+          {/* Filters -- scoped to this segment */}
           <div className="px-4 pt-3">
             <FiltersBar
               filters={filters}

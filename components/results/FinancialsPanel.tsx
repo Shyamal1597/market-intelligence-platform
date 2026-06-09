@@ -15,7 +15,7 @@ import {
 import { clsx } from "clsx";
 import type { FinancialSnapshot, AnnualRow, QuarterlyRow } from "@/lib/pdf-financials-parser";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 type FinTab = "annual" | "quarterly" | "valuation";
 
@@ -26,22 +26,22 @@ interface Props {
   analyst?: string;
 }
 
-// ── Format helpers ────────────────────────────────────────────────────────────
+// -- Format helpers ------------------------------------------------------------
 
 function fmtRev(v: number | null): string {
-  if (v === null) return "—";
+  if (v === null) return "--";
   return v.toLocaleString("en-IN");
 }
 function fmtPct(v: number | null, d = 1): string {
-  if (v === null) return "—";
+  if (v === null) return "--";
   return `${v.toFixed(d)}%`;
 }
 function fmtX(v: number | null, d = 1): string {
-  if (v === null) return "—";
+  if (v === null) return "--";
   return `${v.toFixed(d)}x`;
 }
 function fmtEPS(v: number | null): string {
-  if (v === null) return "—";
+  if (v === null) return "--";
   return `₹${v.toFixed(1)}`;
 }
 function fmtK(v: number): string {
@@ -50,7 +50,7 @@ function fmtK(v: number): string {
   return String(Math.round(v));
 }
 
-// ── Custom Tooltip ─────────────────────────────────────────────────────────────
+// -- Custom Tooltip -------------------------------------------------------------
 
 interface TooltipPayload {
   name: string;
@@ -88,7 +88,7 @@ function ChartTooltip({
   );
 }
 
-// ── Annual tab ─────────────────────────────────────────────────────────────────
+// -- Annual tab -----------------------------------------------------------------
 
 function AnnualSection({ rows }: { rows: AnnualRow[] }) {
   if (rows.length === 0) {
@@ -249,7 +249,7 @@ function AnnualSection({ rows }: { rows: AnnualRow[] }) {
   );
 }
 
-// ── Quarterly tab ──────────────────────────────────────────────────────────────
+// -- Quarterly tab --------------------------------------------------------------
 
 function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
   if (rows.length === 0) {
@@ -275,7 +275,7 @@ function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
       {/* Combo chart */}
       <div className="h-[200px] shrink-0">
         <p className="text-[9px] font-mono text-[#6B7280] uppercase tracking-wider mb-2">
-          Revenue (₹ mn) &amp; EBITDA Margin % — Last {display.length} quarters
+          Revenue (₹ mn) &amp; EBITDA Margin % -- Last {display.length} quarters
         </p>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
@@ -382,7 +382,7 @@ function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
                     {fmtRev(r.netProfit)}
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-[#6B7280]">
-                    {patPct !== null ? `${patPct}%` : "—"}
+                    {patPct !== null ? `${patPct}%` : "--"}
                   </td>
                 </tr>
               );
@@ -397,7 +397,7 @@ function QuarterlySection({ rows }: { rows: QuarterlyRow[] }) {
   );
 }
 
-// ── Valuation tab ──────────────────────────────────────────────────────────────
+// -- Valuation tab --------------------------------------------------------------
 
 function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
   const { ratios, balanceSheet, annual } = snapshot;
@@ -434,16 +434,16 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
   const metricRows: Array<{ label: string; values: (number | null)[]; fmt: (v: number | null) => string }> =
     hasRatios
       ? [
-          { label: "Adj. EPS (₹)", values: ratios!.eps, fmt: (v) => (v === null ? "—" : v.toFixed(1)) },
-          { label: "P/E (x)", values: ratios!.pe, fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}x`) },
-          { label: "EV/EBITDA (x)", values: ratios!.evEbitda, fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}x`) },
-          { label: "EBITDA Margin", values: ratios!.ebitdaPct, fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}%`) },
-          { label: "RoAE", values: ratios!.roe, fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}%`) },
+          { label: "Adj. EPS (₹)", values: ratios!.eps, fmt: (v) => (v === null ? "--" : v.toFixed(1)) },
+          { label: "P/E (x)", values: ratios!.pe, fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}x`) },
+          { label: "EV/EBITDA (x)", values: ratios!.evEbitda, fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}x`) },
+          { label: "EBITDA Margin", values: ratios!.ebitdaPct, fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}%`) },
+          { label: "RoAE", values: ratios!.roe, fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}%`) },
         ]
       : [
-          { label: "P/E (x)", values: annual.map((r) => r.pe), fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}x`) },
-          { label: "EV/EBITDA (x)", values: annual.map((r) => r.evEbitda), fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}x`) },
-          { label: "Adj. EPS (₹)", values: annual.map((r) => r.eps), fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}`) },
+          { label: "P/E (x)", values: annual.map((r) => r.pe), fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}x`) },
+          { label: "EV/EBITDA (x)", values: annual.map((r) => r.evEbitda), fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}x`) },
+          { label: "Adj. EPS (₹)", values: annual.map((r) => r.eps), fmt: (v) => (v === null ? "--" : `${v.toFixed(1)}`) },
         ];
 
   return (
@@ -451,7 +451,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
       {/* P/E + EV/EBITDA trend chart */}
       <div className="h-[180px] shrink-0">
         <p className="text-[9px] font-mono text-[#6B7280] uppercase tracking-wider mb-2">
-          P/E &amp; EV/EBITDA — Valuation trend
+          P/E &amp; EV/EBITDA -- Valuation trend
         </p>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
@@ -598,7 +598,7 @@ function ValuationSection({ snapshot }: { snapshot: FinancialSnapshot }) {
   );
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────────
+// -- Main -----------------------------------------------------------------------
 
 export function FinancialsPanel({ snapshot, reportType, date, analyst }: Props) {
   const [activeTab, setActiveTab] = useState<FinTab>("annual");

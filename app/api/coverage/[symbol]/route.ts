@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ report: null, chunks: [] } as InsightsData);
     }
 
-    // Return all meaningful chunks — client can page/truncate
+    // Return all meaningful chunks -- client can page/truncate
     const chunks = db
       .prepare(
         `SELECT text, pageNum

@@ -46,7 +46,7 @@ async function fetchPriceV8(symbol: string): Promise<number> {
   }
 }
 
-/** Enrich short deals with live close prices — NSE snapshot carries no price for short positions. */
+/** Enrich short deals with live close prices -- NSE snapshot carries no price for short positions. */
 async function enrichShortWithPrices(deals: Deal[]): Promise<Deal[]> {
   if (deals.length === 0) return deals;
   const symbols = [...new Set(deals.map((d) => d.symbol).filter(Boolean))];
@@ -118,7 +118,7 @@ export async function GET() {
     symbol: null,
     news: { items: newsItems, fetchedAt: now },
     filings: { items: filings, fetchedAt: now },
-    // Return typed arrays — panel renders each tab directly from its own array,
+    // Return typed arrays -- panel renders each tab directly from its own array,
     // avoiding the merge-then-slice problem that was cutting off short/block data.
     deals: {
       bulk: bulk.map(mapDeal),

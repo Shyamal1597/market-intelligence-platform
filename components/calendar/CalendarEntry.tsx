@@ -37,7 +37,7 @@ export function CalendarEntry({ entry }: { entry: EarningsEntry }) {
         {bseCode}
       </span>
 
-      {/* Purpose — only when it adds information beyond the badge */}
+      {/* Purpose -- only when it adds information beyond the badge */}
       {purposeAddsInfo && purpose && (
         <span className="text-xs text-muted truncate max-w-[280px] shrink-0">
           {purpose}

@@ -85,3 +85,6 @@ docs/plans/
 
 # Session context (local paths, internal workflows)
 CONTEXT.md
+
+# Runtime logs (auto-generated)
+logs/

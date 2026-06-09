@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           if (detected) effectiveSymbol = detected.symbol;
         }
 
-        // ── SQLite FTS5 search (built-in BM25 ranking) ────────────────────────
+        // -- SQLite FTS5 search (built-in BM25 ranking) ------------------------
         let ftsQuery = `
           SELECT c.text, c.reportId, c.pageNum
           FROM chunks_fts
@@ -132,11 +132,11 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // ── Build context for Ollama ──────────────────────────────────────────
+        // -- Build context for Ollama ------------------------------------------
         const contextBlock = hits.map(h => {
           const src = sources.find(s => s.id === h.reportId);
           const header = src
-            ? `[${src.company} — ${src.analyst}, ${src.date}, ${src.rating}]`
+            ? `[${src.company} -- ${src.analyst}, ${src.date}, ${src.rating}]`
             : `[report ${h.reportId}]`;
           return `${header}\n${h.text}`;
         }).join("\n---\n");
@@ -150,7 +150,7 @@ Be concise. Cite the company and analyst name when referencing a report.
 ${contextBlock}
 </context>`;
 
-        // ── Stream from Ollama ────────────────────────────────────────────────
+        // -- Stream from Ollama ------------------------------------------------
         const ollamaRes = await fetch(OLLAMA_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,7 +167,7 @@ ${contextBlock}
         if (!ollamaRes.ok || !ollamaRes.body) {
           controller.enqueue(makeSSE(encoder, {
             type: "delta",
-            text: `Ollama error: ${ollamaRes.status} — is llama3.1:8b running?`,
+            text: `Ollama error: ${ollamaRes.status} -- is llama3.1:8b running?`,
           }));
           controller.enqueue(makeSSE(encoder, { type: "done" }));
           controller.close();

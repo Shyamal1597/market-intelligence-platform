@@ -1,7 +1,7 @@
 // Indian Financial Year quarter helpers.
 //
-// Q1 = Apr–Jun, Q2 = Jul–Sep, Q3 = Oct–Dec, Q4 = Jan–Mar.
-// FY{yy} ends March of year 20{yy}. So Q3-FY26 covers Oct–Dec 2025.
+// Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q4 = Jan-Mar.
+// FY{yy} ends March of year 20{yy}. So Q3-FY26 covers Oct-Dec 2025.
 // Bloomberg/CIQ "FQ3 2026" labels also follow this convention for Indian-FY filers.
 
 export type Quarter = string; // "Q{1-4}-FY{yy}"

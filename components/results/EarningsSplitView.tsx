@@ -28,7 +28,7 @@ export function EarningsSplitView() {
     marketCapBucket: ALL,
   });
 
-  // ── Load watchlist ────────────────────────────────────────────────────────
+  // -- Load watchlist --------------------------------------------------------
 
   const loadWatchlist = useCallback(async (selectFirst = false) => {
     try {
@@ -48,7 +48,7 @@ export function EarningsSplitView() {
     void loadWatchlist(true);
   }, [loadWatchlist]);
 
-  // ── Fetch earnings lazily for each watchlist symbol ───────────────────────
+  // -- Fetch earnings lazily for each watchlist symbol -----------------------
 
   useEffect(() => {
     for (const e of watchlist) {
@@ -69,7 +69,7 @@ export function EarningsSplitView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchlist]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // -- Handlers -------------------------------------------------------------
 
   async function handleAdd(symbol: string) {
     setAdding(true);
@@ -125,7 +125,7 @@ export function EarningsSplitView() {
     setFetchingSet((prev) => { const s = new Set(prev); s.delete(symbol); return s; });
   }
 
-  // ── Filters ───────────────────────────────────────────────────────────────
+  // -- Filters ---------------------------------------------------------------
 
   function uniqueVals(key: FilterKey): string[] {
     return [ALL, ...new Set(watchlist.map((e) => e[key]).filter((v): v is string => !!v))];
@@ -142,7 +142,7 @@ export function EarningsSplitView() {
   const isSelectedFetching = selected !== null && fetchingSet.has(selected);
   const selectedEarnings = selected !== null ? (earningsMap[selected] ?? null) : null;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // -- Render ----------------------------------------------------------------
 
   if (loading) {
     return (

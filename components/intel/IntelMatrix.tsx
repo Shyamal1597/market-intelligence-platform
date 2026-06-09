@@ -38,7 +38,7 @@ function VerdictChips({ counts }: { counts: QuarterSummary["verdictCounts"] }) {
 export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry, segmentDescriptions }: Props) {
   const [expandedCell, setExpandedCell] = useState<{ seg: string; quarter: string } | null>(null);
 
-  // All quarters with claims, newest-first — used to find "previous quarter" for each column
+  // All quarters with claims, newest-first -- used to find "previous quarter" for each column
   const allSortedDesc = useMemo(
     () => [...sortQuarters(Object.keys(byQuarter))].reverse(),
     [byQuarter]
@@ -56,7 +56,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
           className="border-collapse"
           style={{ minWidth: `${220 + quarters.length * 320}px`, width: "100%" }}
         >
-          {/* ── Column headers ── */}
+          {/* -- Column headers -- */}
           <thead>
             <tr className="border-b border-border bg-surface">
               {/* Sticky corner */}
@@ -100,7 +100,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                           {n} claim{n !== 1 ? "s" : ""} · pending verification
                         </span>
                       ) : (
-                        <span className="text-xs font-mono text-muted/40 mt-1 block">—</span>
+                        <span className="text-xs font-mono text-muted/40 mt-1 block">--</span>
                       );
                     })()}
 
@@ -116,7 +116,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
             </tr>
           </thead>
 
-          {/* ── Rows ── */}
+          {/* -- Rows -- */}
           <tbody>
             {segments.map((seg) => {
               const isSegExpanded = expandedCell?.seg === seg;
@@ -125,7 +125,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                 <React.Fragment key={seg}>
                   {/* Data row */}
                   <tr className="border-b border-border/50">
-                    {/* Segment label — sticky */}
+                    {/* Segment label -- sticky */}
                     <td className="sticky left-0 z-10 bg-surface border-r border-border px-5 py-5 align-top">
                       <span className="text-sm font-sans font-bold text-primary block leading-snug">
                         {segmentDescriptions?.[seg] ?? seg}
@@ -177,7 +177,7 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                               )}
                             </div>
                           ) : claims.length > 0 ? (
-                            /* No LLM summary yet — render raw Stage 3 claims directly */
+                            /* No LLM summary yet -- render raw Stage 3 claims directly */
                             <div className="space-y-2.5">
                               {claims.slice(0, 3).map((c) => {
                                 const metric = registry.find((r) => r.key === c.metricKey);
@@ -209,14 +209,14 @@ export function IntelMatrix({ quarters, summaries, segments, byQuarter, registry
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted/30 text-xs font-mono">—</span>
+                            <span className="text-muted/30 text-xs font-mono">--</span>
                           )}
                         </td>
                       );
                     })}
                   </tr>
 
-                  {/* Drill-down row — shown when a cell in this segment row is expanded */}
+                  {/* Drill-down row -- shown when a cell in this segment row is expanded */}
                   {isSegExpanded && expandedCell && (
                     <tr className="border-b border-amber/20 bg-base/40">
                       <td colSpan={quarters.length + 1} className="p-0">

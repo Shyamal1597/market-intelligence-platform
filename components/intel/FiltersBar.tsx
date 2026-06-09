@@ -75,7 +75,7 @@ export function FiltersBar({ filters, quarters, metrics, onChange }: Props) {
 
   return (
     <div className="space-y-3 mb-5">
-      {/* Row 1 — verdict pill buttons */}
+      {/* Row 1 -- verdict pill buttons */}
       <div className="flex flex-wrap gap-1.5 items-center">
         <span className="text-[10px] font-mono text-muted uppercase tracking-wider mr-1">
           Status
@@ -98,9 +98,9 @@ export function FiltersBar({ filters, quarters, metrics, onChange }: Props) {
         })}
       </div>
 
-      {/* Row 2 — dropdowns + search */}
+      {/* Row 2 -- dropdowns + search */}
       <div className="flex flex-wrap gap-2 items-center">
-        {/* Quarter — only render when there are selectable quarters */}
+        {/* Quarter -- only render when there are selectable quarters */}
         {quarters.length > 0 && (
           <select
             className={selectClass}
@@ -118,7 +118,7 @@ export function FiltersBar({ filters, quarters, metrics, onChange }: Props) {
           </select>
         )}
 
-        {/* Segment — hidden when only one */}
+        {/* Segment -- hidden when only one */}
         {segments.length > 1 && (
           <select
             className={selectClass}

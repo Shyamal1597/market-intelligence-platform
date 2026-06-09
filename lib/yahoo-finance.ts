@@ -23,7 +23,7 @@ const SYMBOLS: Record<string, string> = {
   "^VIX": "CBOE VIX",
 };
 
-// ── Global market index symbols ───────────────────────────────────────────────
+// -- Global market index symbols -----------------------------------------------
 export const GLOBAL_SYMBOLS: Record<string, { label: string; region: string }> = {
   // Others
   "^TNX":       { label: "US 10yr",         region: "Others" },

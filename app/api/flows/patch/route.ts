@@ -5,7 +5,7 @@
  * Body: { entries: Array<{ date, fiiEquityBuy, fiiEquitySell, fiiEquityNet,
  *                          diiEquityBuy, diiEquitySell, diiEquityNet }> }
  *
- * Internal use only — no auth required (internal network, no external exposure).
+ * Internal use only -- no auth required (internal network, no external exposure).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { patchFlowHistory } from "@/lib/nse-flows";

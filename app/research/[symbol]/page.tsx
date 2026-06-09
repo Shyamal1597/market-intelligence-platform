@@ -92,7 +92,7 @@ export default function ResearchPage({ params }: Props) {
   );
 }
 
-// ── Inline Coverage Details widget ────────────────────────────────────────────
+// -- Inline Coverage Details widget --------------------------------------------
 
 function CoverageDetails({ entry }: { entry: WatchlistEntry }) {
   const [editing, setEditing] = useState(false);
@@ -161,7 +161,7 @@ function CoverageDetails({ entry }: { entry: WatchlistEntry }) {
               <span className="text-xs font-mono text-primary">
                 {key === "targetPrice" && form[key]
                   ? `₹${form[key]}`
-                  : form[key] || "—"}
+                  : form[key] || "--"}
               </span>
             )}
           </div>

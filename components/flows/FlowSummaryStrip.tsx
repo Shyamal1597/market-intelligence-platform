@@ -71,7 +71,7 @@ export function FlowSummaryStrip({ entries }: FlowSummaryStripProps) {
         </span>
       </div>
 
-      {/* Footnote — period basis */}
+      {/* Footnote -- period basis */}
       <p className="font-mono text-[10px] text-muted -mt-3 leading-relaxed">
         Sum of daily FII Equity Net flows · MTD = current calendar month · QTD = current FY quarter (Apr-Jun / Jul-Sep / Oct-Dec / Jan-Mar) · {fyLabel} YTD = since 1 Apr (Indian Financial Year)
       </p>

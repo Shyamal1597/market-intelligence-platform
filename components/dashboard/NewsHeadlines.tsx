@@ -81,7 +81,7 @@ export function NewsHeadlines() {
     } catch { /* silent */ }
     if (showSpinner && !cancelledRef.current) setLoading(false);
 
-    // 2. Pull fresh RSS data in background (slow — can take 10-30s)
+    // 2. Pull fresh RSS data in background (slow -- can take 10-30s)
     if (!cancelledRef.current) setRefreshing(true);
     try {
       await fetch("/api/fetch-market-news");
@@ -93,7 +93,7 @@ export function NewsHeadlines() {
           setLastRefreshed(new Date());
         }
       }
-    } catch { /* silent — stale data still showing */ }
+    } catch { /* silent -- stale data still showing */ }
     if (!cancelledRef.current) setRefreshing(false);
   }
 
@@ -155,7 +155,7 @@ export function NewsHeadlines() {
       {/* Empty state */}
       {!loading && news.length === 0 && (
         <p className="text-muted text-sm font-sans py-4 relative z-10">
-          No news yet — refresh to fetch latest stories.
+          No news yet -- refresh to fetch latest stories.
         </p>
       )}
 

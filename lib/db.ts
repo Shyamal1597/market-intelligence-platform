@@ -3,9 +3,9 @@
  * Uses better-sqlite3 (synchronous, no async overhead).
  *
  * Tables:
- *   reports      — one row per PDF (metadata)
- *   chunks       — text chunks from each PDF
- *   chunks_fts   — FTS5 virtual table over chunks.text (built-in BM25 ranking)
+ *   reports      -- one row per PDF (metadata)
+ *   chunks       -- text chunks from each PDF
+ *   chunks_fts   -- FTS5 virtual table over chunks.text (built-in BM25 ranking)
  */
 import Database from "better-sqlite3";
 import path from "path";
@@ -59,7 +59,7 @@ export async function getDb(): Promise<Database.Database> {
   return _db;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface ReportRow {
   id: string;

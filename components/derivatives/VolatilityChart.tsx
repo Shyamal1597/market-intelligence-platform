@@ -20,7 +20,7 @@ export function VolatilityChart({ data }: Props) {
   return (
     <div className="flex-1 p-4 min-h-0 flex flex-col">
       <p className="text-muted text-xs font-mono mb-3 tracking-wider uppercase">
-        IV Skew — {data.symbol} · {data.expiry}
+        IV Skew -- {data.symbol} · {data.expiry}
       </p>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 10 }}>
@@ -49,7 +49,7 @@ export function VolatilityChart({ data }: Props) {
             }}
             labelStyle={{ color: "#F0EDE8" }}
             formatter={(v: number | undefined, name: string | undefined) => [
-              v != null ? `${v}%` : "–",
+              v != null ? `${v}%` : "-",
               name === "callIV" ? "Call IV" : "Put IV",
             ]}
             labelFormatter={(v) => `Strike: ${Number(v).toLocaleString("en-IN")}`}

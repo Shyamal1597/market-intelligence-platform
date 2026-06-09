@@ -6,7 +6,7 @@
  *
  * "Trading day" = any weekday not in the KNOWN_HOLIDAYS list.
  * We can't know every BSE holiday in advance, so holidays appear as
- * "maybe missing" — they have a flag so the UI can explain the caveat.
+ * "maybe missing" -- they have a flag so the UI can explain the caveat.
  */
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";

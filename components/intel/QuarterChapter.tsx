@@ -27,7 +27,7 @@ export function QuarterChapter({
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // -- Stats ------------------------------------------------------------------
   const stats = useMemo(() => {
     let met = 0, moving = 0, miss = 0, pending = 0, decisive = 0;
     for (const c of claims) {
@@ -44,7 +44,7 @@ export function QuarterChapter({
     ? Math.round(((stats.met + stats.moving) / stats.decisive) * 100)
     : null;
 
-  // ── Verification attribution ───────────────────────────────────────────────
+  // -- Verification attribution -----------------------------------------------
   const verifiedByQ = useMemo(() => {
     for (const c of claims) {
       if (c.check?.verifiedInQuarter) return c.check.verifiedInQuarter;
@@ -52,7 +52,7 @@ export function QuarterChapter({
     return null;
   }, [claims]);
 
-  // ── Filtered claims ────────────────────────────────────────────────────────
+  // -- Filtered claims --------------------------------------------------------
   const visibleClaims = useMemo(() => {
     if (verdictFilter === "all") return claims;
     return claims.filter((c) => {
@@ -62,7 +62,7 @@ export function QuarterChapter({
     });
   }, [claims, verdictFilter]);
 
-  // ── Group by segment (preserve registry order) ─────────────────────────────
+  // -- Group by segment (preserve registry order) -----------------------------
   const segmentGroups = useMemo(() => {
     const groups = new Map<string, EnrichedClaim[]>();
     for (const c of visibleClaims) {
@@ -76,7 +76,7 @@ export function QuarterChapter({
   const hasDecisive      = stats.decisive > 0;
   const hasVisibleClaims = visibleClaims.length > 0;
 
-  // ── Verdict summary string ─────────────────────────────────────────────────
+  // -- Verdict summary string -------------------------------------------------
   const verdictSummary = [
     stats.met     > 0 ? `${stats.met} met`       : "",
     stats.moving  > 0 ? `${stats.moving} moving`  : "",
@@ -91,7 +91,7 @@ export function QuarterChapter({
   return (
     <div className="rounded border border-border overflow-hidden">
 
-      {/* ── Chapter header ── */}
+      {/* -- Chapter header -- */}
       <button
         onClick={() => setOpen((p) => !p)}
         className="w-full flex items-center gap-3 px-5 py-3.5 bg-surface hover:bg-surface/80 transition-colors text-left"
@@ -125,7 +125,7 @@ export function QuarterChapter({
           {verdictSummary && ` · ${verdictSummary}`}
         </span>
 
-        {/* Verification attribution — right-aligned */}
+        {/* Verification attribution -- right-aligned */}
         {hasDecisive && verifiedByQ && (
           <span className="ml-auto text-[10px] font-mono text-muted/35 shrink-0">
             verified via {quarterDisplay(verifiedByQ)} transcript
@@ -133,7 +133,7 @@ export function QuarterChapter({
         )}
       </button>
 
-      {/* ── Chapter body ── */}
+      {/* -- Chapter body -- */}
       {open && hasVisibleClaims && (
         <div className="divide-y divide-border/20 bg-base/30">
           {[...segmentGroups.entries()].map(([seg, segClaims]) => (

@@ -15,7 +15,7 @@ import { claimsHash } from "./extractClaims";
 
 export const STAGE4_PROMPT_VERSION = 4;
 
-// ── types ─────────────────────────────────────────────────────────────────────
+// -- types ---------------------------------------------------------------------
 
 export interface CrossCheckArgs {
   symbol: string;
@@ -34,13 +34,13 @@ export interface CrossCheckResult {
   totalCostUsd: number;
 }
 
-// ── prompt ────────────────────────────────────────────────────────────────────
+// -- prompt --------------------------------------------------------------------
 
 interface ClaimForVerification {
   claimId: string;
   metricLabel: string;
   metricUnit: string;
-  /** Original statement from the source quarter — do NOT reuse as verification evidence. */
+  /** Original statement from the source quarter -- do NOT reuse as verification evidence. */
   managementStatement: string;
   direction: string;
   value: number | null;
@@ -64,16 +64,16 @@ COMPANY CONTEXT:
 ${companyBrief}
 
 CLASSIFICATION RULES (apply in order):
-1. "met"       — the specific metric was explicitly discussed and management clearly achieved the stated target or guided direction
-2. "moving"    — the specific metric was explicitly discussed and is trending in the right direction but the full target is not yet reached
-3. "miss"      — the specific metric was explicitly discussed and clearly failed: opposite direction, significantly below target, or management acknowledged missing it
-4. "ambiguous" — the specific metric was NOT explicitly named or discussed in this transcript; do NOT infer from adjacent or general statements
+1. "met"       -- the specific metric was explicitly discussed and management clearly achieved the stated target or guided direction
+2. "moving"    -- the specific metric was explicitly discussed and is trending in the right direction but the full target is not yet reached
+3. "miss"      -- the specific metric was explicitly discussed and clearly failed: opposite direction, significantly below target, or management acknowledged missing it
+4. "ambiguous" -- the specific metric was NOT explicitly named or discussed in this transcript; do NOT infer from adjacent or general statements
 
 STRICT EVIDENCE RULES:
 - A verdict of met/moving/miss REQUIRES the exact metric (or a clear synonym) to be explicitly named in the transcript
 - Do NOT infer combined ratio from GWP growth, loss ratio from underwriting commentary, or any other proxy
-- Each claimId must have its OWN quote from the transcript — never use the same verbatim sentence for two different claimIds unless the transcript literally covers both metrics in that exact sentence
-- The "quote" field MUST be taken verbatim from the TARGET TRANSCRIPT provided below — it is NEVER the managementStatement from the source quarter
+- Each claimId must have its OWN quote from the transcript -- never use the same verbatim sentence for two different claimIds unless the transcript literally covers both metrics in that exact sentence
+- The "quote" field MUST be taken verbatim from the TARGET TRANSCRIPT provided below -- it is NEVER the managementStatement from the source quarter
 - If you cannot find explicit evidence for a claim, return "ambiguous" with quote: null
 
 OUTPUT: { "results": [ Result, ... ] } where each Result is:
@@ -87,7 +87,7 @@ OUTPUT: { "results": [ Result, ... ] } where each Result is:
   "reasoning": string            // 1 sentence explaining why this verdict was chosen
 }`;
 
-  const user = `FORWARD-LOOKING CLAIMS MADE IN ${sourceQuarter} — verify each against the ${targetQuarter} transcript below:
+  const user = `FORWARD-LOOKING CLAIMS MADE IN ${sourceQuarter} -- verify each against the ${targetQuarter} transcript below:
 ${JSON.stringify(claims, null, 2)}
 
 ${targetQuarter} EARNINGS TRANSCRIPT:
@@ -98,7 +98,7 @@ Return ONLY the JSON object with "results" array. Every claimId must appear exac
   return { system, user };
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// -- helpers -------------------------------------------------------------------
 
 /** Sort quarter labels chronologically. Returns positive if a > b. */
 function compareQuarters(a: string, b: string): number {
@@ -145,7 +145,7 @@ function extractContext(transcript: string, quote: string | null, radius = 500):
   return transcript.slice(start, end);
 }
 
-// ── main driver ───────────────────────────────────────────────────────────────
+// -- main driver ---------------------------------------------------------------
 
 export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCheckResult> {
   const model = defaultVerificationModel();
@@ -279,7 +279,7 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
       companyBrief,
     );
 
-    // callJson wraps withRetry (3 attempts, exponential backoff) — no outer loop needed.
+    // callJson wraps withRetry (3 attempts, exponential backoff) -- no outer loop needed.
     let result: Awaited<ReturnType<typeof callJson<{ results: Array<Partial<ClaimCheck> & { verdict?: Verdict }> }>>> | undefined;
     try {
       result = await callJson({
@@ -290,7 +290,7 @@ export async function crossCheckForSymbol(args: CrossCheckArgs): Promise<CrossCh
         temperature: 0,
       });
     } catch (err) {
-      warnings.push(`${key}: LLM error — ${(err as Error).message.slice(0, 120)}`);
+      warnings.push(`${key}: LLM error -- ${(err as Error).message.slice(0, 120)}`);
       // Mark all claims in this batch as ambiguous
       for (const { claim, targetQuarter } of items) {
         const check: ClaimCheck = {

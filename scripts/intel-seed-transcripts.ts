@@ -70,7 +70,7 @@ function downloadPdf(url: string): Promise<Buffer> {
   });
 }
 
-// ── Parse args ──────────────────────────────────────────────────────────────
+// -- Parse args --------------------------------------------------------------
 const args = process.argv.slice(2);
 const symbols: string[] = [];
 let fromDate: Date | null = null;
@@ -104,7 +104,7 @@ if (!fromDate) startDate.setMonth(startDate.getMonth() - 18);
 console.log(`Seeding transcripts for ${targetSymbols.length} symbol(s)`);
 console.log(`Date range: ${startDate.toISOString().slice(0, 10)} → now\n`);
 
-// ── Main ────────────────────────────────────────────────────────────────────
+// -- Main --------------------------------------------------------------------
 async function main() {
   let totalDownloaded = 0;
   let totalIngested = 0;
@@ -117,7 +117,7 @@ async function main() {
 
     if (scripCodes.length === 0) {
       noScripCount++;
-      // No scrip codes — fall through to Screener fallback below
+      // No scrip codes -- fall through to Screener fallback below
     }
 
     process.stdout.write(`[${symbol}] `);
@@ -127,12 +127,12 @@ async function main() {
     // in which case Screener should be tried.
     let bseFilingsFound = 0;
     // Count of BSE transcripts that are substantial enough to be real transcripts.
-    // BSE sometimes returns short press releases/agendas (<5k chars) — these are junk
+    // BSE sometimes returns short press releases/agendas (<5k chars) -- these are junk
     // and should trigger the Screener fallback even though BSE technically "had filings".
     let bseUsefulIngested = 0;
 
     if (onlyScreener) {
-      // Skip BSE entirely — jump straight to Screener below.
+      // Skip BSE entirely -- jump straight to Screener below.
       // bseFilingsFound stays 0 so the Screener block always runs.
       console.log("(--only-screener: skipping BSE)");
     }
@@ -173,14 +173,14 @@ async function main() {
             pdfBuffer = await downloadPdf(liveUrl);
           } catch (e1) {
             dlError = (e1 as Error).message;
-            if (!dlError.includes("HTTP 404")) throw e1; // non-404 — don't retry
+            if (!dlError.includes("HTTP 404")) throw e1; // non-404 -- don't retry
             pdfBuffer = await downloadPdf(hisUrl);       // retry from archive
           }
           totalDownloaded++;
         } catch (e) {
           const msg = (e as Error).message;
           if (msg.includes("HTTP 404")) {
-            // Not in live or archive — filing genuinely missing
+            // Not in live or archive -- filing genuinely missing
             continue;
           }
           process.stdout.write(`    Download failed: ${msg}\n`);
@@ -212,9 +212,9 @@ async function main() {
       console.log(); // newline after all filings for this scrip
     }
 
-    // ── Screener supplement ────────────────────────────────────────────────────
+    // -- Screener supplement ----------------------------------------------------
     // Always runs (unless --no-screener) to catch quarters BSE missed.
-    // BSE is not a reliable source for the LATEST transcript — companies often
+    // BSE is not a reliable source for the LATEST transcript -- companies often
     // file under subcategories we don't query, or BSE purges recent attachments.
     // Screener aggregates from multiple sources and consistently has the latest.
     // Existing quarters are skipped via alreadyExisted, so this is additive.
@@ -239,7 +239,7 @@ async function main() {
             pdfBuffer = await downloadPdf(concall.pdfUrl);
             totalDownloaded++;
           } catch (e) {
-            // Log failures — silent skips mask real problems (e.g. latest quarter unavailable)
+            // Log failures -- silent skips mask real problems (e.g. latest quarter unavailable)
             process.stdout.write(`  [Screener DL failed ${concall.displayDate}: ${(e as Error).message.slice(0, 50)}]\n`);
             totalErrors++;
             continue;
@@ -269,9 +269,9 @@ async function main() {
     }
   }
 
-  console.log(`\n${"─".repeat(60)}`);
+  console.log(`\n${"-".repeat(60)}`);
   console.log(`Seeding complete.`);
-  console.log(`  Symbols processed: ${targetSymbols.length} (${noScripCount} without BSE scrip codes — Screener tried)`);
+  console.log(`  Symbols processed: ${targetSymbols.length} (${noScripCount} without BSE scrip codes -- Screener tried)`);
   console.log(`  Downloaded:        ${totalDownloaded} PDFs`);
   console.log(`  Ingested:          ${totalIngested} new transcripts`);
   console.log(`  Skipped:           ${totalSkipped} (already existed)`);

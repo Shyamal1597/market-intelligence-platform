@@ -4,7 +4,7 @@ import { resolveTargetQuarter, resolveClaimTarget } from "./targetResolver";
 const SRC = "Q2-FY26"; // source quarter used in most tests
 
 describe("resolveTargetQuarter", () => {
-  // ── Exact canonical forms ──────────────────────────────────────────────────
+  // -- Exact canonical forms --------------------------------------------------
   test("parses 'Q3-FY27' exactly", () => {
     const r = resolveTargetQuarter("Q3-FY27", SRC);
     expect(r.quarter).toBe("Q3-FY27");
@@ -23,7 +23,7 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("Q1-FY2027", SRC).quarter).toBe("Q1-FY27");
   });
 
-  // ── Relative quarter references ────────────────────────────────────────────
+  // -- Relative quarter references --------------------------------------------
   test("'this quarter' → source quarter", () => {
     expect(resolveTargetQuarter("this quarter", SRC).quarter).toBe(SRC);
     expect(resolveTargetQuarter("current quarter", SRC).quarter).toBe(SRC);
@@ -38,7 +38,7 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("next quarter", "Q4-FY26").quarter).toBe("Q1-FY27");
   });
 
-  // ── Half-year ──────────────────────────────────────────────────────────────
+  // -- Half-year --------------------------------------------------------------
   test("'H1 FY27' → Q2-FY27", () => {
     expect(resolveTargetQuarter("H1 FY27", SRC).quarter).toBe("Q2-FY27");
   });
@@ -51,7 +51,7 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("second half of FY26", SRC).quarter).toBe("Q4-FY26");
   });
 
-  // ── Full fiscal year ───────────────────────────────────────────────────────
+  // -- Full fiscal year -------------------------------------------------------
   test("'FY27' → Q4-FY27 (end of year)", () => {
     const r = resolveTargetQuarter("FY27", SRC);
     expect(r.quarter).toBe("Q4-FY27");
@@ -66,10 +66,10 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("full year FY27", SRC).quarter).toBe("Q4-FY27");
   });
 
-  // ── Numeric quarter ranges ─────────────────────────────────────────────────
-  test("'2–3 quarters' → midpoint +2 from source", () => {
+  // -- Numeric quarter ranges -------------------------------------------------
+  test("'2-3 quarters' → midpoint +2 from source", () => {
     // midpoint of [2,3] = floor(2.5) = 2
-    expect(resolveTargetQuarter("2–3 quarters", SRC).quarter).toBe("Q4-FY26");
+    expect(resolveTargetQuarter("2-3 quarters", SRC).quarter).toBe("Q4-FY26");
     expect(resolveTargetQuarter("2-3 quarters", SRC).quarter).toBe("Q4-FY26");
   });
 
@@ -81,7 +81,7 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("in two quarters", SRC).quarter).toBe("Q4-FY26");
   });
 
-  // ── Qualitative horizons ───────────────────────────────────────────────────
+  // -- Qualitative horizons ---------------------------------------------------
   test("'near term' → +1 quarter", () => {
     expect(resolveTargetQuarter("near term", SRC).quarter).toBe("Q3-FY26");
   });
@@ -98,7 +98,7 @@ describe("resolveTargetQuarter", () => {
     expect(resolveTargetQuarter("over the next year", SRC).quarter).toBe("Q2-FY27");
   });
 
-  // ── Null / unrecognised ────────────────────────────────────────────────────
+  // -- Null / unrecognised ----------------------------------------------------
   test("null input → null quarter", () => {
     expect(resolveTargetQuarter(null, SRC).quarter).toBeNull();
   });
@@ -133,7 +133,7 @@ describe("resolveClaimTarget", () => {
     expect(resolveClaimTarget(null, null, SRC).quarter).toBeNull();
   });
 
-  test("ignores targetQuarter when it equals sourceQuarter — uses targetText instead", () => {
+  test("ignores targetQuarter when it equals sourceQuarter -- uses targetText instead", () => {
     // LLM sometimes sets targetQuarter = sourceQuarter even when targetText = "next quarter"
     const r = resolveClaimTarget(SRC, "next quarter", SRC);
     expect(r.quarter).toBe("Q3-FY26"); // sourceQuarter (Q2-FY26) + 1

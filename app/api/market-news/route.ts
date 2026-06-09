@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     const newsData = await getNews();
 
-    // Auto-refresh if store is stale (>10 min) or nearly empty — fire-and-forget
+    // Auto-refresh if store is stale (>10 min) or nearly empty -- fire-and-forget
     let shouldRefresh = newsData.news.length < 50;
     if (!shouldRefresh) {
       try {

@@ -99,7 +99,7 @@ export async function fetchScreenerConcalls(
     if (!href) return;
 
     // Security: only allow HTTPS URLs from known-safe or well-known domains.
-    // Do NOT filter by .pdf extension — Screener sometimes serves transcripts via
+    // Do NOT filter by .pdf extension -- Screener sometimes serves transcripts via
     // non-PDF URLs (e.g. /company/TRENT/transcript/123/). We verify content is
     // actually PDF by checking magic bytes after download.
     try {
@@ -114,7 +114,7 @@ export async function fetchScreenerConcalls(
         host.startsWith("10.") ||
         host.startsWith("192.168.") ||
         host.startsWith("169.254.") ||            // link-local / AWS metadata
-        /^172\.(1[6-9]|2\d|3[01])\./.test(host)  // 172.16–172.31
+        /^172\.(1[6-9]|2\d|3[01])\./.test(host)  // 172.16-172.31
       ) return;
     } catch {
       return;
@@ -145,12 +145,12 @@ export function displayDateToQuarter(displayDate: string): string | null {
   const year = parseInt(yearStr, 10);
 
   // Map call month → (quarter of results announced, FY offset from call year).
-  // Indian FY runs Apr–Mar. Companies report within ~2 months of quarter end:
-  //   Q4 (Jan–Mar) → call in Apr/May/Jun (late filers)
-  //   Q1 (Apr–Jun) → call in Jul/Aug/Sep (late filers)
-  //   Q2 (Jul–Sep) → call in Oct/Nov/Dec (late filers)
-  //   Q3 (Oct–Dec) → call in Jan/Feb/Mar (early in calendar year = same FY)
-  // fyOffset: 0 = FY ends in the call's calendar year (Apr–Mar calls announcing Q4/Q3).
+  // Indian FY runs Apr-Mar. Companies report within ~2 months of quarter end:
+  //   Q4 (Jan-Mar) → call in Apr/May/Jun (late filers)
+  //   Q1 (Apr-Jun) → call in Jul/Aug/Sep (late filers)
+  //   Q2 (Jul-Sep) → call in Oct/Nov/Dec (late filers)
+  //   Q3 (Oct-Dec) → call in Jan/Feb/Mar (early in calendar year = same FY)
+  // fyOffset: 0 = FY ends in the call's calendar year (Apr-Mar calls announcing Q4/Q3).
   //           1 = new FY; fyYear = (year + fyOffset - 1) % 100 for Q1/Q2.
   const monthMap: Record<string, { q: number; fyOffset: number }> = {
     Jan: { q: 3, fyOffset: 0 },  // Q3 results of FY ending same March
@@ -158,7 +158,7 @@ export function displayDateToQuarter(displayDate: string): string | null {
     Mar: { q: 4, fyOffset: 0 },  // Q4 early filer
     Apr: { q: 4, fyOffset: 0 },  // Q4 results of FY ending March same year
     May: { q: 4, fyOffset: 0 },
-    Jun: { q: 4, fyOffset: 0 },  // late Q4 filer — still announcing Jan–Mar results
+    Jun: { q: 4, fyOffset: 0 },  // late Q4 filer -- still announcing Jan-Mar results
     Jul: { q: 1, fyOffset: 1 },  // Q1 results of new FY
     Aug: { q: 1, fyOffset: 1 },
     Sep: { q: 1, fyOffset: 1 },  // late Q1 filer

@@ -63,7 +63,7 @@ function toNseDate(yyyymmdd: string): string {
   return `${d}-${m}-${y}`;
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 
 export type DealType = "BULK" | "BLOCK" | "SHORT";
 export type DealSide = "BUY" | "SELL" | "UNKNOWN";
@@ -82,7 +82,7 @@ export interface Deal {
   valueCr: number;
 }
 
-// ── Field helpers ──────────────────────────────────────────────────────────────
+// -- Field helpers --------------------------------------------------------------
 
 function str(d: Record<string, unknown>, ...keys: string[]): string {
   for (const k of keys) if (d[k] != null && d[k] !== "") return String(d[k]);
@@ -127,7 +127,7 @@ function mapDeals(data: Record<string, unknown>[], type: DealType): Deal[] {
   });
 }
 
-// ── Snapshot fetch ─────────────────────────────────────────────────────────────
+// -- Snapshot fetch -------------------------------------------------------------
 
 interface SnapshotResult {
   bulk: Deal[];
@@ -152,7 +152,7 @@ async function fetchSnapshot(cookie: string): Promise<SnapshotResult> {
     }
     const text = await res.text();
     if (text.trimStart().startsWith("<")) {
-      console.error("[nse-deals] snapshot returned HTML — session insufficient");
+      console.error("[nse-deals] snapshot returned HTML -- session insufficient");
       return { bulk: [], block: [], short: [], asOnDate: "" };
     }
     const json = JSON.parse(text);
@@ -160,7 +160,7 @@ async function fetchSnapshot(cookie: string): Promise<SnapshotResult> {
     const bulkData: Record<string, unknown>[] = json.BULK_DEALS_DATA ?? [];
     const blockData: Record<string, unknown>[] = json.BLOCK_DEALS_DATA ?? [];
     const shortData: Record<string, unknown>[] = json.SHORT_DEALS_DATA ?? [];
-    console.log(`[nse-deals] snapshot — bulk:${bulkData.length} block:${blockData.length} short:${shortData.length} as_on:${asOnDate}`);
+    console.log(`[nse-deals] snapshot -- bulk:${bulkData.length} block:${blockData.length} short:${shortData.length} as_on:${asOnDate}`);
     return {
       bulk: mapDeals(bulkData, "BULK"),
       block: mapDeals(blockData, "BLOCK"),
@@ -173,7 +173,7 @@ async function fetchSnapshot(cookie: string): Promise<SnapshotResult> {
   }
 }
 
-// ── Historical block deals (date picker support) ───────────────────────────────
+// -- Historical block deals (date picker support) -------------------------------
 
 async function fetchHistoricalBlockDeals(cookie: string, date: string): Promise<Deal[]> {
   const nseDate = toNseDate(date);
@@ -191,7 +191,7 @@ async function fetchHistoricalBlockDeals(cookie: string, date: string): Promise<
     const json = JSON.parse(text);
     const data: Record<string, unknown>[] = Array.isArray(json)
       ? json : (json.data ?? json.BLOCK_DEALS_DATA ?? []);
-    console.log(`[nse-deals] hist-block — ${data.length} records`);
+    console.log(`[nse-deals] hist-block -- ${data.length} records`);
     return mapDeals(data, "BLOCK");
   } catch (err) {
     console.error("[nse-deals] hist-block error:", err);
@@ -199,11 +199,11 @@ async function fetchHistoricalBlockDeals(cookie: string, date: string): Promise<
   }
 }
 
-// ── Public Exports ─────────────────────────────────────────────────────────────
+// -- Public Exports -------------------------------------------------------------
 
 /**
  * Fetch all three deal types (bulk, block, short) in a single NSE session.
- * Prefer this over calling fetchBulkDeals/fetchBlockDeals/fetchShortDeals separately —
+ * Prefer this over calling fetchBulkDeals/fetchBlockDeals/fetchShortDeals separately --
  * each of those opens its own NSE session, tripling the round-trips.
  */
 export async function fetchAllDeals(): Promise<{
@@ -240,7 +240,7 @@ export async function fetchBlockDeals(date?: string): Promise<{ deals: Deal[]; f
     return { deals: block, fetchedAt: new Date().toISOString() };
   }
 
-  // Historical — may return empty if NSE doesn't expose it
+  // Historical -- may return empty if NSE doesn't expose it
   const deals = await fetchHistoricalBlockDeals(cookie, targetDate);
   return { deals, fetchedAt: new Date().toISOString() };
 }

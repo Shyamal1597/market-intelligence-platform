@@ -55,7 +55,7 @@ export function CompanyReportsPanel({ symbol }: Props) {
             >
               <FileText className="w-3.5 h-3.5 text-muted group-hover:text-amber transition-colors shrink-0" />
               <span className="flex-1 truncate">
-                {r.company} — {r.reportType}
+                {r.company} -- {r.reportType}
               </span>
               <span className="text-[10px] text-muted">{r.date}</span>
               {r.rating && <span className="text-[10px] text-amber">{r.rating}</span>}

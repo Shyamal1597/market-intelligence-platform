@@ -90,7 +90,7 @@ export function OptionChainTable({ data, barMode, columns }: Props) {
             </th>
           </tr>
 
-          {/* Column headers — NSE order */}
+          {/* Column headers -- NSE order */}
           <tr className="border-b border-border/50 bg-surface">
             {/* Calls: outermost → innermost */}
             {columns.rho      && <ColH label="Rho" />}

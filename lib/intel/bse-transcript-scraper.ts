@@ -26,13 +26,13 @@ import {
   type PipelineJob,
 } from "@/lib/intel/pipeline";
 
-// ── BSE scrip code → NSE symbol mapping ──────────────────────────────────────
+// -- BSE scrip code → NSE symbol mapping --------------------------------------
 // BSE uses numeric scrip codes; our universe uses NSE ticker symbols.
 // This map covers NIFTY 50 + Next 50 stocks that are in SYMBOL_SECTOR.
 // Extend as SYMBOL_SECTOR grows.
 
 const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
-  // ── Banking ───────────────────────────────────────────────────────────────
+  // -- Banking ---------------------------------------------------------------
   "500180": "HDFCBANK",
   "532174": "ICICIBANK",
   "500112": "SBIN",
@@ -43,12 +43,12 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532461": "PNB",
   "532483": "CANBK",
 
-  // ── Insurance & Holding ───────────────────────────────────────────────────
+  // -- Insurance & Holding ---------------------------------------------------
   "532978": "BAJAJFINSV",   // Bajaj Finserv Ltd
   "511218": "SBILIFE",
   "540777": "HDFCLIFE",
 
-  // ── NBFC / Lending ────────────────────────────────────────────────────────
+  // -- NBFC / Lending --------------------------------------------------------
   "500034": "BAJFINANCE",   // Bajaj Finance Ltd
   "541557": "SHRIRAMFIN",
   "511243": "CHOLAFIN",
@@ -57,21 +57,21 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "532955": "RECLTD",
   "543257": "IRFC",
 
-  // ── Financial Services ────────────────────────────────────────────────────
+  // -- Financial Services ----------------------------------------------------
   "543940": "JIOFIN",
   "500490": "BAJAJHLDNG",
   "541729": "HDFCAMC",
-  "544574": "TATACAP",      // Tata Capital Ltd — IPO Oct 2025
+  "544574": "TATACAP",      // Tata Capital Ltd -- IPO Oct 2025
 
-  // ── IT Services ───────────────────────────────────────────────────────────
+  // -- IT Services -----------------------------------------------------------
   "532540": "TCS",
   "500209": "INFY",
   "532281": "HCLTECH",
   "507685": "WIPRO",
   "532755": "TECHM",
-  "540005": "LTM",          // LTM Ltd (ex-LTIMindtree) — renamed Mar 2026
+  "540005": "LTM",          // LTM Ltd (ex-LTIMindtree) -- renamed Mar 2026
 
-  // ── Pharma & Healthcare ───────────────────────────────────────────────────
+  // -- Pharma & Healthcare ---------------------------------------------------
   "524715": "SUNPHARMA",
   "500087": "CIPLA",
   "500124": "DRREDDY",
@@ -81,20 +81,20 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "500420": "TORNTPHARM",
   "532321": "ZYDUSLIFE",
 
-  // ── Auto & Ancillaries ────────────────────────────────────────────────────
+  // -- Auto & Ancillaries ----------------------------------------------------
   "532977": "BAJAJ-AUTO",   // Bajaj Auto Ltd
   "532500": "MARUTI",
   "500520": "M&M",
   "505200": "EICHERMOT",
-  "500570": "TMPV",         // Tata Motors PV (ex-TATAMOTORS) — renamed Oct 2025
-  "544569": "TMCV",         // Tata Motors CV — new listing Nov 2025
+  "500570": "TMPV",         // Tata Motors PV (ex-TATAMOTORS) -- renamed Oct 2025
+  "544569": "TMCV",         // Tata Motors CV -- new listing Nov 2025
   "532343": "TVSMOTOR",
   "500480": "CUMMINSIND",
   "544274": "HYUNDAI",
   "517334": "MOTHERSON",
   "500530": "BOSCHLTD",
 
-  // ── FMCG ──────────────────────────────────────────────────────────────────
+  // -- FMCG ------------------------------------------------------------------
   "500696": "HINDUNILVR",
   "500875": "ITC",
   "500790": "NESTLEIND",
@@ -104,7 +104,7 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "540180": "VBL",           // Varun Beverages Ltd
   "532432": "UNITDSPR",
 
-  // ── Oil, Gas & Energy ─────────────────────────────────────────────────────
+  // -- Oil, Gas & Energy -----------------------------------------------------
   "500325": "RELIANCE",
   "500312": "ONGC",
   "533278": "COALINDIA",
@@ -116,7 +116,7 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "539254": "ADANIENSOL",    // Adani Energy Solutions (ex-Adani Transmission)
   "541450": "ADANIGREEN",
 
-  // ── Metals & Mining ───────────────────────────────────────────────────────
+  // -- Metals & Mining -------------------------------------------------------
   "500228": "JSWSTEEL",
   "500470": "TATASTEEL",
   "500440": "HINDALCO",
@@ -124,36 +124,36 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "500295": "VEDL",
   "532286": "JINDALSTEL",
 
-  // ── Power & Utilities ─────────────────────────────────────────────────────
+  // -- Power & Utilities -----------------------------------------------------
   "532555": "NTPC",
   "532898": "POWERGRID",
 
-  // ── Telecom ───────────────────────────────────────────────────────────────
+  // -- Telecom ---------------------------------------------------------------
   "532454": "BHARTIARTL",
 
-  // ── Cement & Building Materials ───────────────────────────────────────────
+  // -- Cement & Building Materials -------------------------------------------
   "532538": "ULTRACEMCO",
   "500425": "AMBUJACEM",
   "500387": "SHREECEM",
   "500300": "GRASIM",
   "500331": "PIDILITIND",
 
-  // ── Capital Goods & Infra ─────────────────────────────────────────────────
+  // -- Capital Goods & Infra -------------------------------------------------
   "500510": "LT",
   "500002": "ABB",
   "500550": "SIEMENS",
-  "544390": "ENRIN",        // Siemens Energy India — demerger listed Jun 2025
+  "544390": "ENRIN",        // Siemens Energy India -- demerger listed Jun 2025
   "500093": "CGPOWER",
   "532921": "ADANIPORTS",
   "512599": "ADANIENT",
 
-  // ── Defence ───────────────────────────────────────────────────────────────
+  // -- Defence ---------------------------------------------------------------
   "500049": "BEL",
   "541154": "HAL",
   "543237": "MAZDOCK",
   "532725": "SOLARINDS",    // Solar Industries India
 
-  // ── Consumer & Retail ─────────────────────────────────────────────────────
+  // -- Consumer & Retail -----------------------------------------------------
   "500114": "TITAN",
   "543320": "ETERNAL",
   "500251": "TRENT",
@@ -161,10 +161,10 @@ const BSE_SCRIP_TO_SYMBOL: Record<string, string> = {
   "500820": "ASIANPAINT",
   "500850": "INDHOTEL",
 
-  // ── Aviation ──────────────────────────────────────────────────────────────
+  // -- Aviation --------------------------------------------------------------
   "539448": "INDIGO",
 
-  // ── Real Estate ───────────────────────────────────────────────────────────
+  // -- Real Estate -----------------------------------------------------------
   "532868": "DLF",
   "543287": "LODHA",
 };
@@ -299,10 +299,10 @@ const COMPANY_NAME_PATTERNS: Record<string, RegExp[]> = {
   LODHA:       [/macrotech\s*developers/i, /\blodha\b/i],
 };
 
-// ── Transcript detection ────────────────────────────────────────────────────
+// -- Transcript detection ----------------------------------------------------
 // BSE HEADLINE field is the most reliable signal for transcript filings.
 // NEWSSUB often contains "Analyst / Investor Meet" but also matches
-// presentations and audio recordings — HEADLINE distinguishes them.
+// presentations and audio recordings -- HEADLINE distinguishes them.
 
 function isTranscriptFiling(headline: string, newsSub: string): boolean {
   const hl = headline.toLowerCase();
@@ -321,7 +321,7 @@ function isTranscriptFiling(headline: string, newsSub: string): boolean {
   return false;
 }
 
-// ── BSE JSON API ────────────────────────────────────────────────────────────
+// -- BSE JSON API ------------------------------------------------------------
 // BSE migrated from XML (GetCorpFiling.aspx) to a JSON API at api.bseindia.com.
 // The old XML endpoint returns 404 as of May 2026.
 
@@ -445,7 +445,7 @@ async function fetchBSEFilingsJSON(
     } catch (e) {
       categoryErrors++;
       lastCategoryError = (e as Error).message;
-      continue; // network error on this category — try next
+      continue; // network error on this category -- try next
     }
 
     if (res.status !== 200) continue;
@@ -465,7 +465,7 @@ async function fetchBSEFilingsJSON(
   }
 
   // If every category errored (BSE API unreachable), surface it rather than
-  // silently returning empty — callers can't distinguish outage from "no filings".
+  // silently returning empty -- callers can't distinguish outage from "no filings".
   if (categoryErrors === TRANSCRIPT_CATEGORIES.length && combined.length === 0) {
     throw new Error(`BSE API unreachable for all categories: ${lastCategoryError}`);
   }
@@ -506,7 +506,7 @@ export async function fetchHistoricalTranscripts(
   return results;
 }
 
-// ── Symbol matching ──────────────────────────────────────────────────────────
+// -- Symbol matching ----------------------------------------------------------
 
 function matchSymbol(scripCode: string, companyName: string): string | null {
   // 1. Direct scrip code lookup
@@ -523,7 +523,7 @@ function matchSymbol(scripCode: string, companyName: string): string | null {
   return null;
 }
 
-// ── Scrape log ───────────────────────────────────────────────────────────────
+// -- Scrape log ---------------------------------------------------------------
 
 interface ScrapeLogEntry {
   timestamp: string;
@@ -566,7 +566,7 @@ export async function readScrapeLog(): Promise<ScrapeLogEntry[]> {
   }
 }
 
-// ── Main scrape function ─────────────────────────────────────────────────────
+// -- Main scrape function -----------------------------------------------------
 
 export interface ScrapeResult {
   filingsScanned: number;
@@ -652,7 +652,7 @@ export async function scrapeBSETranscripts(options?: {
     // Must be a transcript filing (filter out presentations, audio recordings, intimations)
     if (!isTranscriptFiling(headline, newsSub)) continue;
 
-    // Must have a PDF attachment — BSE now uses GUID filenames (e.g. "abc123-def4.pdf")
+    // Must have a PDF attachment -- BSE now uses GUID filenames (e.g. "abc123-def4.pdf")
     if (!attachment) continue;
     // Allow: GUID-style names, alphanumeric with hyphens/dots/spaces/parens, ending in .pdf
     if (!/^[\w\-. (){}]+\.pdf$/i.test(attachment)) {
@@ -688,7 +688,7 @@ export async function scrapeBSETranscripts(options?: {
       if (!pdfRes.ok) {
         throw new Error(`HTTP ${pdfRes.status}`);
       }
-      // Size guard — prevent OOM from unexpectedly large responses
+      // Size guard -- prevent OOM from unexpectedly large responses
       const contentLength = pdfRes.headers.get("content-length");
       if (contentLength && parseInt(contentLength) > MAX_PDF_SIZE) {
         throw new Error(`PDF too large: ${contentLength} bytes`);
@@ -724,7 +724,7 @@ export async function scrapeBSETranscripts(options?: {
             `Company mismatch for ${symbol}: transcript text doesn't mention expected company name. ` +
             `First 200 chars: "${snippet.slice(0, 200)}". Skipping.`,
           );
-          result.details.push({ symbol, quarter: ingestResult.quarter, status: "error", message: "Company name mismatch — wrong transcript" });
+          result.details.push({ symbol, quarter: ingestResult.quarter, status: "error", message: "Company name mismatch -- wrong transcript" });
           // Delete the file written by ingestPdfTranscript so future runs don't see it
           // as alreadyExisted and silently skip downloading the correct transcript.
           const transcriptPath = require("node:path").join(

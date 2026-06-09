@@ -47,7 +47,7 @@ export function QuarterTimeline({ quarters, selectedQuarter, onSelect }: Props) 
             <div className="flex items-center gap-1.5">
               <div className={`w-1.5 h-1.5 rounded-full ${dotColor(q.onTrackPct)}`} />
               <span className={`text-[10px] font-mono ${isSelected ? pctColor(q.onTrackPct) : "text-muted"}`}>
-                {q.onTrackPct !== null ? `${q.onTrackPct}%` : "—"}
+                {q.onTrackPct !== null ? `${q.onTrackPct}%` : "--"}
               </span>
             </div>
           </button>

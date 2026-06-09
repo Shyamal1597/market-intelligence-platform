@@ -14,12 +14,12 @@ interface Props {
 }
 
 function fmt(v: number | null, dec = 2): string {
-  if (v == null) return "–";
+  if (v == null) return "-";
   return v.toLocaleString("en-IN", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
 function fmtOI(v: number | null): string {
-  if (v == null) return "–";
+  if (v == null) return "-";
   if (v >= 10_000_000) return `${(v / 10_000_000).toFixed(2)}Cr`;
   if (v >= 100_000) return `${(v / 100_000).toFixed(2)}L`;
   if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
@@ -27,7 +27,7 @@ function fmtOI(v: number | null): string {
 }
 
 function fmtChng(v: number | null): string {
-  if (v == null) return "–";
+  if (v == null) return "-";
   return (v >= 0 ? "+" : "") + v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -54,7 +54,7 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
         isAtm ? "border-y border-amber/25 bg-amber/[0.03]" : "hover:bg-white/[0.015]"
       )}
     >
-      {/* ── Calls side: outermost → innermost ───────────────────────────── */}
+      {/* -- Calls side: outermost → innermost ----------------------------- */}
       {/* Greeks (outermost, off by default) */}
       {columns.rho     && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted/60"))}>{fmt(row.ceRho, 3)}</td>}
       {columns.vega    && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted/60"))}>{fmt(row.ceVega)}</td>}
@@ -81,7 +81,7 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
       {columns.ask     && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted"))}>{fmt(row.ceAsk)}</td>}
       {columns.askQty  && <td className={c(clsx(ceItm && ITM_STRIPE, "text-muted/60"))}>{fmtOI(row.ceAskQty)}</td>}
 
-      {/* OI/Vol bar — calls (innermost, always visible) */}
+      {/* OI/Vol bar -- calls (innermost, always visible) */}
       <td className={clsx("px-0 w-24 py-0", ceItm && ITM_STRIPE)}>
         <div className="relative h-8 flex items-center justify-end">
           <div
@@ -92,7 +92,7 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
         </div>
       </td>
 
-      {/* ── Strike ─────────────────────────────────────────────────────── */}
+      {/* -- Strike ------------------------------------------------------- */}
       <td className="px-3 py-0 text-center bg-base" style={{ minWidth: "5rem" }}>
         <div className="inline-flex items-center justify-center h-8">
           <span className={clsx(
@@ -104,8 +104,8 @@ export function ChainRow({ row, isAtm, spot, maxBarValue, barMode, columns, rowR
         </div>
       </td>
 
-      {/* ── Puts side: innermost → outermost ────────────────────────────── */}
-      {/* OI/Vol bar — puts */}
+      {/* -- Puts side: innermost → outermost ------------------------------ */}
+      {/* OI/Vol bar -- puts */}
       <td className={clsx("px-0 w-24 py-0", peItm && ITM_STRIPE)}>
         <div className="relative h-8 flex items-center justify-start">
           <div

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * generate-summaries — Stage 5 CLI.
+ * generate-summaries -- Stage 5 CLI.
  *
  * Usage:
  *   npx tsx scripts/generate-summaries.ts <SYMBOL> [options]
@@ -92,11 +92,11 @@ function primaryVerifiedQuarter(
     const checksRaw = await fs.readFile(checksPath, "utf-8").catch(() => null);
 
     if (!claimsRaw) {
-      console.log(`[${sym}] SKIP — no claims.json (run intel:rebuild first)`);
+      console.log(`[${sym}] SKIP -- no claims.json (run intel:rebuild first)`);
       continue;
     }
     if (!checksRaw) {
-      console.log(`[${sym}] SKIP — no checks.json (run intel:crosscheck first)`);
+      console.log(`[${sym}] SKIP -- no checks.json (run intel:crosscheck first)`);
       continue;
     }
 
@@ -119,7 +119,7 @@ function primaryVerifiedQuarter(
 
       const verifiedIn = primaryVerifiedQuarter(sourceQ, claims, checks);
       if (!verifiedIn) {
-        console.log(`[${sym}][${sourceQ}] SKIP — no verified checks yet`);
+        console.log(`[${sym}][${sourceQ}] SKIP -- no verified checks yet`);
         continue;
       }
 
@@ -127,7 +127,7 @@ function primaryVerifiedQuarter(
       const tgtTranscriptPath = path.join(transcriptsDir, `${verifiedIn}.txt`);
 
       if (!existsSync(srcTranscriptPath) || !existsSync(tgtTranscriptPath)) {
-        console.log(`[${sym}][${sourceQ}] SKIP — transcript missing (${sourceQ} or ${verifiedIn})`);
+        console.log(`[${sym}][${sourceQ}] SKIP -- transcript missing (${sourceQ} or ${verifiedIn})`);
         continue;
       }
 
@@ -150,7 +150,7 @@ function primaryVerifiedQuarter(
 
         await fs.writeFile(outFile, JSON.stringify(summary, null, 2), "utf-8");
         totalCost += costUsd;
-        console.log(`[${sym}][${sourceQ}] done — onTrack ${summary.onTrackPct}% | cost ~$${costUsd.toFixed(4)}`);
+        console.log(`[${sym}][${sourceQ}] done -- onTrack ${summary.onTrackPct}% | cost ~$${costUsd.toFixed(4)}`);
       } catch (e) {
         console.error(`[${sym}][${sourceQ}] ERROR:`, (e as Error).message);
       }

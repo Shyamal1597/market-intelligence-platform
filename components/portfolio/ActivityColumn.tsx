@@ -78,7 +78,7 @@ export function ActivityColumn({
         )}
         {!loading && empty && (
           <div className="flex flex-col items-center justify-center h-full py-12 gap-2">
-            <span className="text-2xl opacity-30">—</span>
+            <span className="text-2xl opacity-30">--</span>
             <span className="text-[10px] font-mono text-center text-muted">
               No new activity detected
             </span>

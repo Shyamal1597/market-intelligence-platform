@@ -9,7 +9,7 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import type { ClaimsArtifact, ChecksArtifact } from "@/lib/intel/types";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export type DataQualitySeverity = "error" | "warn" | "info";
 
@@ -27,7 +27,7 @@ export interface DataQuality {
   notes: DataQualityNote[];
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 /** Comparable integer for chronological quarter ordering. Q1-FY18 < Q2-FY18 … */
 export function quarterKey(q: string): number {
@@ -47,7 +47,7 @@ export function getTranscriptQuarters(symbolBase: string): string[] {
   }
 }
 
-// ── Core quality builder ──────────────────────────────────────────────────────
+// -- Core quality builder ------------------------------------------------------
 
 export function buildDataQuality(
   symbol: string,
@@ -60,7 +60,7 @@ export function buildDataQuality(
     ? Object.values(claims.byQuarter).reduce((s, c) => s + c.length, 0)
     : 0;
 
-  // ── 1. No transcripts at all ─────────────────────────────────────────────
+  // -- 1. No transcripts at all ---------------------------------------------
   if (txQuarters.length === 0) {
     notes.push({
       severity: "error",
@@ -71,7 +71,7 @@ export function buildDataQuality(
     return { transcriptCount: 0, claimCount: 0, hasIssues: true, notes };
   }
 
-  // ── 2. Missing recent quarters ───────────────────────────────────────────
+  // -- 2. Missing recent quarters -------------------------------------------
   const txSet = new Set(txQuarters);
   const missingQ4 = !txSet.has("Q4-FY26");
   const missingQ3 = !txSet.has("Q3-FY26");
@@ -87,22 +87,22 @@ export function buildDataQuality(
       severity: "warn",
       code: "MISSING_Q4_FY26",
       message: "Q4-FY26 transcript not available.",
-      detail: "BSE PDF may have been purged. Upload manually via the Transcript Upload button.",
+      detail: "Seeder ran and found no Q4-FY26 PDF via BSE or Screener. Upload manually via the Transcript Upload button if you have a Bloomberg transcript.",
     });
   }
 
-  // ── 3. Claims file missing (pipeline never run) ──────────────────────────
+  // -- 3. Claims file missing (pipeline never run) --------------------------
   if (!claims) {
     notes.push({
       severity: "warn",
       code: "NO_CLAIMS_FILE",
-      message: `Stage 3 not run — ${txQuarters.length} transcript${txQuarters.length !== 1 ? "s" : ""} available but unprocessed.`,
+      message: `Claim extraction not yet run -- ${txQuarters.length} transcript${txQuarters.length !== 1 ? "s" : ""} on disk, none processed.`,
       detail: `Run: npm run intel:rebuild ${symbol} --stage=3`,
     });
     return { transcriptCount: txQuarters.length, claimCount: 0, hasIssues: notes.length > 0, notes };
   }
 
-  // ── 4. Claims file empty due to LLM errors ───────────────────────────────
+  // -- 4. Claims file empty due to LLM errors -------------------------------
   if (claimCount === 0 && claims.warnings && claims.warnings.length > 0) {
     const isOllamaFailure =
       (claims as { model?: string }).model === "qwen2.5:7b" ||
@@ -115,12 +115,12 @@ export function buildDataQuality(
     notes.push({
       severity: "error",
       code: "CLAIMS_EXTRACTION_FAILED",
-      message: `Stage 3 failed — ${failedQtrs.length} quarter${failedQtrs.length !== 1 ? "s" : ""} with no claims extracted.${isOllamaFailure ? " (Ollama offline)" : ""}`,
-      detail: `Affected: ${failedQtrs.join(", ")}. Re-run with Anthropic API: npm run intel:rebuild ${symbol} --stage=3`,
+      message: `Claim extraction failed -- ${failedQtrs.length} quarter${failedQtrs.length !== 1 ? "s" : ""} returned no results.${isOllamaFailure ? " (local model offline)" : ""}`,
+      detail: `Affected quarters: ${failedQtrs.join(", ")}. Re-run: npm run intel:rebuild ${symbol} --stage=3`,
     });
   }
 
-  // ── 5. Stale pending checks (target quarter predates source quarter) ─────
+  // -- 5. Stale pending checks (target quarter predates source quarter) -----
   if (checks) {
     let stalePendingCount = 0;
     for (const [tq, batch] of Object.entries(checks.byTargetQuarter)) {
@@ -142,7 +142,7 @@ export function buildDataQuality(
     }
   }
 
-  // ── 6. Recent transcripts not yet processed by Stage 3 ──────────────────
+  // -- 6. Recent transcripts not yet processed by Stage 3 ------------------
   if (claims && claimCount > 0) {
     const claimQtrs = new Set(Object.keys(claims.byQuarter));
     const uncovered = txQuarters
@@ -152,8 +152,8 @@ export function buildDataQuality(
       notes.push({
         severity: "info",
         code: "UNCOVERED_QUARTERS",
-        message: `${uncovered.length} recent transcript${uncovered.length !== 1 ? "s" : ""} not yet processed by Stage 3.`,
-        detail: `Quarters: ${uncovered.join(", ")}. Run: npm run intel:rebuild ${symbol} --stage=3`,
+        message: `${uncovered.length} recent transcript${uncovered.length !== 1 ? "s" : ""} awaiting claim extraction.`,
+        detail: `Unprocessed quarters: ${uncovered.join(", ")}. Run: npm run intel:rebuild ${symbol} --stage=3`,
       });
     }
   }

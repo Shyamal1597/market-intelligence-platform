@@ -6,7 +6,7 @@ import { sortQuarters, quarterDisplay, snippetQuote } from "@/lib/intel/uiHelper
 import type { EnrichedClaim } from "./ClaimRow";
 import type { Verdict } from "@/lib/intel/types";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface Props {
   byQuarter: Record<string, EnrichedClaim[]>;
@@ -14,7 +14,7 @@ interface Props {
   segmentDescriptions?: Record<string, string>;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function isOnTrack(v: Verdict | null | undefined): boolean {
   return v === "met" || v === "moving";
@@ -50,7 +50,7 @@ const BORDER_COLORS: Record<string, string> = {
   ambiguous: "border-l-border/40",
 };
 
-// ── Verdict cell ──────────────────────────────────────────────────────────────
+// -- Verdict cell --------------------------------------------------------------
 
 function QuarterCell({
   quarter,
@@ -70,7 +70,7 @@ function QuarterCell({
       className={`border-l-2 ${borderClass} rounded-sm bg-surface/40 min-w-0 ${claim ? "cursor-pointer" : ""}`}
       onClick={() => claim && setExpanded((p) => !p)}
     >
-      {/* ── Always-visible header ── */}
+      {/* -- Always-visible header -- */}
       <div className="pl-3 pr-2 py-2.5">
         <div className="flex items-center justify-between mb-1.5 gap-2">
           <span className="text-[10px] font-mono text-muted/60 uppercase tracking-wide shrink-0">
@@ -96,7 +96,7 @@ function QuarterCell({
           </p>
         )}
 
-        {/* Collapsed preview — single line of quote */}
+        {/* Collapsed preview -- single line of quote */}
         {!expanded && claim && (
           <p className="text-[11px] font-sans text-primary/50 italic leading-relaxed mt-1 line-clamp-2">
             &ldquo;{snippetQuote(claim.quote, 120)}&rdquo;
@@ -104,7 +104,7 @@ function QuarterCell({
         )}
       </div>
 
-      {/* ── Expanded detail ── */}
+      {/* -- Expanded detail -- */}
       {expanded && claim && (
         <div
           className="border-t border-border/20 px-3 pb-3 pt-2.5 space-y-3"
@@ -113,14 +113,14 @@ function QuarterCell({
           {/* Source quarter guidance quote */}
           <div>
             <span className="text-[9px] font-mono text-amber/60 uppercase tracking-wider block mb-1">
-              {quarterDisplay(quarter)} — guidance
+              {quarterDisplay(quarter)} -- guidance
             </span>
             <blockquote className="text-[11px] font-sans text-primary/70 italic leading-relaxed">
               &ldquo;{claim.quote}&rdquo;
             </blockquote>
             {claim.speaker && (
               <span className="text-[9px] font-mono text-muted/40 mt-0.5 block">
-                — {claim.speaker}
+                -- {claim.speaker}
               </span>
             )}
           </div>
@@ -129,7 +129,7 @@ function QuarterCell({
           {claim.check ? (
             <div className="pt-2 border-t border-border/20">
               <span className="text-[9px] font-mono text-muted/50 uppercase tracking-wider block mb-1">
-                {quarterDisplay(claim.check.verifiedInQuarter)} — confirmed
+                {quarterDisplay(claim.check.verifiedInQuarter)} -- confirmed
               </span>
 
               {/* Verbatim quote from verification transcript */}
@@ -159,7 +159,7 @@ function QuarterCell({
   );
 }
 
-// ── Track record badge ────────────────────────────────────────────────────────
+// -- Track record badge --------------------------------------------------------
 
 function TrackRecord({
   verdicts,
@@ -200,7 +200,7 @@ function TrackRecord({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 
 export function KPITracker({ byQuarter, registry, segmentDescriptions }: Props) {
   // All quarters sorted oldest → newest (tells a story left to right)
@@ -286,7 +286,7 @@ export function KPITracker({ byQuarter, registry, segmentDescriptions }: Props) 
                       <TrackRecord verdicts={allVerdicts} />
                     </div>
 
-                    {/* Quarter cells — scroll horizontally if many quarters */}
+                    {/* Quarter cells -- scroll horizontally if many quarters */}
                     <div className="overflow-x-auto">
                       <div
                         className="grid gap-2"

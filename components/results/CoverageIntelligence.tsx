@@ -21,7 +21,7 @@ import { FinancialsPanel } from "./FinancialsPanel";
 import type { CoverageEntry } from "@/app/api/coverage/route";
 import type { FinancialsResponse } from "@/app/api/coverage/[symbol]/financials/route";
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// -- Constants ----------------------------------------------------------------
 
 const ALL = "ALL";
 
@@ -47,7 +47,7 @@ const REPORT_TYPE_COLOR: Record<string, string> = {
   Other: "text-muted border-border bg-transparent",
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 function ratingBg(rating: string): string {
   const r = rating.toUpperCase();
@@ -68,7 +68,7 @@ function ratingDot(rating: string): string {
 }
 
 function fmt(n: number): string {
-  if (!n) return "—";
+  if (!n) return "--";
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
@@ -80,7 +80,7 @@ function fmtDate(s: string): string {
   });
 }
 
-// ── Target Price Walk Chart ───────────────────────────────────────────────────
+// -- Target Price Walk Chart ---------------------------------------------------
 
 interface DailyCandle {
   date: string;  // "YYYY-MM-DD"
@@ -153,7 +153,7 @@ function TargetPriceWalk({
   const tickFmt = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
 
-  // Custom dot — only rendered at report dates
+  // Custom dot -- only rendered at report dates
   const ReportDot = (props: {
     cx?: number; cy?: number; payload?: MergedPoint; dataKey?: string;
   }) => {
@@ -242,7 +242,7 @@ function TargetPriceWalk({
           domain={["auto", "auto"]}
         />
         <Tooltip content={<CustomTooltip />} />
-        {/* Historical market price — steel blue, no dots */}
+        {/* Historical market price -- steel blue, no dots */}
         {hasPrices && (
           <Line
             dataKey="close"
@@ -265,7 +265,7 @@ function TargetPriceWalk({
           activeDot={false}
           connectNulls
         />
-        {/* Price target — amber, rated dots */}
+        {/* Price target -- amber, rated dots */}
         <Line
           dataKey="targetPrice"
           name="Price Target"
@@ -280,7 +280,7 @@ function TargetPriceWalk({
   );
 }
 
-// ── Overview Tab ──────────────────────────────────────────────────────────────
+// -- Overview Tab --------------------------------------------------------------
 
 function OverviewTab({
   entry,
@@ -316,7 +316,7 @@ function OverviewTab({
         {[
           {
             label: "Rating",
-            value: entry.latestRating || "—",
+            value: entry.latestRating || "--",
             highlight: !!entry.latestRating,
             className: entry.latestRating
               ? ratingBg(entry.latestRating)
@@ -324,19 +324,19 @@ function OverviewTab({
           },
           {
             label: "Price Target",
-            value: entry.latestTarget ? `₹${entry.latestTarget.toLocaleString("en-IN")}` : "—",
+            value: entry.latestTarget ? `₹${entry.latestTarget.toLocaleString("en-IN")}` : "--",
             highlight: false,
             className: "",
           },
           {
             label: "CMP at Issue",
-            value: entry.latestCmp ? `₹${entry.latestCmp.toLocaleString("en-IN")}` : "—",
+            value: entry.latestCmp ? `₹${entry.latestCmp.toLocaleString("en-IN")}` : "--",
             highlight: false,
             className: "",
           },
           {
             label: "Implied Upside",
-            value: upside !== null ? `${upside}%` : "—",
+            value: upside !== null ? `${upside}%` : "--",
             highlight: upside !== null,
             className:
               upside !== null
@@ -393,7 +393,7 @@ function OverviewTab({
                   <p className="text-xs font-mono text-primary">{a}</p>
                   {latestByAnalyst && (
                     <p className="text-[9px] font-mono text-muted">
-                      {latestByAnalyst.rating || "—"} ·{" "}
+                      {latestByAnalyst.rating || "--"} ·{" "}
                       {new Date(latestByAnalyst.date).toLocaleDateString(
                         "en-IN",
                         { month: "short", year: "2-digit" }
@@ -467,7 +467,7 @@ function OverviewTab({
   );
 }
 
-// ── Reports Timeline Tab ──────────────────────────────────────────────────────
+// -- Reports Timeline Tab ------------------------------------------------------
 
 function ReportsTab({ entry }: { entry: CoverageEntry }) {
   return (
@@ -525,7 +525,7 @@ function ReportsTab({ entry }: { entry: CoverageEntry }) {
                 <p className="text-[9px] font-mono text-muted mb-0.5">
                   Analyst
                 </p>
-                <p className="text-xs font-mono text-primary">{r.analyst || "—"}</p>
+                <p className="text-xs font-mono text-primary">{r.analyst || "--"}</p>
               </div>
               {r.cmp > 0 && (
                 <div>
@@ -582,7 +582,7 @@ function ReportsTab({ entry }: { entry: CoverageEntry }) {
   );
 }
 
-// ── Financials Tab ────────────────────────────────────────────────────────────
+// -- Financials Tab ------------------------------------------------------------
 
 function FinancialsTab({
   symbol,
@@ -636,7 +636,7 @@ function FinancialsTab({
   );
 }
 
-// ── Earnings Tab (PDF-sourced) ────────────────────────────────────────────────
+// -- Earnings Tab (PDF-sourced) ------------------------------------------------
 
 const TICK = { fill: "#7A8099", fontSize: 11, fontFamily: "JetBrains Mono" } as const;
 const TT_STYLE = {
@@ -750,8 +750,8 @@ function EarningsTab({
                 contentStyle={TT_STYLE}
                 formatter={(value: number | undefined, name: string | undefined) => [
                   name === "ebitdaPct"
-                    ? `${value?.toFixed(1) ?? "—"}%`
-                    : `₹${value?.toLocaleString("en-IN") ?? "—"} Cr`,
+                    ? `${value?.toFixed(1) ?? "--"}%`
+                    : `₹${value?.toLocaleString("en-IN") ?? "--"} Cr`,
                   name === "ebitdaPct" ? "EBITDA%" : "Revenue",
                 ]}
               />
@@ -825,8 +825,8 @@ function EarningsTab({
                 contentStyle={TT_STYLE}
                 formatter={(value: number | undefined, name: string | undefined) => [
                   name === "patPct"
-                    ? `${value?.toFixed(1) ?? "—"}%`
-                    : `₹${value?.toLocaleString("en-IN") ?? "—"} Cr`,
+                    ? `${value?.toFixed(1) ?? "--"}%`
+                    : `₹${value?.toLocaleString("en-IN") ?? "--"} Cr`,
                   name === "patPct" ? "PAT%" : "PAT",
                 ]}
               />
@@ -894,20 +894,20 @@ function EarningsTab({
                   <td className="px-2 py-1.5 text-right text-primary">
                     {q.revenues != null
                       ? q.revenues.toLocaleString("en-IN")
-                      : "—"}
+                      : "--"}
                   </td>
                   <td className="px-2 py-1.5 text-right text-primary">
                     {q.ebitda != null
                       ? q.ebitda.toLocaleString("en-IN")
-                      : "—"}
+                      : "--"}
                   </td>
                   <td className="px-2 py-1.5 text-right text-teal">
-                    {q.ebitdaPct != null ? `${q.ebitdaPct.toFixed(1)}%` : "—"}
+                    {q.ebitdaPct != null ? `${q.ebitdaPct.toFixed(1)}%` : "--"}
                   </td>
                   <td className="px-2 py-1.5 text-right text-primary">
                     {q.netProfit != null
                       ? q.netProfit.toLocaleString("en-IN")
-                      : "—"}
+                      : "--"}
                   </td>
                   <td
                     className="px-2 py-1.5 text-right"
@@ -920,7 +920,7 @@ function EarningsTab({
                           : "#7A8099",
                     }}
                   >
-                    {patPct != null ? `${patPct.toFixed(1)}%` : "—"}
+                    {patPct != null ? `${patPct.toFixed(1)}%` : "--"}
                   </td>
                 </tr>
               );
@@ -942,7 +942,7 @@ function EarningsTab({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// -- Main Component ------------------------------------------------------------
 
 export function CoverageIntelligence() {
   const [coverage, setCoverage] = useState<CoverageEntry[]>([]);
@@ -1004,7 +1004,7 @@ export function CoverageIntelligence() {
       .catch(() => setPriceMap((prev) => ({ ...prev, [selected]: null })));
   }, [activeTab, selected, breezeLoggedIn, priceMap, coverage]);
 
-  // Load financials (lazy — only when tab is active)
+  // Load financials (lazy -- only when tab is active)
   const loadFinancials = useCallback((symbol: string) => {
     setFinancialsMap((prev) => ({ ...prev, [symbol]: "loading" }));
     fetch(`/api/coverage/${symbol}/financials`)
@@ -1053,7 +1053,7 @@ export function CoverageIntelligence() {
 
   const selectedEntry = coverage.find((c) => c.symbol === selected) ?? null;
 
-  // ── Loading skeleton ───────────────────────────────────────────────────────
+  // -- Loading skeleton -------------------------------------------------------
 
   if (loading) {
     return (
@@ -1067,7 +1067,7 @@ export function CoverageIntelligence() {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // -- Render -----------------------------------------------------------------
 
   return (
     <div className="flex flex-col gap-3">
@@ -1137,7 +1137,7 @@ export function CoverageIntelligence() {
         className="flex gap-4"
         style={{ height: "calc(100vh - 17rem)" }}
       >
-        {/* ── Left: coverage list ───────────────────────────────────────────── */}
+        {/* -- Left: coverage list --------------------------------------------- */}
         <div className="w-[280px] shrink-0 border border-border rounded-xl bg-surface overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="text-muted text-xs font-mono p-4 text-center">
@@ -1158,7 +1158,7 @@ export function CoverageIntelligence() {
           )}
         </div>
 
-        {/* ── Right: detail panel ───────────────────────────────────────────── */}
+        {/* -- Right: detail panel --------------------------------------------- */}
         <div className="flex-1 min-w-0 border border-border rounded-xl bg-surface p-5 flex flex-col gap-4">
           {!selectedEntry ? (
             <div className="h-full flex items-center justify-center">

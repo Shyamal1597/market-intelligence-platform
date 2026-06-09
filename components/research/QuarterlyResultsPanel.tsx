@@ -68,7 +68,7 @@ export function QuarterlyResultsPanel({ entry }: Props) {
                   {q.netIncome.toLocaleString("en-IN")}
                 </td>
                 <td className="py-1.5 text-right text-primary">
-                  {q.basicEps != null ? q.basicEps.toFixed(2) : "—"}
+                  {q.basicEps != null ? q.basicEps.toFixed(2) : "--"}
                 </td>
               </tr>
             ))}

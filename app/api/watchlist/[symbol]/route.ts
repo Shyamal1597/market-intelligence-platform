@@ -24,7 +24,7 @@ export async function PATCH(
     const { symbol } = await params;
     const body = await req.json() as Record<string, unknown>;
 
-    // Whitelist — only these fields may be patched
+    // Whitelist -- only these fields may be patched
     const patch: Record<string, unknown> = {};
     const allowed = ["analyst", "rating", "targetPrice", "bseCode", "marketCapBucket", "name", "sector"] as const;
     for (const key of allowed) {

@@ -1,5 +1,5 @@
 // lib/bse-calendar.ts
-// Uses NSE event-calendar API — returns upcoming board meetings for ~30 days
+// Uses NSE event-calendar API -- returns upcoming board meetings for ~30 days
 
 export interface EarningsEntry {
   company: string;

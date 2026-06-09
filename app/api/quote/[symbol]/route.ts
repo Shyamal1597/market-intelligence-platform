@@ -12,11 +12,11 @@ const USER_AGENT =
  * Add entries here whenever an analyst enters a non-standard symbol in a report.
  */
 const SYMBOL_ALIASES: Record<string, string> = {
-  // Kirloskar Brothers — KBL is Karnataka Bank on Yahoo; correct ticker is KIRLOSBROS
+  // Kirloskar Brothers -- KBL is Karnataka Bank on Yahoo; correct ticker is KIRLOSBROS
   KBL:  "KIRLOSBROS",
-  // Adani Energy Solutions — renamed from ADANITRANS; Yahoo indexes it as ADANIENSOL
+  // Adani Energy Solutions -- renamed from ADANITRANS; Yahoo indexes it as ADANIENSOL
   AESL: "ADANIENSOL",
-  // Sterling Wilson Renewable Energy — listed as SWSOLAR on NSE/Yahoo
+  // Sterling Wilson Renewable Energy -- listed as SWSOLAR on NSE/Yahoo
   SWEL: "SWSOLAR",
 };
 

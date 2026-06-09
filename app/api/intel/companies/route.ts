@@ -28,7 +28,7 @@ export interface CompanySummary {
   dataQuality: import("@/lib/intel/dataQuality").DataQuality;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 async function readJson<T>(filePath: string): Promise<T | null> {
   try {
@@ -38,11 +38,11 @@ async function readJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+// -- Route handler -------------------------------------------------------------
 
 export async function GET() {
   try {
-    // ── Fast path: pre-built index ─────────────────────────────────────────
+    // -- Fast path: pre-built index -----------------------------------------
     // Note: index is only used if it includes dataQuality; old index files
     // will be missing this field and are skipped via the catch below.
     const indexPath = path.join("data/intelligence", "_index.json");
@@ -54,7 +54,7 @@ export async function GET() {
         return NextResponse.json(companies);
       }
     } catch {
-      // Index not built yet or outdated — fall through to live scan
+      // Index not built yet or outdated -- fall through to live scan
     }
 
     const summaries: CompanySummary[] = [];

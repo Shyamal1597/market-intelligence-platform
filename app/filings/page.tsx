@@ -76,7 +76,7 @@ export default function FilingsPage() {
     return () => clearTimeout(t);
   }, [newIds]);
 
-  // Search filter — uses alias expansion for ticker → company name matching
+  // Search filter -- uses alias expansion for ticker → company name matching
   const searchFiltered = useMemo(() => {
     if (!searchTerm.trim()) return null;
     const terms = expandSearch(searchTerm);
@@ -112,7 +112,7 @@ export default function FilingsPage() {
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
         <input
           type="text"
-          placeholder="Search by company name or ticker — e.g. Reliance, SBI, INFY…"
+          placeholder="Search by company name or ticker -- e.g. Reliance, SBI, INFY…"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-10 py-2.5 bg-surface border border-border rounded-lg text-sm text-primary placeholder:text-muted focus:outline-none focus:border-amber/40 transition-colors"

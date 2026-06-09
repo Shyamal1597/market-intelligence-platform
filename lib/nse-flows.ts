@@ -1,11 +1,11 @@
 // lib/nse-flows.ts
 //
 // Data strategy:
-//   1. Snapshot (today): NSE fiidiiTradeReact — requires session cookies, always works
+//   1. Snapshot (today): NSE fiidiiTradeReact -- requires session cookies, always works
 //   2. Historical: file-based accumulation in data/fii-dii-history.json
 //      - On each request, today's snapshot is appended if not yet present
 //      - NSE historical API attempted as one-shot bootstrap (fails gracefully)
-//   3. Nifty: Yahoo Finance — no auth required, always works
+//   3. Nifty: Yahoo Finance -- no auth required, always works
 
 import { promises as fs } from "fs";
 import path from "path";
@@ -20,7 +20,7 @@ const NSE_BASE_HEADERS: Record<string, string> = {
   "X-Requested-With": "XMLHttpRequest",
 };
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface FiiDiiEntry {
   date: string; // "YYYY-MM-DD"
@@ -41,7 +41,7 @@ export interface FiiDiiEntry {
   diiDebtSell: number;
   diiDebtNet: number;
 
-  // Derived — computed after sorting ascending
+  // Derived -- computed after sorting ascending
   cumulativeFiiEquityNet: number;
   cumulativeDiiEquityNet: number;
   rollingAvg20FiiEquity: number;
@@ -68,7 +68,7 @@ export interface NiftyDayClose {
   close: number;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const MONTH_MAP: Record<string, string> = {
   Jan: "01", Feb: "02", Mar: "03", Apr: "04",
@@ -101,7 +101,7 @@ function num(v: string | number | undefined | null): number {
 
 type StoredEntry = Omit<FiiDiiEntry, "cumulativeFiiEquityNet" | "cumulativeDiiEquityNet" | "rollingAvg20FiiEquity" | "rollingAvg20DiiEquity">;
 
-// ── Persistence ───────────────────────────────────────────────────────────────
+// -- Persistence ---------------------------------------------------------------
 
 const HISTORY_PATH = path.join(process.cwd(), "data", "fii-dii-history.json");
 
@@ -115,15 +115,28 @@ async function loadHistory(): Promise<StoredEntry[]> {
   }
 }
 
+/** Prune entries older than this many days. Keeps at least 1 full year for YTD. */
+const HISTORY_RETENTION_DAYS = 400;
+
 async function saveHistory(entries: StoredEntry[]): Promise<void> {
   try {
-    await fs.writeFile(HISTORY_PATH, JSON.stringify(entries, null, 2), "utf-8");
+    // Prune entries beyond retention window (keep >= 400 days = full year + buffer)
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - HISTORY_RETENTION_DAYS);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    const pruned = entries.filter((e) => e.date >= cutoffIso);
+    if (pruned.length < entries.length) {
+      console.log(
+        `[nse-flows] pruned ${entries.length - pruned.length} entries older than ${cutoffIso}`,
+      );
+    }
+    await fs.writeFile(HISTORY_PATH, JSON.stringify(pruned, null, 2), "utf-8");
   } catch (e) {
     console.error("[nse-flows] failed to save history:", e);
   }
 }
 
-// ── NSE Session ──────────────────────────────────────────────────────────────
+// -- NSE Session --------------------------------------------------------------
 
 function nseHeaders(cookie: string, referer = "https://www.nseindia.com/market-data/fii-dii-data"): Record<string, string> {
   return {
@@ -151,11 +164,11 @@ async function getNseCookies(): Promise<string> {
   };
 
   try {
-    // Step 1: homepage — establishes base session
+    // Step 1: homepage -- establishes base session
     const homeRes = await fetch("https://www.nseindia.com", { headers: htmlHeaders });
     const cookie = extractCookies(homeRes);
 
-    // Step 2: warm up the FII/DII page — required for historical API access
+    // Step 2: warm up the FII/DII page -- required for historical API access
     await fetch("https://www.nseindia.com/market-data/fii-dii-data", {
       headers: { ...htmlHeaders, Cookie: cookie, Referer: "https://www.nseindia.com/" },
     });
@@ -167,7 +180,7 @@ async function getNseCookies(): Promise<string> {
   }
 }
 
-// ── Today's Snapshot ─────────────────────────────────────────────────────────
+// -- Today's Snapshot ---------------------------------------------------------
 
 interface NseSnapshotItem {
   category?: string;
@@ -198,7 +211,7 @@ export async function fetchTodaySnapshot(cookie = ""): Promise<FlowsSnapshot | n
       diiDebtBuy: 0,   diiDebtSell: 0,   diiDebtNet: 0,
     };
 
-    // fiidiiTradeReact returns equity-only data — no "type" field present.
+    // fiidiiTradeReact returns equity-only data -- no "type" field present.
     for (const item of items) {
       const cat = String(item.category ?? "").toLowerCase();
       if (/fii|fpi/.test(cat)) {
@@ -237,7 +250,7 @@ function snapshotToEntry(snap: FlowsSnapshot, date: string): StoredEntry {
   };
 }
 
-// ── Historical Bootstrap (NSE API — best-effort) ─────────────────────────────
+// -- Historical Bootstrap (NSE API -- best-effort) -----------------------------
 
 interface NseHistoricalItem {
   date?: string;
@@ -276,7 +289,7 @@ function parseHistoricalItem(item: NseHistoricalItem): StoredEntry | null {
   };
 }
 
-/** Attempt NSE historical API (fails gracefully — NSE changes endpoints frequently) */
+/** Attempt NSE historical API (fails gracefully -- NSE changes endpoints frequently) */
 async function tryNseHistoricalBootstrap(
   fromIso: string,
   toIso: string,
@@ -316,7 +329,7 @@ async function tryNseHistoricalBootstrap(
   return [];
 }
 
-// ── Derived Metrics ──────────────────────────────────────────────────────────
+// -- Derived Metrics ----------------------------------------------------------
 
 function computeDerived(entries: StoredEntry[]): FiiDiiEntry[] {
   let cumFii = 0;
@@ -341,7 +354,7 @@ function computeDerived(entries: StoredEntry[]): FiiDiiEntry[] {
   });
 }
 
-// ── Nifty ────────────────────────────────────────────────────────────────────
+// -- Nifty --------------------------------------------------------------------
 
 export async function fetchNiftyDailyHistory(): Promise<NiftyDayClose[]> {
   try {
@@ -370,7 +383,7 @@ export async function fetchNiftyDailyHistory(): Promise<NiftyDayClose[]> {
   }
 }
 
-// ── Gap detection ─────────────────────────────────────────────────────────────
+// -- Gap detection -------------------------------------------------------------
 
 /**
  * Returns the earliest date from which we should attempt a backfill.
@@ -444,7 +457,7 @@ function mergeEntries(existing: StoredEntry[], incoming: StoredEntry[]): StoredE
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// ── Main Entry Point ──────────────────────────────────────────────────────────
+// -- Main Entry Point ----------------------------------------------------------
 
 export async function fetchAllFlowData(): Promise<{
   entries: FiiDiiEntry[];
@@ -453,7 +466,7 @@ export async function fetchAllFlowData(): Promise<{
 }> {
   const today = new Date().toISOString().slice(0, 10);
 
-  // Establish NSE session — required for non-empty API responses
+  // Establish NSE session -- required for non-empty API responses
   const cookie = await getNseCookies();
 
   // Load existing history + fetch today's snapshot + Nifty in parallel
@@ -470,7 +483,7 @@ export async function fetchAllFlowData(): Promise<{
   // not just when it is completely empty. NSE API fails gracefully.
   const backfillFrom = detectBackfillFrom(entries, today);
   if (backfillFrom) {
-    console.log(`[nse-flows] gap detected — attempting backfill from ${backfillFrom}`);
+    console.log(`[nse-flows] gap detected -- attempting backfill from ${backfillFrom}`);
     const fetched = await tryNseHistoricalBootstrap(backfillFrom, today, cookie);
     if (fetched.length > 0) {
       entries = mergeEntries(entries, fetched);
@@ -501,7 +514,7 @@ export async function fetchAllFlowData(): Promise<{
   };
 }
 
-// ── Manual patch endpoint helpers ─────────────────────────────────────────────
+// -- Manual patch endpoint helpers ---------------------------------------------
 
 /**
  * Patch one or more historical entries directly into the history file.

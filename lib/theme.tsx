@@ -8,14 +8,14 @@ import {
   ReactNode,
 } from "react";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 export type FontSize = "sm" | "md" | "lg";
 export type ThemeMode = "dark" | "light" | "system" | "custom";
 
 export interface CustomColors {
-  accent: string;   // amber-equivalent   — action / highlight
-  positive: string;   // teal-equivalent    — gains / up
-  danger: string;   // red-equivalent     — losses / down
+  accent: string;   // amber-equivalent   -- action / highlight
+  positive: string;   // teal-equivalent    -- gains / up
+  danger: string;   // red-equivalent     -- losses / down
   background: string;   // base bg colour
 }
 
@@ -37,7 +37,7 @@ interface ThemeContextValue {
   setSettingsOpen: (v: boolean) => void;
 }
 
-// ── Defaults ───────────────────────────────────────────────────────────────────
+// -- Defaults -------------------------------------------------------------------
 const DEFAULT_CUSTOM: CustomColors = {
   accent: "#F5820D",
   positive: "#00C9A7",
@@ -52,14 +52,14 @@ const DEFAULTS: ThemeState = {
   settingsOpen: false,
 };
 
-// ── Font-size map (root px) ────────────────────────────────────────────────────
+// -- Font-size map (root px) ----------------------------------------------------
 export const FONT_SIZE_PX: Record<FontSize, string> = {
   sm: "13px",
   md: "15px",
   lg: "17px",
 };
 
-// ── CSS variable token maps ────────────────────────────────────────────────────
+// -- CSS variable token maps ----------------------------------------------------
 export const DARK_TOKENS: Record<string, string> = {
   "--color-base": "#0C0E14",
   "--color-surface": "#13151E",
@@ -86,7 +86,7 @@ export const LIGHT_TOKENS: Record<string, string> = {
   "--color-danger": "#B91C1C",
 };
 
-// ── Apply theme to DOM ─────────────────────────────────────────────────────────
+// -- Apply theme to DOM ---------------------------------------------------------
 function applyTheme(state: ThemeState) {
   const html = document.documentElement;
 
@@ -124,7 +124,7 @@ function applyTheme(state: ThemeState) {
   Object.entries(tokens).forEach(([k, v]) => html.style.setProperty(k, v));
 }
 
-// ── Persistence ────────────────────────────────────────────────────────────────
+// -- Persistence ----------------------------------------------------------------
 const STORAGE_KEY = "mip-theme-v1";
 
 type Persisted = Pick<ThemeState, "mode" | "fontSize" | "custom">;
@@ -148,7 +148,7 @@ function saveStored(s: Persisted) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* noop */ }
 }
 
-// ── Provider ───────────────────────────────────────────────────────────────────
+// -- Provider -------------------------------------------------------------------
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

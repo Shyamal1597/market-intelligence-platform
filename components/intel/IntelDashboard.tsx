@@ -26,7 +26,7 @@ interface IntelData {
 
 const DEFAULT_SYMBOL = "BAJAJFINSV";
 
-// ── Sector display config ────────────────────────────────────────────────────
+// -- Sector display config ----------------------------------------------------
 
 const SECTOR_DISPLAY_ORDER = [
   "bank", "nbfc", "insurance-holding", "insurance-life", "financial-services",
@@ -38,8 +38,8 @@ const SECTOR_DISPLAY_ORDER = [
 const SECTOR_LABELS: Record<string, string> = {
   "bank":                "Banking",
   "nbfc":                "NBFC & Lending",
-  "insurance-holding":   "Insurance — Holding",
-  "insurance-life":      "Insurance — Life",
+  "insurance-holding":   "Insurance -- Holding",
+  "insurance-life":      "Insurance -- Life",
   "financial-services":  "Financial Services",
   "it-services":         "IT Services",
   "pharma":              "Pharma & Healthcare",
@@ -57,7 +57,7 @@ const SECTOR_LABELS: Record<string, string> = {
   "real-estate":         "Real Estate",
 };
 
-// ── Company chip ─────────────────────────────────────────────────────────────
+// -- Company chip -------------------------------------------------------------
 
 function CompanyChip({
   company,
@@ -92,7 +92,7 @@ function CompanyChip({
           {company.totalClaims}
         </span>
       )}
-      {/* Data quality dot — top-right corner */}
+      {/* Data quality dot -- top-right corner */}
       {dq?.hasIssues && (
         <span
           className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
@@ -104,8 +104,8 @@ function CompanyChip({
   );
 }
 
-// ── Sector dropdown ───────────────────────────────────────────────────────────
-// Uses a React Portal so the panel renders directly in <body> — this breaks
+// -- Sector dropdown -----------------------------------------------------------
+// Uses a React Portal so the panel renders directly in <body> -- this breaks
 // it out of any parent stacking context or overflow clipping that Tailwind v4
 // color-mix() layers can introduce on siblings.
 
@@ -157,7 +157,7 @@ function SectorDropdown({
         style={{ position: "fixed", inset: 0, zIndex: 9998 }}
         onClick={() => setOpen(false)}
       />
-      {/* Panel — rendered at body level, no parent CSS can clip it */}
+      {/* Panel -- rendered at body level, no parent CSS can clip it */}
       <div
         style={panelStyle}
         className="rounded border border-border bg-surface shadow-xl overflow-y-auto"
@@ -297,7 +297,7 @@ export function IntelDashboard() {
   return (
     <div className="space-y-4">
 
-      {/* ── Company selector: sector dropdown + inline chips ── */}
+      {/* -- Company selector: sector dropdown + inline chips -- */}
       <div className="flex flex-wrap items-center gap-2">
         <TranscriptUpload onComplete={() => loadSymbol(selectedSymbol)} />
         <SectorDropdown
@@ -334,14 +334,6 @@ export function IntelDashboard() {
 
       {!loading && !error && data && (
         <>
-          {/* Data quality notes — shown when the selected company has completeness issues */}
-          {(() => {
-            const co = companies.find(c => c.symbol === selectedSymbol);
-            return co?.dataQuality?.hasIssues ? (
-              <DataQualityBanner symbol={selectedSymbol} quality={co.dataQuality} />
-            ) : null;
-          })()}
-
           {/* Company summary bar */}
           <CompanySummaryBar
             symbol={selectedSymbol}
@@ -373,8 +365,8 @@ export function IntelDashboard() {
             </button>
             <span className="text-[10px] font-mono text-muted/35 ml-2">
               {viewMode === "timeline"
-                ? "per-call narrative — each quarter's guidance and outcomes"
-                : "guidance narrative — track each KPI across all calls"}
+                ? "per-call narrative -- each quarter's guidance and outcomes"
+                : "guidance narrative -- track each KPI across all calls"}
             </span>
           </div>
 
@@ -412,6 +404,14 @@ export function IntelDashboard() {
               </ul>
             </details>
           )}
+
+          {/* Data completeness notes -- bottom of page, non-blocking */}
+          {(() => {
+            const co = companies.find(c => c.symbol === selectedSymbol);
+            return co?.dataQuality?.hasIssues ? (
+              <DataQualityBanner symbol={selectedSymbol} quality={co.dataQuality} />
+            ) : null;
+          })()}
         </>
       )}
     </div>

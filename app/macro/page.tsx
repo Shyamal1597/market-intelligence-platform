@@ -19,7 +19,7 @@ const INDIA_MACRO = [
   { label: "IIP Growth", value: "4.2%", note: "Mar 2026 (verify MOSPI)" },
 ];
 
-// ── Groups for the live terminal ───────────────────────────────────────────────
+// -- Groups for the live terminal -----------------------------------------------
 const LIVE_GROUPS: Record<string, string[]> = {
   India:       ["^NSEI", "^BSESN", "^NSEBANK", "^INDIAVIX"],
   Commodities: ["BZ=F", "GOLD_INR", "SILVER_INR"],
@@ -164,7 +164,7 @@ export default function MacroPage() {
         </div>
       </div>
 
-      {/* Live Market Quotes — terminal table */}
+      {/* Live Market Quotes -- terminal table */}
       <section className="mb-6">
         <h2 className="text-xs font-mono uppercase tracking-widest mb-4 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" />

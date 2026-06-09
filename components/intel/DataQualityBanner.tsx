@@ -94,7 +94,7 @@ export function DataQualityBanner({
         <div className="flex items-center gap-2">
           <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${headerText}`} />
           <span className={`text-xs font-mono font-semibold ${headerText}`}>
-            Data completeness — {symbol}
+            Data completeness -- {symbol}
           </span>
           <span className="text-[10px] font-mono text-muted">
             {summaryParts.join(", ")}
@@ -115,7 +115,7 @@ export function DataQualityBanner({
         ))}
       </div>
 
-      {/* Footer — transcript count */}
+      {/* Footer -- transcript count */}
       <div className="px-3 py-1.5 border-t border-border/20 flex items-center gap-3 text-[10px] font-mono text-muted">
         <span>{quality.transcriptCount} transcript{quality.transcriptCount !== 1 ? "s" : ""} on disk</span>
         <span>·</span>

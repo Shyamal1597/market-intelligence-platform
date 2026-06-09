@@ -100,7 +100,7 @@ export function RagChat({ symbol, analyst }: Props) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <p className="text-xs font-mono text-muted">
-            Ask anything about the research reports — target prices, investment thesis, risk factors, sector views…
+            Ask anything about the research reports -- target prices, investment thesis, risk factors, sector views…
           </p>
         )}
         {messages.map((msg, i) => (

@@ -37,7 +37,7 @@ function buildChartData(
   metric: Metric
 ): ChartRow[] {
   return quarters.map((q, i) => {
-    // basicEps is number | null; other metrics are number — normalise to number | undefined
+    // basicEps is number | null; other metrics are number -- normalise to number | undefined
     const cur: number | undefined =
       q[metric] !== null ? (q[metric] as number) : undefined;
     const prevRaw = i > 0 ? quarters[i - 1][metric] : null;

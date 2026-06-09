@@ -10,7 +10,7 @@ const UA =
 
 /**
  * Fetch the latest market price for a single NSE symbol via Yahoo Finance v8 chart API.
- * This endpoint works without a crumb/cookie — confirmed by the existing /api/quote route.
+ * This endpoint works without a crumb/cookie -- confirmed by the existing /api/quote route.
  */
 async function fetchPriceV8(symbol: string): Promise<number> {
   try {
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   try {
     if (tab === "short") {
       const data = await fetchShortDeals();
-      // Enrich with live close prices — NSE short data carries no price
+      // Enrich with live close prices -- NSE short data carries no price
       const symbols = [...new Set(data.deals.map((d) => d.symbol).filter(Boolean))];
       const priceMap = await fetchYahooPrices(symbols);
       const enriched = enrichWithPrices(data.deals, priceMap);

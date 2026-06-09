@@ -24,7 +24,7 @@ export function QuarterHeadline({ summary, pending, loading, sourceQuarter, symb
     return (
       <div className="rounded border border-border bg-surface p-5 flex items-center justify-between">
         <p className="text-muted font-mono text-xs">
-          No summary generated for {sourceQuarter} — run{" "}
+          No summary generated for {sourceQuarter} -- run{" "}
           <code className="text-amber">npm run intel:summaries {symbol}</code>
         </p>
       </div>

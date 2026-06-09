@@ -31,6 +31,11 @@ export interface EnrichedClaim {
     quote: string | null;
     reasoning: string;
   } | null;
+  /** Transcript snippets extracted from the target quarter -- zero-cost keyword search */
+  actuals: {
+    targetQuarter: string;
+    snippets: string[];
+  } | null;
 }
 
 interface Props {
@@ -50,12 +55,12 @@ const VERDICT_ACCENT: Record<Verdict, string> = {
 function claimValueDisplay(c: EnrichedClaim): string {
   if (c.direction === "value" && c.value !== null) return `${c.value}${c.metricUnit}`;
   if (c.direction === "range" && c.rangeMin !== null && c.rangeMax !== null) {
-    return `${c.rangeMin}–${c.rangeMax}${c.metricUnit}`;
+    return `${c.rangeMin}-${c.rangeMax}${c.metricUnit}`;
   }
   if (c.direction === "up")     return "↑ improve";
   if (c.direction === "down")   return "↓ decline";
   if (c.direction === "stable") return "→ stable";
-  return c.qualitativeText ?? "—";
+  return c.qualitativeText ?? "--";
 }
 
 export function ClaimRow({ claim, sourceQuarter }: Props) {
@@ -66,26 +71,26 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
 
   return (
     <div className="relative">
-      {/* Verdict accent bar — absolute left strip */}
+      {/* Verdict accent bar -- absolute left strip */}
       <div className={`absolute inset-y-0 left-0 w-0.5 ${VERDICT_ACCENT[verdict]}`} />
 
-      {/* ── Summary row — always visible ── */}
+      {/* -- Summary row -- always visible -- */}
       <button
         onClick={() => setOpen((p) => !p)}
         className="w-full flex items-start gap-4 pl-5 pr-4 py-3 hover:bg-surface/50 text-left transition-colors group"
       >
-        {/* Col 1 — verdict badge + metric label + target quarter */}
+        {/* Col 1 -- verdict badge + metric label + target quarter */}
         <div className="shrink-0 w-36 flex flex-col gap-1.5">
           <StatusBadge status={verdict} />
           <span className="text-[11px] font-mono text-amber leading-tight truncate">
             {claim.metricLabel}
           </span>
           <span className="text-[10px] font-mono text-muted">
-            {claim.resolvedTargetQuarter ?? "—"}
+            {claim.resolvedTargetQuarter ?? "--"}
           </span>
         </div>
 
-        {/* Col 2 — guided value */}
+        {/* Col 2 -- guided value */}
         <div className="shrink-0 w-28 flex flex-col gap-0.5 pt-0.5">
           <span className="text-[10px] font-mono text-muted uppercase tracking-wider">
             Guided
@@ -95,7 +100,7 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
           </span>
         </div>
 
-        {/* Col 3 — actual outcome (key info — always visible) */}
+        {/* Col 3 -- actual outcome (key info -- always visible) */}
         <div className="flex-1 min-w-0 flex flex-col gap-0.5 pt-0.5">
           {displayActual ? (
             <>
@@ -115,13 +120,13 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
           )}
         </div>
 
-        {/* Col 4 — expand chevron */}
+        {/* Col 4 -- expand chevron */}
         <span className="shrink-0 mt-1.5 text-muted group-hover:text-primary transition-colors">
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
       </button>
 
-      {/* ── Expanded audit trail ── */}
+      {/* -- Expanded audit trail -- */}
       {open && (
         <div className="pl-5 pr-4 pb-4 pt-3 space-y-4 border-t border-border/40 bg-base/20">
 
@@ -143,7 +148,7 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
             )}
           </div>
 
-          {/* ② Source quarter — original management promise */}
+          {/* ② Source quarter -- original management promise */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[10px] font-mono font-bold text-amber/70 uppercase tracking-wider">
@@ -154,12 +159,12 @@ export function ClaimRow({ claim, sourceQuarter }: Props) {
             <blockquote className="border-l-2 border-amber/30 pl-3 text-xs text-muted font-sans italic leading-relaxed">
               &ldquo;{claim.quote}&rdquo;
               {claim.speaker && (
-                <span className="not-italic text-primary ml-2">— {claim.speaker}</span>
+                <span className="not-italic text-primary ml-2">-- {claim.speaker}</span>
               )}
             </blockquote>
           </div>
 
-          {/* ③ Target quarter — verification evidence */}
+          {/* ③ Target quarter -- verification evidence */}
           {claim.check && (
             <div className="rounded border border-border bg-base p-3 space-y-2.5">
               {/* Header row */}

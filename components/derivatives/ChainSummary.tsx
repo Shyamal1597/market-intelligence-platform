@@ -32,7 +32,7 @@ export function ChainSummary({ data }: Props) {
 
   return (
     <div className="px-4 py-2 bg-surface/50 border-b border-border text-xs font-mono space-y-1.5">
-      {/* Row 1 — core metrics */}
+      {/* Row 1 -- core metrics */}
       <div className="flex items-center gap-5 flex-wrap">
         <Metric label="Spot" value={data.spot.toLocaleString("en-IN", { maximumFractionDigits: 2 })} color="text-primary font-semibold" />
         <Metric label="ATM IV" value={`${data.atmIV.toFixed(1)}%`} />
@@ -40,7 +40,7 @@ export function ChainSummary({ data }: Props) {
 
         <Metric label="Max Pain" value={data.maxPain.toLocaleString("en-IN")} color="text-amber font-semibold" />
 
-        {/* OI walls — resistance/support */}
+        {/* OI walls -- resistance/support */}
         <div className="flex items-center gap-1.5">
           <span className="text-muted">Resistance</span>
           <span className="text-cyan-400/70 tabular-nums">{data.cePeakOI.toLocaleString("en-IN")}</span>
@@ -58,7 +58,7 @@ export function ChainSummary({ data }: Props) {
         )}
       </div>
 
-      {/* Row 2 — OI & Volume totals */}
+      {/* Row 2 -- OI & Volume totals */}
       <div className="flex items-center gap-5 flex-wrap text-[10px]">
         <div className="flex items-center gap-1.5">
           <span className="text-muted">Total OI</span>

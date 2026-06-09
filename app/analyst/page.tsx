@@ -22,7 +22,7 @@ export default function AnalystPage() {
         symbols.map(async (sym) => {
           try {
             const data = await fetch(`/api/quote/${sym}`).then((r) => r.json());
-            // Use previousClose — stable closing price, not live tick
+            // Use previousClose -- stable closing price, not live tick
             const px = data?.previousClose ?? data?.price;
             if (px && px > 0) prices[sym] = px;
           } catch {

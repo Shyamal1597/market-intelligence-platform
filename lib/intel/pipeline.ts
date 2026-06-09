@@ -1,5 +1,5 @@
 /**
- * lib/intel/pipeline.ts — Reusable pipeline functions for the Intel Dashboard.
+ * lib/intel/pipeline.ts -- Reusable pipeline functions for the Intel Dashboard.
  *
  * These functions encapsulate the core pipeline logic so it can be called
  * from both CLI scripts (intel-rebuild.ts) and API routes (/api/intel/upload, /api/intel/scrape).
@@ -31,7 +31,7 @@ import { generateQuarterSummary } from "@/lib/intel/generateSummary";
 import { buildIntelIndex } from "@/lib/intel/buildIndex";
 import type { ClaimsArtifact, ChecksArtifact, SectorKey } from "@/lib/intel/types";
 
-// ── Index rebuild debounce ────────────────────────────────────────────────────
+// -- Index rebuild debounce ----------------------------------------------------
 // Multiple concurrent pipeline completions collapse into a single rebuild
 // 2 seconds after the last one finishes.
 let _indexRebuildTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,7 +45,7 @@ function scheduleIndexRebuild() {
   }, 2_000);
 }
 
-// ── Data paths ───────────────────────────────────────────────────────────────
+// -- Data paths ---------------------------------------------------------------
 
 export function intelBasePath(symbol: string): string {
   return path.join(process.cwd(), "data", "intelligence", symbol);
@@ -63,7 +63,7 @@ export function intelPaths(symbol: string) {
   };
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export type PipelineStage =
   | "extract-text"
@@ -91,7 +91,7 @@ export interface IngestResult {
   chars: number;
   method: string;
   alreadyExisted: boolean;
-  /** First ~2000 chars of extracted text — used for company fingerprint validation */
+  /** First ~2000 chars of extracted text -- used for company fingerprint validation */
   textSnippet: string;
 }
 
@@ -105,7 +105,7 @@ export interface PipelineResult {
   warnings: string[];
 }
 
-// ── Job persistence ──────────────────────────────────────────────────────────
+// -- Job persistence ----------------------------------------------------------
 
 const JOBS_DIR = path.join(process.cwd(), "data", "intelligence", "_jobs");
 
@@ -148,7 +148,7 @@ export async function listJobs(symbol?: string, limit = 20): Promise<PipelineJob
   }
 }
 
-// ── Stage 2: PDF → Transcript ────────────────────────────────────────────────
+// -- Stage 2: PDF → Transcript ------------------------------------------------
 
 /**
  * Extract text from a PDF buffer, detect the quarter, and save as a transcript.
@@ -184,7 +184,7 @@ export async function ingestPdfTranscript(
 
   if (rawText.length < 500) {
     throw new Error(
-      `PDF text extraction yielded only ${rawText.length} chars — likely a scanned/image PDF. ` +
+      `PDF text extraction yielded only ${rawText.length} chars -- likely a scanned/image PDF. ` +
       `Please upload a text-based PDF.`,
     );
   }
@@ -195,7 +195,7 @@ export async function ingestPdfTranscript(
     quarter = detectQuarterFromFilename(filename);
   }
   if (!quarter) {
-    // Scan first 6000 chars for date headers — broader window than the 4000 in transcripts.ts
+    // Scan first 6000 chars for date headers -- broader window than the 4000 in transcripts.ts
     const headerDate = detectDateFromHeader(rawText.slice(0, 6000));
     if (headerDate) {
       quarter = reportingQuarterFromCallDate(headerDate);
@@ -212,7 +212,7 @@ export async function ingestPdfTranscript(
     );
   }
 
-  // Path traversal guard — quarter is used as a filename component
+  // Path traversal guard -- quarter is used as a filename component
   if (!/^Q[1-4]-FY\d{2}$/.test(quarter)) {
     throw new Error(`Detected quarter "${quarter}" has invalid format.`);
   }
@@ -228,11 +228,11 @@ export async function ingestPdfTranscript(
   if (existsSync(outFile)) {
     const existing = await fs.readFile(outFile, "utf-8");
     if (cleaned.length <= existing.length) {
-      // Existing is longer or equal — keep it
+      // Existing is longer or equal -- keep it
       alreadyExisted = true;
       return { quarter, chars: existing.length, method, alreadyExisted, textSnippet: existing.slice(0, 2000) };
     }
-    // New version is longer — overwrite
+    // New version is longer -- overwrite
     alreadyExisted = true;
   }
 
@@ -293,7 +293,7 @@ function detectQuarterFromContent(text: string): string | null {
   return null;
 }
 
-// ── Stages 3-5: Full pipeline run ────────────────────────────────────────────
+// -- Stages 3-5: Full pipeline run --------------------------------------------
 
 /**
  * Run the full LLM pipeline (Stages 3→4→5) for a single symbol.
@@ -306,7 +306,7 @@ export async function runFullPipeline(
   options?: {
     /** If set, only extract claims from this quarter's transcript */
     quarter?: string;
-    /** Cost cap in USD — abort if exceeded */
+    /** Cost cap in USD -- abort if exceeded */
     costCap?: number;
     /** Progress callback for job tracking */
     onProgress?: (stage: PipelineStage) => void;
@@ -328,7 +328,7 @@ export async function runFullPipeline(
   let summariesGenerated = 0;
   const warnings: string[] = [];
 
-  // ── Stage 3: Extract claims ──────────────────────────────────────────────
+  // -- Stage 3: Extract claims ----------------------------------------------
   onProgress?.("extract-claims");
 
   const onlyQuarters = options?.quarter ? [options.quarter] : undefined;
@@ -355,11 +355,11 @@ export async function runFullPipeline(
     return { symbol: sym, quarter: options?.quarter ?? "all", claimsExtracted, checksRun, summariesGenerated, totalCostUsd, warnings };
   }
 
-  // ── Stage 4: Cross-check ─────────────────────────────────────────────────
+  // -- Stage 4: Cross-check -------------------------------------------------
   onProgress?.("cross-check");
 
   if (!existsSync(paths.claims)) {
-    warnings.push("No claims.json after Stage 3 — skipping cross-check.");
+    warnings.push("No claims.json after Stage 3 -- skipping cross-check.");
     return { symbol: sym, quarter: options?.quarter ?? "all", claimsExtracted, checksRun, summariesGenerated, totalCostUsd, warnings };
   }
 
@@ -383,7 +383,7 @@ export async function runFullPipeline(
     return { symbol: sym, quarter: options?.quarter ?? "all", claimsExtracted, checksRun, summariesGenerated, totalCostUsd, warnings };
   }
 
-  // ── Stage 5: Summaries ───────────────────────────────────────────────────
+  // -- Stage 5: Summaries ---------------------------------------------------
   onProgress?.("summaries");
 
   try {
@@ -451,7 +451,7 @@ export async function runFullPipeline(
   };
 }
 
-// ── Utility: generate a unique job ID ────────────────────────────────────────
+// -- Utility: generate a unique job ID ----------------------------------------
 
 export function generateJobId(): string {
   const ts = Date.now().toString(36);
