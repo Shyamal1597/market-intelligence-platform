@@ -53,20 +53,38 @@ function tryPdf2json(pdfPath: string): Promise<string> {
       origWarn(...args);
     };
     const p = new PDFParser(null, 1);
-    const restore = () => { console.warn = origWarn; };
-    p.on("pdfParser_dataError", (err: unknown) => { restore(); reject(err); });
+
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      console.warn = origWarn;
+      clearTimeout(timer);
+      fn();
+    };
+
+    // pdf2json's fake worker can throw unhandled rejections on certain PDFs that
+    // bypass pdfParser_dataError, leaving this promise hanging. The timeout ensures
+    // we always reject so extractPdfText can fall through to the pdfminer fallback.
+    const timer = setTimeout(
+      () => settle(() => reject(new Error("pdf2json timed out after 30s"))),
+      30_000,
+    );
+
+    p.on("pdfParser_dataError", (err: unknown) => settle(() => reject(err)));
     p.on("pdfParser_dataReady", () => {
-      restore();
-      try {
-        resolve(p.getRawTextContent());
-      } catch {
-        // fallback: reconstruct from page objects
-        const data = p.data as { Pages?: { Texts?: { R?: { T?: string }[] }[] }[] };
-        const text = data.Pages
-          ?.flatMap((pg) => pg.Texts?.map((t) => decodeURIComponent(t.R?.[0]?.T ?? "")) ?? [])
-          .join(" ") ?? "";
-        resolve(text);
-      }
+      settle(() => {
+        try {
+          resolve(p.getRawTextContent());
+        } catch {
+          // fallback: reconstruct from page objects
+          const data = p.data as { Pages?: { Texts?: { R?: { T?: string }[] }[] }[] };
+          const text = data.Pages
+            ?.flatMap((pg) => pg.Texts?.map((t) => decodeURIComponent(t.R?.[0]?.T ?? "")) ?? [])
+            .join(" ") ?? "";
+          resolve(text);
+        }
+      });
     });
     p.loadPDF(pdfPath);
   });
