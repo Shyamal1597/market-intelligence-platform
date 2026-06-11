@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
     if (shouldRefresh) {
-      fetch(`${request.nextUrl.origin}/api/fetch-market-news`).catch(() => {});
+      fetch("/api/fetch-market-news").catch(() => {});
     }
 
     let news = newsData.news;
