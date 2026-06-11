@@ -113,6 +113,59 @@ function coloredPct(cell: ExcelJS.Cell, value: number | null) {
   cell.border = BORDER(C.borderBlack);
 }
 
+// -- GIFT NIFTY from NSE allIndices --------------------------------------------
+// Yahoo Finance does not carry GIFT NIFTY; fetch directly from NSE India.
+
+const NSE_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+async function fetchGiftNiftyFromNse(): Promise<QuoteData | null> {
+  try {
+    const htmlH = {
+      "User-Agent": NSE_UA,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cache-Control": "no-cache",
+    };
+    function extractCookies(res: Response): string {
+      const h = res.headers as Headers & { getSetCookie?: () => string[] };
+      const arr = h.getSetCookie
+        ? h.getSetCookie()
+        : (res.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
+      return arr.map((c) => c.split(";")[0].trim()).filter(Boolean).join("; ");
+    }
+    const homeRes = await fetch("https://www.nseindia.com", { headers: htmlH });
+    const cookie = extractCookies(homeRes);
+    await fetch("https://www.nseindia.com/market-data/live-market-indices?symbol=GIFT-NIFTY", {
+      headers: { ...htmlH, Cookie: cookie, Referer: "https://www.nseindia.com/" },
+    });
+    const apiRes = await fetch("https://www.nseindia.com/api/allIndices", {
+      headers: {
+        "User-Agent": NSE_UA,
+        Accept: "application/json, text/plain, */*",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: "https://www.nseindia.com/market-data/live-market-indices?symbol=GIFT-NIFTY",
+        Cookie: cookie,
+      },
+    });
+    if (!apiRes.ok) return null;
+    const json = await apiRes.json() as { data?: { index: string; last: number; previousClose: number; percentChange: number; change: number }[] };
+    const entry = json.data?.find((d) => /GIFT/i.test(d.index));
+    if (!entry) return null;
+    return {
+      symbol: "GIFT_NIFTY_NSE",
+      label: "GIFT NIFTY",
+      price: entry.last,
+      change: entry.change,
+      changePercent: entry.percentChange,
+      previousClose: entry.previousClose,
+      history: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 // -- FY label: "FY 26-27" format -----------------------------------------------
 
 function fyLongLabel(d: Date): string {
@@ -124,11 +177,12 @@ function fyLongLabel(d: Date): string {
 
 export async function GET() {
   try {
-    const [flowData, macroQuotes, globalQuotes, bseSectors] = await Promise.all([
+    const [flowData, macroQuotes, globalQuotes, bseSectors, giftNiftyQuote] = await Promise.all([
       fetchAllFlowData(),
       fetchAllQuotes(),
       fetchGlobalQuotes(),
       fetchBseSectors().catch(() => []), // non-fatal: blank rows if BSE is down
+      fetchGiftNiftyFromNse().catch(() => null), // non-fatal: N/A if NSE is down
     ]);
 
     const eodSectors = mapEodSectors(bseSectors);
@@ -355,7 +409,7 @@ export async function GET() {
     ];
     const APAC = [
       { label: "Shanghai Composite", sym: "000001.SS" },
-      { label: "GIFT NIFTY",         sym: "^NSGX"   },
+      { label: "GIFT NIFTY",         sym: null },        // fetched from NSE, not Yahoo Finance
       { label: "Nikkei 225",          sym: "^N225"     },
       { label: "Hang Seng",           sym: "^HSI"      },
     ];
@@ -377,7 +431,10 @@ export async function GET() {
 
       if (i < APAC.length) {
         const ap = APAC[i];
-        const apQ = ap.sym ? Q(ap.sym) : null;
+        // GIFT NIFTY row uses the NSE-sourced quote; all others use Yahoo Finance pool
+        const apQ = ap.sym === null && ap.label === "GIFT NIFTY"
+          ? giftNiftyQuote
+          : ap.sym ? Q(ap.sym) : null;
         label(ws.getCell(row, 6), ap.label);
         if (apQ) {
           neutral(ws.getCell(row, 7), apQ.price, "#,##0.00");
