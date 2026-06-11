@@ -355,7 +355,7 @@ export async function GET() {
     ];
     const APAC = [
       { label: "Shanghai Composite", sym: "000001.SS" },
-      { label: "GIFT NIFTY",         sym: null },
+      { label: "GIFT NIFTY",         sym: "^NSGX"   },
       { label: "Nikkei 225",          sym: "^N225"     },
       { label: "Hang Seng",           sym: "^HSI"      },
     ];

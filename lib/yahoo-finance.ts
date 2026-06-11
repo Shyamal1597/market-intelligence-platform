@@ -59,6 +59,7 @@ export const GLOBAL_SYMBOLS: Record<string, { label: string; region: string }> =
   // India
   "^NSEI":      { label: "NIFTY",           region: "India" },
   "^BSESN":     { label: "SENSEX",          region: "India" },
+  "^NSGX":      { label: "GIFT NIFTY",      region: "India" },
 };
 
 export const REGION_ORDER = ["Others", "US", "Latin America", "Europe", "Asia Pacific", "India"];
