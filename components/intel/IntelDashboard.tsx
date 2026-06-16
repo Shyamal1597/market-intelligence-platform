@@ -393,25 +393,8 @@ export function IntelDashboard() {
             />
           )}
 
-          {/* Pipeline warnings */}
-          {data.warnings.length > 0 && (
-            <details className="text-[11px] font-mono text-muted">
-              <summary className="cursor-pointer hover:text-primary">
-                {data.warnings.length} pipeline warning{data.warnings.length !== 1 ? "s" : ""}
-              </summary>
-              <ul className="mt-2 space-y-0.5 pl-4">
-                {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
-              </ul>
-            </details>
-          )}
-
-          {/* Data completeness notes -- bottom of page, non-blocking */}
-          {(() => {
-            const co = companies.find(c => c.symbol === selectedSymbol);
-            return co?.dataQuality?.hasIssues ? (
-              <DataQualityBanner symbol={selectedSymbol} quality={co.dataQuality} />
-            ) : null;
-          })()}
+          {/* Pipeline warnings and data quality notes are retained in checks.json
+              and the /api/intel/[symbol] response but not surfaced in the UI. */}
         </>
       )}
     </div>
