@@ -140,15 +140,24 @@ function SectorDropdown({
     setOpen(true);
   };
 
-  // Close on scroll / resize so panel doesn't drift
+  // Close on scroll / resize so panel doesn't drift.
+  // Use a ref so the scroll handler can check whether the scroll
+  // originated inside the panel itself (in which case: ignore it).
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
+    const close = (e: Event) => {
+      // If the scroll event came from inside our own panel, don't close.
+      if (panelRef.current && panelRef.current.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    const closeResize = () => setOpen(false);
     window.addEventListener("scroll", close, { passive: true, capture: true });
-    window.addEventListener("resize", close, { passive: true });
+    window.addEventListener("resize", closeResize, { passive: true });
     return () => {
       window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("resize", closeResize);
     };
   }, [open]);
 
@@ -161,6 +170,7 @@ function SectorDropdown({
       />
       {/* Panel -- rendered at body level, no parent CSS can clip it */}
       <div
+        ref={panelRef}
         style={panelStyle}
         className="rounded border border-border bg-surface shadow-xl overflow-y-auto"
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
