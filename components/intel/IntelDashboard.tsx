@@ -127,12 +127,14 @@ function SectorDropdown({
   const openPanel = () => {
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom - 8;
       setPanelStyle({
         position: "fixed",
         top: r.bottom + 4,
         left: r.left,
         width: 256,
         zIndex: 9999,
+        maxHeight: Math.min(spaceBelow, 400),
       });
     }
     setOpen(true);
