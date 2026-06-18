@@ -24,7 +24,7 @@ interface IntelData {
   warnings: string[];
 }
 
-const DEFAULT_SYMBOL = "BAJAJFINSV";
+const DEFAULT_SYMBOL = "HDFCBANK";
 
 // -- Sector display config ----------------------------------------------------
 
@@ -354,31 +354,33 @@ export function IntelDashboard() {
           />
 
           {/* View toggle */}
-          <div className="flex items-center gap-1 border-b border-border/40 pb-3">
-            <button
-              onClick={() => setViewMode("timeline")}
-              className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
-                viewMode === "timeline"
-                  ? "bg-amber/10 text-amber border border-amber/30"
-                  : "text-muted hover:text-primary border border-transparent hover:border-border/40"
-              }`}
-            >
-              Timeline
-            </button>
-            <button
-              onClick={() => setViewMode("kpi")}
-              className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
-                viewMode === "kpi"
-                  ? "bg-amber/10 text-amber border border-amber/30"
-                  : "text-muted hover:text-primary border border-transparent hover:border-border/40"
-              }`}
-            >
-              KPI Tracker
-            </button>
-            <span className="text-[10px] font-mono text-muted/35 ml-2">
+          <div className="flex items-center gap-3 border-b border-border/40 pb-3">
+            <div className="flex items-center gap-0.5 bg-base rounded-lg p-0.5 border border-border/60">
+              <button
+                onClick={() => setViewMode("timeline")}
+                className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
+                  viewMode === "timeline"
+                    ? "bg-surface text-amber shadow-sm border border-amber/25"
+                    : "text-muted hover:text-primary"
+                }`}
+              >
+                Timeline
+              </button>
+              <button
+                onClick={() => setViewMode("kpi")}
+                className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
+                  viewMode === "kpi"
+                    ? "bg-surface text-amber shadow-sm border border-amber/25"
+                    : "text-muted hover:text-primary"
+                }`}
+              >
+                KPI Tracker
+              </button>
+            </div>
+            <span className="text-[10px] font-mono text-muted/40">
               {viewMode === "timeline"
-                ? "per-call narrative -- each quarter's guidance and outcomes"
-                : "guidance narrative -- track each KPI across all calls"}
+                ? "per-call narrative — each quarter's guidance and outcomes"
+                : "guidance narrative — track each KPI across all calls"}
             </span>
           </div>
 
