@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!id || !/^[\w-]{1,100}$/.test(id)) return NextResponse.json({ error: "invalid id" }, { status: 400 });
 
   const body = await req.json() as Partial<{ symbol: string; rating: string; cmp: number; targetPrice: number }>;
   const allowed = ["symbol", "rating", "cmp", "targetPrice"] as const;

@@ -17,12 +17,23 @@ export async function GET(
     return NextResponse.json({ error: "unknown symbol" }, { status: 404 });
   }
 
+  if (!/^Q[1-4]-FY\d{2}$/.test(quarter)) {
+    return NextResponse.json({ error: "invalid quarter" }, { status: 400 });
+  }
+
   const filePath = path.join(
-    "data/intelligence",
+    process.cwd(),
+    "data",
+    "intelligence",
     symbol,
     "summaries",
     `${quarter}.json`,
   );
+
+  const baseDir = path.join(process.cwd(), "data", "intelligence");
+  if (!path.resolve(filePath).startsWith(baseDir + path.sep)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   try {
     const raw = await fs.readFile(filePath, "utf-8");

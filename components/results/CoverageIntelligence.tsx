@@ -980,8 +980,8 @@ export function CoverageIntelligence() {
   // Check Breeze session on mount
   useEffect(() => {
     fetch("/api/breeze/auth")
-      .then((r) => r.json() as Promise<{ loggedIn: boolean; loginUrl: string }>)
-      .then((d) => { setBreezeLoggedIn(d.loggedIn); setBreezeLoginUrl(d.loginUrl); })
+      .then((r) => r.json() as Promise<{ loggedIn: boolean }>)
+      .then((d) => { setBreezeLoggedIn(d.loggedIn); setBreezeLoginUrl("/api/breeze/auth/login"); })
       .catch(() => { });
   }, []);
 

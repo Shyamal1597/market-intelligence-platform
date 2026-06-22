@@ -15,7 +15,7 @@ export async function GET() {
   const token = getBreezeSession();
   return NextResponse.json({
     loggedIn: token !== null,
-    loginUrl: getBreezeLoginUrl(),
+    // loginUrl intentionally omitted — use GET /api/breeze/auth/login for redirect
   });
 }
 

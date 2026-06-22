@@ -17,10 +17,10 @@ const STOP_WORDS = new Set([
 
 function toFtsQuery(raw: string): string {
   const keywords = raw
-    .replace(/['"*^?()]/g, " ")
+    .replace(/['"*^?(){}]/g, " ")
     .split(/\s+/)
     .filter(w => w.length >= 2 && !STOP_WORDS.has(w.toLowerCase()));
-  if (keywords.length === 0) return raw.replace(/['"*^?()]/g, " ").trim();
+  if (keywords.length === 0) return raw.replace(/['"*^?(){}]/g, " ").trim();
   // OR mode + prefix wildcard (*) for partial matching (e.g. "manufactur*" → "manufacturing")
   return keywords.map(k => `${k}*`).join(" OR ");
 }
@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
 
   const { query, symbol, analyst, topK = 6 } = body;
   if (!query?.trim()) return new Response("query required", { status: 400 });
+  if (query.length > 500) return new Response("query too long", { status: 400 });
+  if (analyst && analyst.length > 100) return new Response("analyst filter too long", { status: 400 });
+  const safeTopK = Math.min(Math.max(Number(topK) || 6, 1), 50);
 
   const encoder = new TextEncoder();
 
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
         }
 
         ftsQuery += " ORDER BY rank LIMIT ?";
-        params.push(topK);
+        params.push(safeTopK);
 
         const hits = db.prepare(ftsQuery).all(...params) as { text: string; reportId: string; pageNum: number }[];
 

@@ -24,16 +24,19 @@ export async function GET(req: NextRequest) {
 
   // Security: canonicalize and assert within allowed base
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(REPORTS_BASE)) {
+  if (!resolved.startsWith(REPORTS_BASE + path.sep) && resolved !== REPORTS_BASE) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+
+  // Sanitize filename for Content-Disposition header
+  const safeName = path.basename(resolved).replace(/[^a-zA-Z0-9._-]/g, "_");
 
   try {
     const buffer = await fs.readFile(resolved);
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${path.basename(resolved)}"`,
+        "Content-Disposition": `inline; filename="${safeName}"`,
         "X-Content-Type-Options": "nosniff",
       },
     });

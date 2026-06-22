@@ -15,6 +15,9 @@ export async function GET(
     if (!bseCode) {
       return NextResponse.json({ error: "bseCode query param required" }, { status: 400 });
     }
+    if (!/^\d{1,6}$/.test(bseCode)) {
+      return NextResponse.json({ error: "invalid bseCode" }, { status: 400 });
+    }
 
     const res = await fetch(
       `https://api.bseindia.com/BseIndiaAPI/api/Shareholding/w?scripcode=${bseCode}`,

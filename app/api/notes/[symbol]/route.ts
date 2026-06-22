@@ -9,13 +9,18 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const { symbol } = await params;
-    const notesDir = path.join(
-      process.cwd(),
-      "public",
-      "notes",
-      symbol.toUpperCase()
-    );
+    const { symbol: rawSym } = await params;
+    const sym = rawSym.toUpperCase();
+    if (!/^[A-Z0-9&-]{1,20}$/.test(sym)) {
+      return NextResponse.json({ error: "invalid symbol" }, { status: 400 });
+    }
+    const notesDir = path.join(process.cwd(), "public", "notes", sym);
+    const notesBase = path.join(process.cwd(), "public", "notes");
+    if (!path.resolve(notesDir).startsWith(notesBase + path.sep) &&
+        path.resolve(notesDir) !== notesBase) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    const symbol = sym;
 
     let files: string[];
     try {

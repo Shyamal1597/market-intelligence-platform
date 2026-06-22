@@ -65,6 +65,18 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      // Only accept http/https links to prevent javascript: URI injection
+      try {
+        const parsed = new URL(item.link);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          console.warn("Skipping news item - invalid link protocol:", item.link);
+          continue;
+        }
+      } catch {
+        console.warn("Skipping news item - unparseable link:", item.link);
+        continue;
+      }
+
       // Create unique ID from link using full base64 (no truncation)
       const id = Buffer.from(item.link).toString("base64").replace(/[/+=]/g, '_');
 
