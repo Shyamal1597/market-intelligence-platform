@@ -149,7 +149,7 @@ for (const symbol of symbols) {
           const fixed = QWEN_DIRECTION_MAP[d];
           console.log(`  [${symbol}/${quarter}] FIX direction: "${d}" → "${fixed}"  (${claim.id})`);
           if (!dryRun) {
-            (claim as Record<string, unknown>).direction = fixed;
+            (claim as unknown as Record<string, unknown>).direction = fixed;
           }
           symbolFixed++;
           changed = true;
@@ -163,7 +163,7 @@ for (const symbol of symbols) {
       if (fixTargetQuarter && originalTargetQuarter !== null && originalTargetQuarter !== undefined) {
         if (!isValidQuarter(originalTargetQuarter)) {
           if (!dryRun) {
-            (claim as Record<string, unknown>).targetQuarter = null;
+            (claim as unknown as Record<string, unknown>).targetQuarter = null;
           }
           symbolNulled++;
           changed = true;
