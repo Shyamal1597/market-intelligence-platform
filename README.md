@@ -3,6 +3,30 @@
 Production internal research platform for an equity research firm. Bloomberg Terminal-inspired dark UI serving a 15-analyst equity research team.
 
 **Built solo. 25,500+ lines of TypeScript. 15 modules. 237+ commits.**
+## Demo
+
+<img width="1914" height="950" alt="01-hero-dashboard" src="https://github.com/user-attachments/assets/da7f037b-1c98-4677-a13f-2b1309a1ec99" />
+
+
+### Management Guidance Tracker
+*Extracts forward-looking claims from earnings calls and verifies them against what management actually delivered — per-KPI, per-quarter, with verbatim quotes and a met / moving / miss verdict.*
+
+<img width="1794" height="2100" alt="02-guidance-tracker" src="https://github.com/user-attachments/assets/89b9c76d-a3ed-40da-a1ef-2badd25f5f1f" />
+
+
+### Other modules
+
+<img width="1912" height="945" alt="03-derivatives" src="https://github.com/user-attachments/assets/672a5fe8-251e-46a5-af58-68cf5c9a8254" />
+
+
+<img width="1794" height="1220" alt="04-fii-dii" src="https://github.com/user-attachments/assets/dbf0eefa-0d47-4212-9df2-a928ca358423" />
+
+
+<img width="1794" height="1789" alt="05-sector" src="https://github.com/user-attachments/assets/c4bb3d9d-6059-4822-91c2-3fed116b2287" />
+
+
+<img width="1794" height="1546" alt="06-macro" src="https://github.com/user-attachments/assets/ff7808ca-3ed7-4504-8613-dd1690837d9a" />
+
 
 ## What It Does
 
