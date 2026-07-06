@@ -178,7 +178,7 @@ for (const [scrip, sym] of Object.entries(BSE_SCRIP_TO_SYMBOL)) {
 
 // Company name patterns for fuzzy matching when scrip code lookup fails.
 // Used both for BSE filing matching AND company fingerprint validation.
-const COMPANY_NAME_PATTERNS: Record<string, RegExp[]> = {
+export const COMPANY_NAME_PATTERNS: Record<string, RegExp[]> = {
   // Banking
   HDFCBANK:    [/hdfc\s*bank/i],
   ICICIBANK:   [/icici\s*bank/i],

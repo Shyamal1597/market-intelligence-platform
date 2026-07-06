@@ -15,6 +15,7 @@
     "intel:summaries": "npx tsx scripts/generate-summaries.ts",
     "intel:index": "npx tsx scripts/intel-build-index.ts",
     "intel:auto-ingest": "npx tsx scripts/intel-auto-ingest.ts",
+    "intel:daily-check": "npx tsx scripts/intel-daily-earnings-check.ts",
     "collect:flows": "npx tsx scripts/collect-flows.ts"
   },
   "dependencies": {
