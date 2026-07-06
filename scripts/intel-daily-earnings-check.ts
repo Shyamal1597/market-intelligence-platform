@@ -7,9 +7,12 @@
  *   1. Detects which tracked companies filed "Financial Results" recently (NSE RSS feed).
  *   2. Tries to download the concall transcript for every tracked symbol -- BSE first,
  *      Screener.in as fallback (BSE purges/misses attachments; Screener aggregates both).
+ *      Every new transcript downloaded raises an immediate desktop popup listing the
+ *      symbol(s)/quarter(s), and is added to a pending-verification queue -- the signal
+ *      to manually prompt Claude Code to spawn a verification agent for that quarter.
  *   3. If results were filed >= GRACE_DAYS ago and we STILL have no transcript covering
- *      that quarter, raises a desktop alert (Windows popup + JSON log), deduped so the
- *      same missing transcript doesn't re-alert every day.
+ *      that quarter, raises a separate desktop alert (Windows popup + JSON log), deduped
+ *      so the same missing transcript doesn't re-alert every day.
  *
  * Usage:
  *   npx tsx scripts/intel-daily-earnings-check.ts
@@ -44,6 +47,7 @@ const DATA_DIR       = path.join(process.cwd(), "data", "intelligence");
 const ALERT_STATE_PATH = path.join(DATA_DIR, "_earnings-alert-state.json");
 const ALERTS_LOG_PATH   = path.join(DATA_DIR, "_earnings-alerts.json");
 const RUN_LOG_PATH      = path.join(DATA_DIR, "_earnings-check-log.json");
+const PENDING_QUEUE_PATH = path.join(DATA_DIR, "_pending-verification.json");
 
 // -- PDF download (lenient HTTP parser -- BSE sends malformed headers) --------
 
@@ -89,8 +93,13 @@ function downloadPdf(url: string): Promise<Buffer> {
 
 // -- Per-symbol ingestion (BSE -> Screener fallback) ---------------------------
 
-async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{ ingested: string[]; errors: string[] }> {
-  const ingested: string[] = [];
+interface IngestedTranscript {
+  quarter: string;
+  source: "bse" | "screener";
+}
+
+async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{ ingested: IngestedTranscript[]; errors: string[] }> {
+  const ingested: IngestedTranscript[] = [];
   const errors: string[] = [];
 
   const scripCodes = SYMBOL_TO_SCRIP[symbol] ?? [];
@@ -133,7 +142,7 @@ async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{
 
       try {
         const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment);
-        if (!result.alreadyExisted) ingested.push(result.quarter);
+        if (!result.alreadyExisted) ingested.push({ quarter: result.quarter, source: "bse" });
       } catch (e) {
         errors.push(`Ingest failed for ${symbol}: ${(e as Error).message}`);
       }
@@ -159,7 +168,7 @@ async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{
       const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
       try {
         const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr);
-        if (!result.alreadyExisted) ingested.push(result.quarter);
+        if (!result.alreadyExisted) ingested.push({ quarter: result.quarter, source: "screener" });
       } catch (e) {
         errors.push(`Screener ingest failed for ${symbol}: ${(e as Error).message}`);
       }
@@ -242,14 +251,40 @@ async function appendRunLog(entry: RunLogEntry): Promise<void> {
   await fs.writeFile(RUN_LOG_PATH, JSON.stringify(log, null, 2), "utf-8");
 }
 
+// -- Pending verification queue --------------------------------------------------
+// Every newly-downloaded transcript lands here so the analyst can ask Claude Code
+// to spawn a verification agent for exactly these symbol/quarter pairs. Entries
+// persist until manually cleared (e.g. by asking Claude to process the queue).
+
+interface PendingEntry {
+  symbol: string;
+  quarter: string;
+  source: "bse" | "screener";
+  ingestedAt: string;
+}
+
+async function loadPendingQueue(): Promise<PendingEntry[]> {
+  try {
+    return JSON.parse(await fs.readFile(PENDING_QUEUE_PATH, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+async function savePendingQueue(entries: PendingEntry[]): Promise<void> {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(PENDING_QUEUE_PATH, JSON.stringify(entries, null, 2), "utf-8");
+}
+
 // -- Desktop notification (Windows popup, fire-and-forget) ---------------------
 
-function notify(message: string): void {
+function notify(message: string, title = "Sunidhi Intel -- Earnings Alert", icon: "Warning" | "Information" = "Warning"): void {
   const safe = message.replace(/'/g, "''").slice(0, 1000);
+  const safeTitle = title.replace(/'/g, "''");
   const script =
     `Add-Type -AssemblyName System.Windows.Forms; ` +
-    `[System.Windows.Forms.MessageBox]::Show('${safe}','Sunidhi Intel -- Earnings Alert',` +
-    `[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null`;
+    `[System.Windows.Forms.MessageBox]::Show('${safe}','${safeTitle}',` +
+    `[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::${icon}) | Out-Null`;
 
   try {
     const child = execFile(
@@ -300,18 +335,42 @@ async function main() {
 
   const symbols = Object.keys(SYMBOL_SECTOR);
   let totalIngested = 0;
+  const newlyIngested: PendingEntry[] = [];
   console.log(`[2/3] Checking ${symbols.length} tracked symbols for new transcripts (BSE + Screener)...`);
   for (const symbol of symbols) {
     try {
       const { ingested, errors: symErrors } = await ingestRecentForSymbol(symbol, recentStart);
       if (ingested.length > 0) {
-        console.log(`  ${symbol}: ingested ${ingested.join(", ")}`);
+        console.log(`  ${symbol}: ingested ${ingested.map((i) => `${i.quarter} (${i.source})`).join(", ")}`);
         totalIngested += ingested.length;
+        for (const i of ingested) {
+          newlyIngested.push({ symbol, quarter: i.quarter, source: i.source, ingestedAt: now.toISOString() });
+        }
       }
       errors.push(...symErrors);
     } catch (e) {
       errors.push(`Unhandled error for ${symbol}: ${(e as Error).message}`);
     }
+  }
+
+  // Queue newly-ingested transcripts for manual verification + notify immediately.
+  if (newlyIngested.length > 0) {
+    const queue = await loadPendingQueue();
+    for (const entry of newlyIngested) {
+      // Dedupe by symbol+quarter -- keep the newest entry if it somehow reappears.
+      const idx = queue.findIndex((q) => q.symbol === entry.symbol && q.quarter === entry.quarter);
+      if (idx >= 0) queue[idx] = entry;
+      else queue.push(entry);
+    }
+    await savePendingQueue(queue);
+
+    const lines = newlyIngested.map((i) => `${i.symbol} (${i.quarter}) -- via ${i.source}`);
+    const message =
+      `${newlyIngested.length} new transcript${newlyIngested.length === 1 ? "" : "s"} downloaded -- ` +
+      `ready for verification:\n\n${lines.join("\n")}\n\n` +
+      `Ask Claude Code to run the claim verification workflow for ${newlyIngested.length === 1 ? "this symbol" : "these symbols"}.`;
+    console.log(`[2/3] NEW TRANSCRIPTS: ${message}`);
+    notify(message, "Sunidhi Intel -- New Transcript(s) Ready", "Information");
   }
 
   // 3. Determine which symbols are overdue: results filed >= GRACE_DAYS ago,
