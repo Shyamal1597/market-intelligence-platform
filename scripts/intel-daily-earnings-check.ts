@@ -42,6 +42,7 @@ const RECENT_WINDOW_DAYS = 10;   // how far back to look for new BSE/Screener tr
 const RESULTS_LOOKBACK_DAYS = 45; // ignore stale NSE "results" filings older than this
 const GRACE_DAYS = 3;             // days after a results filing before we consider the transcript overdue
 const REALERT_DAYS = 5;           // don't re-alert the same missing symbol/quarter more often than this
+const SCREENER_RECENT_CAP = 4;    // only attempt the N most recent Screener concalls per symbol per run
 
 const DATA_DIR       = path.join(process.cwd(), "data", "intelligence");
 const ALERT_STATE_PATH = path.join(DATA_DIR, "_earnings-alert-state.json");
@@ -50,17 +51,57 @@ const RUN_LOG_PATH      = path.join(DATA_DIR, "_earnings-check-log.json");
 const PENDING_QUEUE_PATH = path.join(DATA_DIR, "_pending-verification.json");
 
 // -- PDF download (lenient HTTP parser -- BSE sends malformed headers) --------
+// Screener.in's concall links are almost always redirects (301/302) to the
+// actual PDF host -- must follow them, with the same SSRF guards used when
+// the link was first collected in screener-scraper.ts.
 
-function downloadPdf(url: string): Promise<Buffer> {
+function isSafeRedirectTarget(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host.startsWith("127.") ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      host.startsWith("169.254.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadPdf(url: string, redirectsLeft = 5): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Download timed out")), 60_000);
     const req = https.get(url, {
       headers: { "User-Agent": UA, Referer: "https://www.bseindia.com/" },
       insecureHTTPParser: true,
     }, (res) => {
-      if (res.statusCode !== 200) {
+      const status = res.statusCode ?? 0;
+
+      if ((status === 301 || status === 302 || status === 303 || status === 307 || status === 308) && res.headers.location) {
         clearTimeout(timer);
-        reject(new Error(`HTTP ${res.statusCode}`));
+        res.resume();
+        if (redirectsLeft <= 0) {
+          reject(new Error("Too many redirects"));
+          return;
+        }
+        const nextUrl = new URL(res.headers.location, url).toString();
+        if (!isSafeRedirectTarget(nextUrl)) {
+          reject(new Error(`Redirect to unsafe URL rejected: ${nextUrl.slice(0, 100)}`));
+          return;
+        }
+        downloadPdf(nextUrl, redirectsLeft - 1).then(resolve, reject);
+        return;
+      }
+
+      if (status !== 200) {
+        clearTimeout(timer);
+        reject(new Error(`HTTP ${status}`));
         res.resume();
         return;
       }
@@ -149,9 +190,12 @@ async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{
     }
   }
 
-  // Screener fallback -- always run, catches quarters BSE missed/purged.
+  // Screener fallback -- catches quarters BSE missed/purged. Only look at the
+  // most recent few concalls (Screener lists newest-first) -- this is a daily
+  // incremental check, not a historical backfill, so we don't re-attempt years
+  // of already-known-missing quarters every single day.
   try {
-    const concalls = await fetchScreenerConcalls(symbol);
+    const concalls = (await fetchScreenerConcalls(symbol)).slice(0, SCREENER_RECENT_CAP);
     for (const concall of concalls) {
       const screenerQtr = displayDateToQuarter(concall.displayDate) ?? undefined;
       // Skip if we already have this quarter (avoid redundant downloads every run)
