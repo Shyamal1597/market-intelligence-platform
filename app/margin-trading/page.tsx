@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
+import { MoversTable } from "@/components/mtf/MoversTable";
 
 type Scope = "all" | "coverage";
 
@@ -88,7 +89,11 @@ export default function MarginTradingPage() {
         </div>
       )}
 
-      {/* Movers table, quadrant chart, turnover leaderboard, drill-down: Tasks 10-13 */}
+      {!loading && data && data.breadth.date !== null && (
+        <MoversTable up={data.moversUp} down={data.moversDown} />
+      )}
+
+      {/* Quadrant chart, turnover leaderboard, drill-down: Tasks 11-13 */}
     </div>
   );
 }
