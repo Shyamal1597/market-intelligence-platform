@@ -17,6 +17,7 @@ import {
   Sigma,
   Layers,
   Target,
+  Percent,
   ChevronRight,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -33,6 +34,7 @@ const NAV = [
   { href: "/derivatives", icon: Sigma, label: "Derivatives" },
   { href: "/deals", icon: Layers, label: "Bulk & Block" },
   { href: "/results", icon: BarChart2, label: "Results" },
+  { href: "/margin-trading", icon: Percent, label: "Margin Trading" },
   { href: "/intel", icon: Target, label: "Intel" },
   { href: "/links", icon: BookMarked, label: "Quick Links" },
 ];
