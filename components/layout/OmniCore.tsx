@@ -18,12 +18,14 @@ import {
   Layers,
   Settings,
   Target,
+  Percent,
 } from "lucide-react";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+  { href: "/margin-trading", label: "Margin Trading", icon: Percent },
   { href: "/news", label: "Market News", icon: Newspaper },
   { href: "/macro", label: "Macro Data", icon: TrendingUp },
   { href: "/filings", label: "NSE Filings", icon: FileText },
