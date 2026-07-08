@@ -1,0 +1,160 @@
+/**
+ * Parses a Margin Trading Volume Wise Report .xls (legacy BIFF format) and
+ * upserts it into mtf_daily. Trade date comes from BHAVCOPY's DATE1 column,
+ * not the filename (a human types the filename by hand).
+ *
+ * Note: BHAVCOPY's header names and DATE1 values both carry a leading space
+ * (" SERIES", " 03-Jul-2026") -- trim everything defensively.
+ */
+import * as XLSX from "@e965/xlsx";
+import { getMtfDb, type MtfDailyRow } from "./db";
+
+const MONTH_MAP: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
+/** "03-Jul-2026" (with or without surrounding whitespace) -> "2026-07-03" */
+function parseBhavDate(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if (!m) return null;
+  const month = MONTH_MAP[m[2].toLowerCase()];
+  if (!month) return null;
+  return `${m[3]}-${month}-${m[1].padStart(2, "0")}`;
+}
+
+function num(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+export interface IngestSummary {
+  date: string | null;
+  rowsIngested: number;
+  mtfRowCount: number;
+  bhavRowCount: number;
+  symbolsInMtfNotBhav: string[];
+  warnings: string[];
+}
+
+export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> {
+  const warnings: string[] = [];
+  const wb = XLSX.read(buffer, { type: "buffer" });
+
+  const mtfSheet = wb.Sheets["MTF TRADING"];
+  const bhavSheet = wb.Sheets["BHAVCOPY"];
+  if (!mtfSheet) throw new Error('Sheet "MTF TRADING" not found in workbook.');
+  if (!bhavSheet) throw new Error('Sheet "BHAVCOPY" not found in workbook.');
+
+  const mtfRows = XLSX.utils.sheet_to_json<unknown[]>(mtfSheet, { header: 1 }).slice(1);
+  const bhavRows = XLSX.utils.sheet_to_json<unknown[]>(bhavSheet, { header: 1 }).slice(1);
+
+  if (mtfRows.length === 0) throw new Error('"MTF TRADING" sheet has no data rows.');
+  if (bhavRows.length === 0) throw new Error('"BHAVCOPY" sheet has no data rows.');
+
+  // Build BHAVCOPY lookup keyed by symbol, across all series.
+  //
+  // Verified against all 6 real sample files: every symbol appears at most
+  // once in BHAVCOPY regardless of series (zero collisions across ~3,300
+  // rows/file), so there is no ambiguity in dropping the series filter.
+  // Restricting to SERIES === "EQ" (as originally drafted) turned out to be
+  // wrong against real data -- roughly 130-145 MTF TRADING symbols per file
+  // trade under SERIES "BE" (trade-to-trade) or "BZ", not "EQ", and were
+  // being reported as "missing from BHAVCOPY" when they were present all
+  // along. With the filter removed, only 8-10 genuinely absent symbols
+  // remain per file (real suspensions/no-trade days), matching the "handful"
+  // the task expected. GS (government securities) rows are harmless to
+  // include since they never share a symbol with MTF TRADING in practice.
+  const bhavBySymbol = new Map<string, unknown[]>();
+  let tradeDate: string | null = null;
+  for (const row of bhavRows) {
+    const symbol = String(row[0] ?? "").trim().toUpperCase();
+    if (!symbol) continue;
+    bhavBySymbol.set(symbol, row);
+    if (!tradeDate) {
+      const d = parseBhavDate(row[2]);
+      if (d) tradeDate = d;
+    }
+  }
+
+  if (!tradeDate) {
+    throw new Error("Could not parse a trade date from BHAVCOPY's DATE1 column.");
+  }
+
+  const symbolsInMtfNotBhav: string[] = [];
+  const dbRows: MtfDailyRow[] = [];
+
+  for (const row of mtfRows) {
+    const symbol = String(row[0] ?? "").trim().toUpperCase();
+    // Skip blank rows and the trailing "* Figures are rounded..." disclaimer
+    // row every sample file ends with -- it has text in column 0 but is not
+    // a real symbol.
+    if (!symbol || symbol.startsWith("*")) continue;
+    const name = String(row[1] ?? "").trim() || null;
+    const qtyFinanced = num(row[2]);
+    const amtFinanced = num(row[3]);
+
+    const bhav = bhavBySymbol.get(symbol);
+    if (!bhav) {
+      symbolsInMtfNotBhav.push(symbol);
+    }
+
+    dbRows.push({
+      date: tradeDate,
+      symbol,
+      name,
+      qty_financed: qtyFinanced,
+      amt_financed_lakhs: amtFinanced,
+      open: bhav ? num(bhav[4]) : null,
+      high: bhav ? num(bhav[5]) : null,
+      low: bhav ? num(bhav[6]) : null,
+      close: bhav ? num(bhav[8]) : null,
+      prev_close: bhav ? num(bhav[3]) : null,
+      volume: bhav ? num(bhav[10]) : null,
+      turnover_lakhs: bhav ? num(bhav[11]) : null,
+      trades: bhav ? num(bhav[12]) : null,
+      deliv_qty: bhav ? num(bhav[13]) : null,
+      deliv_pct: bhav ? num(bhav[14]) : null,
+    });
+  }
+
+  if (symbolsInMtfNotBhav.length > 0) {
+    warnings.push(
+      `${symbolsInMtfNotBhav.length} symbol(s) in MTF TRADING had no matching BHAVCOPY row: ` +
+      symbolsInMtfNotBhav.slice(0, 10).join(", ") +
+      (symbolsInMtfNotBhav.length > 10 ? ", ..." : ""),
+    );
+  }
+
+  const db = await getMtfDb();
+  const upsert = db.prepare(`
+    INSERT INTO mtf_daily (date, symbol, name, qty_financed, amt_financed_lakhs,
+      open, high, low, close, prev_close, volume, turnover_lakhs, trades, deliv_qty, deliv_pct)
+    VALUES (@date, @symbol, @name, @qty_financed, @amt_financed_lakhs,
+      @open, @high, @low, @close, @prev_close, @volume, @turnover_lakhs, @trades, @deliv_qty, @deliv_pct)
+    ON CONFLICT(date, symbol) DO UPDATE SET
+      name = excluded.name,
+      qty_financed = excluded.qty_financed,
+      amt_financed_lakhs = excluded.amt_financed_lakhs,
+      open = excluded.open, high = excluded.high, low = excluded.low,
+      close = excluded.close, prev_close = excluded.prev_close,
+      volume = excluded.volume, turnover_lakhs = excluded.turnover_lakhs,
+      trades = excluded.trades, deliv_qty = excluded.deliv_qty, deliv_pct = excluded.deliv_pct
+  `);
+
+  const upsertAll = db.transaction((rows: MtfDailyRow[]) => {
+    for (const r of rows) upsert.run(r);
+  });
+  upsertAll(dbRows);
+
+  return {
+    date: tradeDate,
+    rowsIngested: dbRows.length,
+    mtfRowCount: mtfRows.length,
+    bhavRowCount: bhavRows.length,
+    symbolsInMtfNotBhav,
+    warnings,
+  };
+}
