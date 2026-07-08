@@ -23,16 +23,26 @@ export default function MarginTradingPage() {
   const [scope, setScope] = useState<Scope>("all");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const load = useCallback(() => {
+  const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
-    fetch(`/api/mtf/dashboard?scope=${scope}`)
+    setError(false);
+    fetch(`/api/mtf/dashboard?scope=${scope}`, { signal })
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setError(true);
+        setLoading(false);
+      });
   }, [scope]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   return (
     <div className="p-6 space-y-4">
@@ -70,6 +80,12 @@ export default function MarginTradingPage() {
 
       {!loading && data && data.breadth.date !== null && (
         <BreadthTiles {...data.breadth} />
+      )}
+
+      {!loading && error && (
+        <div className="rounded border border-border bg-surface p-12 text-center text-danger font-mono text-sm">
+          Failed to load margin trading data. Please try again.
+        </div>
       )}
 
       {/* Movers table, quadrant chart, turnover leaderboard, drill-down: Tasks 10-13 */}
