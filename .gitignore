@@ -77,6 +77,11 @@ data/watchlist.json
 # Reports PDFs (user-uploaded, large)
 data/reports/
 
+# Margin Trading (MTF) raw source files -- manually dropped .xls reports + email zip
+# (data/mtf-tracker.db itself is already covered by the data/*.db rule above)
+data/Fw_ MARGIN TRADING VOLUME WISE REPORT/
+data/Fw_ MARGIN TRADING VOLUME WISE REPORT.zip
+
 # Concall PDFs (large, source data)
 Concall Data/
 
