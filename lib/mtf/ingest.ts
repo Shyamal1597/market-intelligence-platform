@@ -79,12 +79,17 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
     }
   }
 
+  if (bhavBySymbol.size === 0) {
+    throw new Error("BHAVCOPY sheet had no rows with a parseable symbol.");
+  }
+
   if (!tradeDate) {
     throw new Error("Could not parse a trade date from BHAVCOPY's DATE1 column.");
   }
 
   const symbolsInMtfNotBhav: string[] = [];
-  const dbRows: MtfDailyRow[] = [];
+  const dbRowsBySymbol = new Map<string, MtfDailyRow>();
+  const duplicateSymbols: string[] = [];
 
   for (const row of mtfRows) {
     const symbol = String(row[0] ?? "").trim().toUpperCase();
@@ -101,7 +106,11 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       symbolsInMtfNotBhav.push(symbol);
     }
 
-    dbRows.push({
+    if (dbRowsBySymbol.has(symbol)) {
+      duplicateSymbols.push(symbol);
+    }
+
+    dbRowsBySymbol.set(symbol, {
       date: tradeDate,
       symbol,
       name,
@@ -118,6 +127,16 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       deliv_qty: bhav ? num(bhav[13]) : null,
       deliv_pct: bhav ? num(bhav[14]) : null,
     });
+  }
+
+  const dbRows: MtfDailyRow[] = Array.from(dbRowsBySymbol.values());
+
+  if (duplicateSymbols.length > 0) {
+    warnings.push(
+      `${duplicateSymbols.length} duplicate symbol(s) in MTF TRADING (last occurrence wins): ` +
+      duplicateSymbols.slice(0, 10).join(", ") +
+      (duplicateSymbols.length > 10 ? ", ..." : ""),
+    );
   }
 
   if (symbolsInMtfNotBhav.length > 0) {
