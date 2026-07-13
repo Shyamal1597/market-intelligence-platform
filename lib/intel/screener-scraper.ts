@@ -145,13 +145,13 @@ export function displayDateToQuarter(displayDate: string): string | null {
   const year = parseInt(yearStr, 10);
 
   // Map call month → (quarter of results announced, FY offset from call year).
-  // Indian FY runs Apr-Mar. Companies report within ~2 months of quarter end:
-  //   Q4 (Jan-Mar) → call in Apr/May/Jun (late filers)
-  //   Q1 (Apr-Jun) → call in Jul/Aug/Sep (late filers)
-  //   Q2 (Jul-Sep) → call in Oct/Nov/Dec (late filers)
-  //   Q3 (Oct-Dec) → call in Jan/Feb/Mar (early in calendar year = same FY)
-  // fyOffset: 0 = FY ends in the call's calendar year (Apr-Mar calls announcing Q4/Q3).
-  //           1 = new FY; fyYear = (year + fyOffset - 1) % 100 for Q1/Q2.
+  // Indian FY runs Apr-Mar; FY label = the calendar year the FY ENDS in (March).
+  //   Q4 (Jan-Mar) → call in Apr/May/Jun. Jan-Mar of year Y is the tail of FY(Y) -- fyYear = Y.
+  //   Q1 (Apr-Jun) → call in Jul/Aug/Sep. Apr-Jun of year Y belongs to FY(Y+1) -- fyYear = Y+1.
+  //   Q2 (Jul-Sep) → call in Oct/Nov/Dec. Jul-Sep of year Y belongs to FY(Y+1) -- fyYear = Y+1.
+  //   Q3 (Oct-Dec) → call in Jan/Feb/Mar (next calendar year). Oct-Dec of year Y-1 belongs to
+  //                  FY(Y) -- fyYear = the call's OWN calendar year Y, not Y-1.
+  // fyOffset is simply how many years to add to the call's calendar year to get fyYear.
   const monthMap: Record<string, { q: number; fyOffset: number }> = {
     Jan: { q: 3, fyOffset: 0 },  // Q3 results of FY ending same March
     Feb: { q: 3, fyOffset: 0 },
@@ -170,7 +170,7 @@ export function displayDateToQuarter(displayDate: string): string | null {
   const info = monthMap[mon];
   if (!info) return null;
 
-  // FY label: April 2026 → FY ending March 2026 → FY26
-  const fyYear = (info.q === 4 ? year : year + info.fyOffset - 1) % 100;
+  // FY label: April 2026 → FY ending March 2026 → FY26. Oct 2025 → FY ending March 2026 → FY26.
+  const fyYear = (year + info.fyOffset) % 100;
   return `Q${info.q}-FY${String(fyYear).padStart(2, "0")}`;
 }
