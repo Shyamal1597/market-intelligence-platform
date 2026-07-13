@@ -177,7 +177,7 @@ export async function POST(req: Request) {
         }
 
         try {
-          const ingested = await ingestPdfTranscript(pdfBuf, symbol, attachment);
+          const ingested = await ingestPdfTranscript(pdfBuf, symbol, attachment, undefined, "auto-ingest");
           if (ingested.alreadyExisted) {
             result.skipped++;
             if (ingested.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
@@ -254,7 +254,7 @@ export async function POST(req: Request) {
           const screenerQtr = displayDateToQuarter(concall.displayDate) ?? undefined;
           const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
           try {
-            const ingested = await ingestPdfTranscript(pdfBuf, symbol, fakeName, screenerQtr);
+            const ingested = await ingestPdfTranscript(pdfBuf, symbol, fakeName, screenerQtr, "auto-ingest");
             if (ingested.alreadyExisted) {
               result.skipped++;
               result.symbols.push({

@@ -718,6 +718,8 @@ export async function scrapeBSETranscripts(options?: {
         pdfBuffer,
         symbol,
         attachment, // Use BSE attachment name for quarter detection
+        undefined,
+        "bse",
       );
 
       // Company fingerprint check: verify extracted text mentions the expected company

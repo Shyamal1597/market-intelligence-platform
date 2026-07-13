@@ -268,7 +268,7 @@ async function main() {
 
       // Ingest through pipeline (PDF → text → save .txt)
       try {
-        const result = await ingestPdfTranscript(pdf, symbol, `screener-${symbol}-${entry.quarter}.pdf`);
+        const result = await ingestPdfTranscript(pdf, symbol, `screener-${symbol}-${entry.quarter}.pdf`, undefined, "screener");
         if (result.alreadyExisted) {
           process.stdout.write(`  ${entry.quarter}(exists)`);
           skipped++;

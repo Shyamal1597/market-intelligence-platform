@@ -182,7 +182,7 @@ async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{
       }
 
       try {
-        const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment);
+        const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment, undefined, "bse");
         if (!result.alreadyExisted) ingested.push({ quarter: result.quarter, source: "bse" });
       } catch (e) {
         errors.push(`Ingest failed for ${symbol}: ${(e as Error).message}`);
@@ -211,7 +211,7 @@ async function ingestRecentForSymbol(symbol: string, startDate: Date): Promise<{
 
       const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
       try {
-        const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr);
+        const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr, "screener");
         if (!result.alreadyExisted) ingested.push({ quarter: result.quarter, source: "screener" });
       } catch (e) {
         errors.push(`Screener ingest failed for ${symbol}: ${(e as Error).message}`);

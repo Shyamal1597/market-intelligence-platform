@@ -189,7 +189,7 @@ async function main() {
         }
 
         try {
-          const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment);
+          const result = await ingestPdfTranscript(pdfBuffer, symbol, attachment, undefined, "bse");
           if (result.alreadyExisted) {
             process.stdout.write(`  ${result.quarter}(exists)`);
             if (result.chars >= MIN_USEFUL_CHARS) bseUsefulIngested++;
@@ -248,7 +248,7 @@ async function main() {
           const fakeName = `screener-${symbol}-${concall.displayDate.replace(/\s/g, "-")}.pdf`;
           const screenerQtr = displayDateToQuarter(concall.displayDate) ?? undefined;
           try {
-            const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr);
+            const result = await ingestPdfTranscript(pdfBuffer, symbol, fakeName, screenerQtr, "screener");
             if (result.alreadyExisted) {
               process.stdout.write(`  ${result.quarter}(exists)`);
               totalSkipped++;

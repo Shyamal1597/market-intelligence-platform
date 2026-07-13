@@ -29,6 +29,7 @@ import { extractClaimsForSymbol, claimsHash } from "@/lib/intel/extractClaims";
 import { crossCheckForSymbol } from "@/lib/intel/crossCheck";
 import { generateQuarterSummary } from "@/lib/intel/generateSummary";
 import { buildIntelIndex } from "@/lib/intel/buildIndex";
+import { appendDownloadEntry, type DownloadSource } from "@/lib/intel/downloadLog";
 import type { ClaimsArtifact, ChecksArtifact, SectorKey } from "@/lib/intel/types";
 
 // -- Index rebuild debounce ----------------------------------------------------
@@ -165,6 +166,7 @@ export async function ingestPdfTranscript(
   symbol: string,
   filename: string,
   quarterOverride?: string,
+  source: DownloadSource = "manual-upload",
 ): Promise<IngestResult> {
   const sym = symbol.toUpperCase();
   if (!SYMBOL_SECTOR[sym]) {
@@ -237,6 +239,16 @@ export async function ingestPdfTranscript(
   }
 
   await fs.writeFile(outFile, cleaned, "utf-8");
+
+  await appendDownloadEntry({
+    symbol: sym,
+    quarter,
+    source,
+    pdfPath: path.relative(process.cwd(), uploadPath),
+    transcriptPath: path.relative(process.cwd(), outFile),
+    downloadedAt: new Date().toISOString(),
+  }).catch((e) => console.error("[ingestPdfTranscript] download log write failed:", (e as Error).message));
+
   return { quarter, chars: cleaned.length, method, alreadyExisted, textSnippet: cleaned.slice(0, 2000) };
 }
 
