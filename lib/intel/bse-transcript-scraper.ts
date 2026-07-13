@@ -297,6 +297,13 @@ export const COMPANY_NAME_PATTERNS: Record<string, RegExp[]> = {
   // Real Estate
   DLF:         [/\bdlf\b/i],
   LODHA:       [/macrotech\s*developers/i, /\blodha\b/i],
+  // Added -- were missing entirely (coverage-universe audit, 2026-07-13):
+  TATACAP:     [/tata\s*capital/i],
+  LTM:         [/\bltm\s*limited\b/i],
+  TMPV:        [/tata\s*motors\s*pass(enger)?\s*veh/i],
+  TMCV:        [/tata\s*motors\s*(limited|ltd)\b(?!\s*pass)/i],
+  ENRIN:       [/siemens\s*energy/i],
+  SOLARINDS:   [/solar\s*industries/i],
 };
 
 // -- Transcript detection ----------------------------------------------------
