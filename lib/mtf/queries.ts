@@ -7,8 +7,14 @@
  * the research-coverage universe (SYMBOL_SECTOR / the Concall Guidance
  * Tracker) -- a different department uses that data for a different
  * purpose. Do not reintroduce a coverage/sector cross-reference here.
+ *
+ * Sector grouping (getSectorBreakdown, below) uses a SEPARATE, real
+ * exchange-sourced classification (lib/mtf/sector.ts, built by
+ * scripts/mtf-build-sector-cache.ts from NSE/BSE data) that covers the full
+ * MTF universe -- not SYMBOL_SECTOR, which only tags the ~100 covered stocks.
  */
 import { getMtfDb } from "./db";
+import { getSectorMap } from "./sector";
 
 export interface SymbolSnapshot {
   symbol: string;
@@ -28,6 +34,35 @@ export interface SymbolSnapshot {
 function pctChange(today: number | null, yesterday: number | null): number | null {
   if (today === null || yesterday === null || yesterday === 0) return null;
   return ((today - yesterday) / Math.abs(yesterday)) * 100;
+}
+
+/**
+ * A single-day PRICE move beyond this is virtually never organic trading --
+ * NSE circuit bands are typically 5/10/20%. It almost always means a stock
+ * split, bonus issue, or (for ETFs) a unit split happened between the two
+ * days. BOTH stored closes are genuinely real, exchange-reported prices --
+ * this is NOT bad data -- but comparing them directly is misleading, since
+ * our feed carries unadjusted closes (no split-adjustment), unlike a
+ * charting platform that retroactively rescales history across a split.
+ * Confirmed against real data (2026-07-15): PSUBANK (Kotak Nifty PSU Bank
+ * ETF) genuinely traded at Rs 822.75 close on 2026-07-09 and Rs 85.31 close
+ * on 2026-07-10 -- BSE's own bhavcopy for the 10th shows the day's full
+ * O/H/L/C already on the new ~85 scale (open 83.97, high 94.4, low 82.75),
+ * consistent with a ~10x unit split, while PREV_CLOSE for that day still
+ * carries the old scale. A naive % change across that boundary reads as a
+ * fake "-89.6% crash" that never happened to any holder's actual position
+ * value. Reporting it as unknown (null) rather than a real number keeps
+ * that split-boundary artifact out of movers/divergence/drilldown, which
+ * all read priceChangePct as a trading signal.
+ * (MTF-financed amount is NOT capped this way -- large swings there are
+ * real and expected off a small base; see MATERIALITY_FLOOR_LAKHS instead.)
+ */
+const MAX_PLAUSIBLE_PRICE_CHANGE_PCT = 50;
+
+function priceChangePct(today: number | null, yesterday: number | null): number | null {
+  const pct = pctChange(today, yesterday);
+  if (pct !== null && Math.abs(pct) > MAX_PLAUSIBLE_PRICE_CHANGE_PCT) return null;
+  return pct;
 }
 
 /**
@@ -110,7 +145,7 @@ export async function getSnapshot(): Promise<{
       amtChangePct: pctChange(t.amt_financed_lakhs, y?.amt_financed_lakhs ?? null),
       priceToday: t.close,
       priceYesterday: y?.close ?? null,
-      priceChangePct: pctChange(t.close, y?.close ?? null),
+      priceChangePct: priceChangePct(t.close, y?.close ?? null),
       turnoverLakhs: t.turnover_lakhs,
       turnoverFinancedPct,
       isNavPegged: computeIsNavPegged(t.high, t.low, t.close),
@@ -256,4 +291,110 @@ export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoi
     "SELECT date, amt_financed_lakhs, close FROM mtf_daily WHERE symbol = ? ORDER BY date ASC",
   ).all(symbol.toUpperCase()) as { date: string; amt_financed_lakhs: number | null; close: number | null }[];
   return rows.map((r) => ({ date: r.date, amtFinancedLakhs: r.amt_financed_lakhs, close: r.close }));
+}
+
+export interface SectorBreakdownRow {
+  sector: string;
+  amtToday: number;
+  amtYesterday: number;
+  amtChangePct: number | null;
+  symbolCount: number;
+}
+
+/**
+ * Total MTF-financed book grouped by real exchange sector -- "which sectors
+ * is leverage money flowing into/out of." Uses lib/mtf/sector.ts (BSE-
+ * sourced, covers the full MTF universe), NOT the research-coverage
+ * SYMBOL_SECTOR map. Symbols we couldn't resolve a sector for are counted
+ * in unclassifiedAmt/unclassifiedCount rather than silently dropped, so the
+ * numbers always foot to the same total as the rest of the dashboard.
+ */
+export async function getSectorBreakdown(): Promise<{
+  date: string | null;
+  rows: SectorBreakdownRow[];
+  unclassifiedAmt: number;
+  unclassifiedCount: number;
+}> {
+  const { date, rows } = await getSnapshot();
+  const sectorMap = getSectorMap();
+  const bySector = new Map<string, { amtToday: number; amtYesterday: number; symbolCount: number }>();
+  let unclassifiedAmt = 0;
+  let unclassifiedCount = 0;
+
+  for (const r of rows) {
+    if (!isTradeable(r)) continue;
+    const info = sectorMap[r.symbol];
+    if (!info) {
+      unclassifiedAmt += r.amtToday ?? 0;
+      unclassifiedCount++;
+      continue;
+    }
+    const bucket = bySector.get(info.sector) ?? { amtToday: 0, amtYesterday: 0, symbolCount: 0 };
+    bucket.amtToday += r.amtToday ?? 0;
+    bucket.amtYesterday += r.amtYesterday ?? 0;
+    bucket.symbolCount++;
+    bySector.set(info.sector, bucket);
+  }
+
+  const sectorRows: SectorBreakdownRow[] = Array.from(bySector.entries())
+    .map(([sector, v]) => ({
+      sector,
+      amtToday: v.amtToday,
+      amtYesterday: v.amtYesterday,
+      amtChangePct: v.amtYesterday > 0 ? ((v.amtToday - v.amtYesterday) / v.amtYesterday) * 100 : null,
+      symbolCount: v.symbolCount,
+    }))
+    .sort((a, b) => b.amtToday - a.amtToday);
+
+  return { date, rows: sectorRows, unclassifiedAmt, unclassifiedCount };
+}
+
+export interface DivergenceRow {
+  symbol: string;
+  name: string | null;
+  amtChangePct: number;
+  priceChangePct: number;
+  amtToday: number | null;
+  pattern: "leverage-up-price-down" | "leverage-down-price-up";
+}
+
+/**
+ * Below this combined |amtChangePct| + |priceChangePct| gap, an opposite-
+ * sign move is routine noise, not a real divergence -- confirmed against
+ * real data (2026-07-15): the median gap across every sign-mismatched
+ * symbol is ~3%, and 57% of the whole universe has SOME sign mismatch on
+ * any given day. Requiring >=8% (roughly the 85th percentile of the gap
+ * distribution) keeps this list to the genuinely notable cases.
+ */
+const MIN_DIVERGENCE_GAP_PCT = 8;
+
+/**
+ * Symbols where margin financing and price moved in OPPOSITE directions
+ * today -- a signal the plain movers table (sorted by amt change alone)
+ * won't surface on its own. "Leverage up, price down" flags margin being
+ * added against a falling stock (unwind risk if the fall continues);
+ * "leverage down, price up" flags margin being pulled from a rising stock.
+ */
+export async function getDivergence(limit = 30): Promise<{ date: string | null; rows: DivergenceRow[] }> {
+  const { date, rows } = await getSnapshot();
+  const divergent = rows
+    .filter((r): r is SymbolSnapshot & { amtChangePct: number; priceChangePct: number } =>
+      isTradeable(r) && r.amtChangePct !== null && r.priceChangePct !== null &&
+      Math.sign(r.amtChangePct) !== 0 && Math.sign(r.priceChangePct) !== 0 &&
+      Math.sign(r.amtChangePct) !== Math.sign(r.priceChangePct))
+    .map((r) => ({
+      symbol: r.symbol,
+      name: r.name,
+      amtChangePct: r.amtChangePct,
+      priceChangePct: r.priceChangePct,
+      amtToday: r.amtToday,
+      gap: Math.abs(r.amtChangePct) + Math.abs(r.priceChangePct),
+      pattern: (r.amtChangePct > 0 ? "leverage-up-price-down" : "leverage-down-price-up") as DivergenceRow["pattern"],
+    }))
+    .filter((r) => r.gap >= MIN_DIVERGENCE_GAP_PCT)
+    .sort((a, b) => b.gap - a.gap)
+    .slice(0, limit)
+    .map(({ gap: _gap, ...rest }) => rest);
+
+  return { date, rows: divergent };
 }

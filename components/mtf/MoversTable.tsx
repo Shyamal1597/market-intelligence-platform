@@ -55,7 +55,7 @@ export function MoversTable({
                   {r.amtChangePct?.toFixed(2)}%
                 </td>
                 <td className={`px-2 py-1.5 text-right tabular-nums ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
-                  {r.priceChangePct?.toFixed(2)}%
+                  {r.priceChangePct != null ? `${r.priceChangePct.toFixed(2)}%` : "—"}
                 </td>
                 <td className="px-2 py-1.5 w-20">
                   <Sparkline data={r.sparkline} positive={(r.amtChangePct ?? 0) >= 0} />

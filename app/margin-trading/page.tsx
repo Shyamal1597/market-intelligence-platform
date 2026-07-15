@@ -6,6 +6,8 @@ import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { MoversTable } from "@/components/mtf/MoversTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
 import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
+import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
+import { DivergencePanel } from "@/components/mtf/DivergencePanel";
 import { SymbolDrilldown } from "@/components/mtf/SymbolDrilldown";
 
 interface Breadth {
@@ -31,12 +33,27 @@ interface TurnoverRow {
   turnoverFinancedPct: number | null; amtToday: number | null;
 }
 
+interface SectorRow {
+  sector: string; amtToday: number; amtYesterday: number;
+  amtChangePct: number | null; symbolCount: number;
+}
+
+interface DivergenceRow {
+  symbol: string; name: string | null;
+  amtChangePct: number; priceChangePct: number; amtToday: number | null;
+  pattern: "leverage-up-price-down" | "leverage-down-price-up";
+}
+
 interface DashboardData {
   breadth: Breadth;
   moversUp: MoverRow[];
   moversDown: MoverRow[];
   heatmap: HeatmapNode[];
   turnoverLeaders: TurnoverRow[];
+  sectorBreakdown: SectorRow[];
+  unclassifiedAmt: number;
+  unclassifiedCount: number;
+  divergence: DivergenceRow[];
 }
 
 export default function MarginTradingPage() {
@@ -116,6 +133,14 @@ export default function MarginTradingPage() {
               <TurnoverLeaderboard rows={data.turnoverLeaders} onSelectSymbol={setSelectedSymbol} />
             </div>
           </div>
+
+          <DivergencePanel rows={data.divergence} onSelectSymbol={setSelectedSymbol} />
+
+          <SectorBreakdown
+            rows={data.sectorBreakdown}
+            unclassifiedAmt={data.unclassifiedAmt}
+            unclassifiedCount={data.unclassifiedCount}
+          />
         </>
       )}
 
