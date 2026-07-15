@@ -30,6 +30,24 @@ function pctChange(today: number | null, yesterday: number | null): number | nul
   return ((today - yesterday) / Math.abs(yesterday)) * 100;
 }
 
+/**
+ * Below this MTF-financed amount, a day-over-day % change is statistical
+ * noise, not a real signal -- e.g. a liquid/money-market ETF whose book
+ * moves from Rs 5L to Rs 59L reads as "+1038%" but is an economically
+ * trivial amount, not a leverage story. ETFs and liquid funds trade under
+ * the same BSE "EQ" series as real companies (confirmed against real data,
+ * 2026-07-13), so series can't distinguish them -- an absolute floor on the
+ * financed amount is the reliable filter regardless of *why* the base is
+ * tiny (thinly-traded fund, illiquid small-cap, or a data blip).
+ * Rs 100 Lakhs (Rs 1 Cr) excludes the bottom ~25% of the universe by book
+ * size while keeping every symbol with a genuinely material MTF position.
+ */
+const MATERIALITY_FLOOR_LAKHS = 100;
+
+function isMaterial(r: SymbolSnapshot): boolean {
+  return (r.amtToday ?? 0) >= MATERIALITY_FLOOR_LAKHS;
+}
+
 /** The two most recent distinct dates in the table, newest first. */
 export async function getLatestTwoDates(): Promise<{ latest: string | null; previous: string | null }> {
   const db = await getMtfDb();
@@ -152,7 +170,7 @@ export async function getMovers(
 ): Promise<{ date: string | null; previousDate: string | null; rows: MoverRow[] }> {
   const { date, previousDate, rows } = await getSnapshot();
   const filtered = rows
-    .filter((r) => r.amtChangePct !== null && (direction === "up" ? r.amtChangePct > 0 : r.amtChangePct < 0))
+    .filter((r) => isMaterial(r) && r.amtChangePct !== null && (direction === "up" ? r.amtChangePct > 0 : r.amtChangePct < 0))
     .sort((a, b) =>
       direction === "up"
         ? (b.amtChangePct ?? 0) - (a.amtChangePct ?? 0)
@@ -167,7 +185,7 @@ export async function getQuadrant(): Promise<{
 }> {
   const { date, rows } = await getSnapshot();
   const points = rows
-    .filter((r) => r.priceChangePct !== null && r.amtChangePct !== null)
+    .filter((r) => isMaterial(r) && r.priceChangePct !== null && r.amtChangePct !== null)
     .map((r) => ({
       symbol: r.symbol,
       priceChangePct: r.priceChangePct as number,
@@ -182,7 +200,7 @@ export async function getTurnoverLeaders(
 ): Promise<{ date: string | null; rows: SymbolSnapshot[] }> {
   const { date, rows } = await getSnapshot();
   const sorted = rows
-    .filter((r) => r.turnoverFinancedPct !== null)
+    .filter((r) => isMaterial(r) && r.turnoverFinancedPct !== null)
     .sort((a, b) => (b.turnoverFinancedPct ?? 0) - (a.turnoverFinancedPct ?? 0))
     .slice(0, limit);
   return { date, rows: sorted };
