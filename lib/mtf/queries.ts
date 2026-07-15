@@ -398,3 +398,101 @@ export async function getDivergence(limit = 30): Promise<{ date: string | null; 
 
   return { date, rows: divergent };
 }
+
+export interface IngestVerification {
+  date: string;
+  previousDate: string | null;
+  totalAmtToday: number;
+  totalAmtPrevious: number | null;
+  bookChangePct: number | null;
+  /** True if the WHOLE-universe book moved implausibly for a single day -- almost
+   * certainly a parsing bug (e.g. a decimal shift or misaligned column), not real
+   * market activity, since ~2000 symbols' idiosyncratic moves should average out. */
+  bookChangeIsImplausible: boolean;
+  symbolCountToday: number;
+  newSymbolCount: number;
+  vanishedSymbolCount: number;
+  vanishedSymbols: string[];
+  priceGuardTriggeredCount: number;
+  priceGuardTriggeredSymbols: string[];
+}
+
+/**
+ * A whole-universe book swing beyond this in one day is well outside anything
+ * seen in real data -- every observed day-over-day change across the dataset
+ * so far (2026-06-25 through 2026-07-10) has been under 1%, since ~2000
+ * symbols' independent moves average out. 15% leaves a wide margin above
+ * that while still catching the kind of error a broken parse would produce
+ * (e.g. a whole sheet's amounts read in the wrong units).
+ */
+const MAX_PLAUSIBLE_BOOK_CHANGE_PCT = 15;
+
+/**
+ * Sanity-checks a just-ingested date against the one before it: does the
+ * total book move by a plausible amount, did a suspicious chunk of symbols
+ * vanish, how many hit the corporate-action price guard. Surfaced in the
+ * upload UI so whoever uploads the file gets a concrete signal the parse
+ * looks right, not just "no error was thrown."
+ */
+export async function getIngestVerification(date: string): Promise<IngestVerification> {
+  const db = await getMtfDb();
+  const dates = (db.prepare(
+    "SELECT DISTINCT date FROM mtf_daily WHERE date <= ? ORDER BY date DESC LIMIT 2",
+  ).all(date) as { date: string }[]);
+  const previousDate = dates[1]?.date ?? null;
+
+  type Row = { symbol: string; amt_financed_lakhs: number | null; close: number | null };
+  const today = db.prepare(
+    "SELECT symbol, amt_financed_lakhs, close FROM mtf_daily WHERE date = ?",
+  ).all(date) as Row[];
+  const todayBySymbol = new Map(today.map((r) => [r.symbol, r]));
+  const totalAmtToday = today.reduce((s, r) => s + (r.amt_financed_lakhs ?? 0), 0);
+
+  let totalAmtPrevious: number | null = null;
+  let bookChangePct: number | null = null;
+  let newSymbolCount = today.length;
+  let vanishedSymbolCount = 0;
+  let vanishedSymbols: string[] = [];
+  let priceGuardTriggeredCount = 0;
+  const priceGuardTriggeredSymbols: string[] = [];
+
+  if (previousDate) {
+    const prev = db.prepare(
+      "SELECT symbol, amt_financed_lakhs, close FROM mtf_daily WHERE date = ?",
+    ).all(previousDate) as Row[];
+    const prevBySymbol = new Map(prev.map((r) => [r.symbol, r]));
+    totalAmtPrevious = prev.reduce((s, r) => s + (r.amt_financed_lakhs ?? 0), 0);
+    bookChangePct = totalAmtPrevious > 0 ? ((totalAmtToday - totalAmtPrevious) / totalAmtPrevious) * 100 : null;
+
+    newSymbolCount = today.filter((r) => !prevBySymbol.has(r.symbol)).length;
+    const vanished = prev.filter((r) => !todayBySymbol.has(r.symbol));
+    vanishedSymbolCount = vanished.length;
+    vanishedSymbols = vanished.slice(0, 10).map((r) => r.symbol);
+
+    for (const r of today) {
+      const p = prevBySymbol.get(r.symbol);
+      if (p?.close && r.close) {
+        const pct = Math.abs(((r.close - p.close) / p.close) * 100);
+        if (pct > MAX_PLAUSIBLE_PRICE_CHANGE_PCT) {
+          priceGuardTriggeredCount++;
+          if (priceGuardTriggeredSymbols.length < 10) priceGuardTriggeredSymbols.push(r.symbol);
+        }
+      }
+    }
+  }
+
+  return {
+    date,
+    previousDate,
+    totalAmtToday,
+    totalAmtPrevious,
+    bookChangePct,
+    bookChangeIsImplausible: bookChangePct !== null && Math.abs(bookChangePct) > MAX_PLAUSIBLE_BOOK_CHANGE_PCT,
+    symbolCountToday: today.length,
+    newSymbolCount,
+    vanishedSymbolCount,
+    vanishedSymbols,
+    priceGuardTriggeredCount,
+    priceGuardTriggeredSymbols,
+  };
+}

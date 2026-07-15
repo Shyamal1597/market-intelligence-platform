@@ -45,7 +45,7 @@ export function BreadthTiles(props: BreadthProps) {
         <p className="font-mono text-sm text-primary tabular-nums">{fmtLakhs(props.totalAmtToday)}</p>
         {bookChangePct !== null && (
           <p className={`font-mono text-[10px] tabular-nums ${bookChangePct >= 0 ? "text-teal" : "text-danger"}`}>
-            {bookChangePct >= 0 ? "+" : ""}{bookChangePct.toFixed(2)}%
+            {bookChangePct >= 0 ? "+" : ""}{bookChangePct.toFixed(2)}% <span className="text-muted/60">vs prior day</span>
           </p>
         )}
       </Tile>

@@ -5,6 +5,25 @@ import { Upload, X, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet } from "
 
 type UploadState = "idle" | "uploading" | "complete" | "error";
 
+function fmtLakhs(v: number): string {
+  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
+}
+
+interface IngestVerification {
+  date: string;
+  previousDate: string | null;
+  totalAmtToday: number;
+  totalAmtPrevious: number | null;
+  bookChangePct: number | null;
+  bookChangeIsImplausible: boolean;
+  symbolCountToday: number;
+  newSymbolCount: number;
+  vanishedSymbolCount: number;
+  vanishedSymbols: string[];
+  priceGuardTriggeredCount: number;
+  priceGuardTriggeredSymbols: string[];
+}
+
 interface IngestSummary {
   date: string | null;
   rowsIngested: number;
@@ -12,6 +31,7 @@ interface IngestSummary {
   bhavRowCount: number;
   symbolsInMtfNotBhav: string[];
   warnings: string[];
+  verification: IngestVerification | null;
 }
 
 export function MtfUpload({ onComplete }: { onComplete?: () => void }) {
@@ -72,7 +92,7 @@ export function MtfUpload({ onComplete }: { onComplete?: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-surface border border-border rounded-xl shadow-2xl shadow-black/50 p-6">
+      <div className="w-full max-w-xl bg-surface border border-border rounded-xl shadow-2xl shadow-black/50 p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-mono text-primary tracking-wider uppercase">
             Upload Margin Trading Report
@@ -82,7 +102,11 @@ export function MtfUpload({ onComplete }: { onComplete?: () => void }) {
 
         {state === "complete" && summary ? (
           <div className="flex flex-col items-center gap-3 py-6">
-            <CheckCircle2 size={40} className="text-teal" />
+            {summary.verification?.bookChangeIsImplausible ? (
+              <AlertCircle size={40} className="text-danger" />
+            ) : (
+              <CheckCircle2 size={40} className="text-teal" />
+            )}
             <p className="text-sm text-primary font-mono">Ingested {summary.date}</p>
             <p className="text-xs text-muted">
               {summary.rowsIngested} rows ({summary.mtfRowCount} MTF, {summary.bhavRowCount} bhavcopy)
@@ -92,6 +116,56 @@ export function MtfUpload({ onComplete }: { onComplete?: () => void }) {
                 {summary.warnings.map((w, i) => <p key={i}>{w}</p>)}
               </div>
             )}
+
+            {summary.verification && (
+              <div className="w-full mt-1 space-y-2">
+                <div
+                  className={`px-3 py-2 rounded-lg border text-[11px] font-mono ${
+                    summary.verification.bookChangeIsImplausible
+                      ? "bg-danger/5 border-danger/20 text-danger"
+                      : "bg-teal/5 border-teal/20 text-teal"
+                  }`}
+                >
+                  {summary.verification.bookChangeIsImplausible
+                    ? `Total book moved ${summary.verification.bookChangePct?.toFixed(1)}% vs ${summary.verification.previousDate} -- far outside the normal <1% day-over-day range. Review before trusting this upload (possible parsing error, e.g. a misread column).`
+                    : summary.verification.previousDate
+                      ? `Total book change vs ${summary.verification.previousDate} (${summary.verification.bookChangePct?.toFixed(2)}%) is within the normal range -- parse looks healthy.`
+                      : "First upload -- no prior day to compare against yet."}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                  <div className="px-3 py-2 rounded-lg border border-border bg-base/30">
+                    <p className="text-[9px] uppercase tracking-wider text-muted/60 mb-0.5">Total Book</p>
+                    <p className="text-primary">{fmtLakhs(summary.verification.totalAmtToday)}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg border border-border bg-base/30">
+                    <p className="text-[9px] uppercase tracking-wider text-muted/60 mb-0.5">Symbols</p>
+                    <p className="text-primary">
+                      {summary.verification.symbolCountToday} total
+                      <span className="text-muted"> ({summary.verification.newSymbolCount} new, {summary.verification.vanishedSymbolCount} vanished)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {summary.verification.priceGuardTriggeredCount > 0 && (
+                  <div className="px-3 py-2 rounded-lg border border-border bg-base/30 text-[10px] font-mono text-muted text-left">
+                    {summary.verification.priceGuardTriggeredCount} symbol(s) had an implausible single-day price jump
+                    (likely a stock/ETF split) -- automatically excluded from % change calculations:{" "}
+                    {summary.verification.priceGuardTriggeredSymbols.join(", ")}
+                    {summary.verification.priceGuardTriggeredCount > summary.verification.priceGuardTriggeredSymbols.length ? ", ..." : ""}
+                  </div>
+                )}
+
+                {summary.verification.vanishedSymbolCount > 0 && (
+                  <div className="px-3 py-2 rounded-lg border border-border bg-base/30 text-[10px] font-mono text-muted text-left">
+                    In yesterday&rsquo;s file but missing from today&rsquo;s (normal for suspensions/no-trade days, worth a
+                    glance otherwise): {summary.verification.vanishedSymbols.join(", ")}
+                    {summary.verification.vanishedSymbolCount > summary.verification.vanishedSymbols.length ? ", ..." : ""}
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={close}
               className="mt-3 px-4 py-2 rounded-lg bg-teal/10 border border-teal/25 text-teal text-xs font-mono hover:bg-teal/20 transition-colors"

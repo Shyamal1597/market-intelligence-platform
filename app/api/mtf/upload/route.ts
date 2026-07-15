@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ingestMtfWorkbook } from "@/lib/mtf/ingest";
+import { getIngestVerification } from "@/lib/mtf/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,8 @@ export async function POST(req: Request) {
     }
 
     const summary = await ingestMtfWorkbook(buffer);
-    return NextResponse.json(summary);
+    const verification = summary.date ? await getIngestVerification(summary.date) : null;
+    return NextResponse.json({ ...summary, verification });
   } catch (e) {
     const msg = (e as Error).message;
     console.error("[mtf/upload] Error:", msg);
