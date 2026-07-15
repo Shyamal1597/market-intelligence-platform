@@ -15,18 +15,27 @@ interface BreadthProps {
   topGainer: TopMover | null;
   topLoser: TopMover | null;
   onSelectSymbol?: (symbol: string) => void;
+  onSelectBreadth?: (direction: "up" | "down" | "flat") => void;
 }
 
 function fmtLakhs(v: number): string {
   return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
 }
 
-function Tile({ label, border, children }: { label: string; border?: string; children: React.ReactNode }) {
+function Tile({
+  label, border, children, onClick,
+}: { label: string; border?: string; children: React.ReactNode; onClick?: () => void }) {
+  const Comp = onClick ? "button" : "div";
   return (
-    <div className={`rounded-lg border ${border ?? "border-border"} bg-surface p-2.5`}>
+    <Comp
+      onClick={onClick}
+      className={`rounded-lg border ${border ?? "border-border"} bg-surface p-2.5 text-left w-full ${
+        onClick ? "cursor-pointer hover:border-amber/30 transition-colors" : ""
+      }`}
+    >
       <p className="text-[9px] uppercase tracking-widest text-muted mb-1">{label}</p>
       {children}
-    </div>
+    </Comp>
   );
 }
 
@@ -50,15 +59,15 @@ export function BreadthTiles(props: BreadthProps) {
         )}
       </Tile>
 
-      <Tile label="Leveraging Up" border="border-teal/20">
+      <Tile label="Leveraging Up" border="border-teal/20" onClick={() => props.onSelectBreadth?.("up")}>
         <p className="font-mono text-sm text-teal tabular-nums">{props.countUp}</p>
       </Tile>
 
-      <Tile label="Deleveraging" border="border-danger/20">
+      <Tile label="Deleveraging" border="border-danger/20" onClick={() => props.onSelectBreadth?.("down")}>
         <p className="font-mono text-sm text-danger tabular-nums">{props.countDown}</p>
       </Tile>
 
-      <Tile label="Unchanged">
+      <Tile label="Unchanged" onClick={() => props.onSelectBreadth?.("flat")}>
         <p className="font-mono text-sm text-muted tabular-nums">{props.countFlat}</p>
       </Tile>
 

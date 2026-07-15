@@ -13,8 +13,13 @@ function fmtLakhs(v: number): string {
 }
 
 export function SectorBreakdown({
-  rows, unclassifiedAmt, unclassifiedCount,
-}: { rows: SectorRow[]; unclassifiedAmt: number; unclassifiedCount: number }) {
+  rows, unclassifiedAmt, unclassifiedCount, onSelectSector,
+}: {
+  rows: SectorRow[];
+  unclassifiedAmt: number;
+  unclassifiedCount: number;
+  onSelectSector?: (sector: string) => void;
+}) {
   const max = Math.max(1, ...rows.map((r) => r.amtToday));
 
   return (
@@ -25,7 +30,8 @@ export function SectorBreakdown({
       <p className="text-[9px] text-muted/60 mb-2 max-w-3xl">
         Bar length = total MTF-financed amount in that sector today. % = day-over-day change in that sector&rsquo;s
         book. Sector comes from BSE&rsquo;s real exchange classification (not the research coverage list) --
-        every symbol in the file gets grouped, not just the ~100 covered stocks.
+        every symbol in the file gets grouped, not just the ~100 covered stocks. Click a row to see the exact
+        stocks behind it.
       </p>
       {rows.length === 0 ? (
         <p className="text-[11px] text-muted font-mono py-4">
@@ -34,7 +40,11 @@ export function SectorBreakdown({
       ) : (
         <div className="space-y-1.5">
           {rows.map((r) => (
-            <div key={r.sector} className="flex items-center gap-2 text-[11px] font-mono">
+            <button
+              key={r.sector}
+              onClick={() => onSelectSector?.(r.sector)}
+              className="flex items-center gap-2 text-[11px] font-mono w-full text-left rounded hover:bg-white/[0.03] transition-colors -mx-1 px-1"
+            >
               <span className="w-44 shrink-0 truncate text-primary" title={r.sector}>{r.sector}</span>
               <div className="flex-1 h-4 bg-base/40 rounded-sm overflow-hidden">
                 <div className="h-full bg-amber/70 rounded-sm" style={{ width: `${(r.amtToday / max) * 100}%` }} />
@@ -46,16 +56,19 @@ export function SectorBreakdown({
               <span className="w-10 shrink-0 text-right text-muted/60 tabular-nums" title="Symbols in this sector">
                 {r.symbolCount}
               </span>
-            </div>
+            </button>
           ))}
           {unclassifiedCount > 0 && (
-            <div className="flex items-center gap-2 text-[11px] font-mono text-muted/50 pt-1.5 mt-1.5 border-t border-border/40">
+            <button
+              onClick={() => onSelectSector?.("Unclassified")}
+              className="flex items-center gap-2 text-[11px] font-mono text-muted/50 pt-1.5 mt-1.5 border-t border-border/40 w-full text-left hover:bg-white/[0.03] transition-colors -mx-1 px-1"
+            >
               <span className="w-44 shrink-0">Unclassified</span>
               <div className="flex-1 h-4" />
               <span className="w-24 shrink-0 text-right tabular-nums">{fmtLakhs(unclassifiedAmt)}</span>
               <span className="w-16 shrink-0" />
               <span className="w-10 shrink-0 text-right tabular-nums">{unclassifiedCount}</span>
-            </div>
+            </button>
           )}
         </div>
       )}

@@ -9,6 +9,7 @@ import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
 import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
 import { DivergencePanel } from "@/components/mtf/DivergencePanel";
 import { SymbolDrilldown } from "@/components/mtf/SymbolDrilldown";
+import { SymbolListModal } from "@/components/mtf/SymbolListModal";
 
 interface Breadth {
   date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
@@ -56,11 +57,24 @@ interface DashboardData {
   divergence: DivergenceRow[];
 }
 
+interface ListRow {
+  symbol: string; name: string | null;
+  amtToday: number | null; amtChangePct: number | null; priceChangePct: number | null;
+}
+
+type ListModalState =
+  | { type: "breadth"; direction: "up" | "down" | "flat" }
+  | { type: "sector"; sector: string }
+  | null;
+
 export default function MarginTradingPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [listModal, setListModal] = useState<ListModalState>(null);
+  const [listRows, setListRows] = useState<ListRow[] | null>(null);
+  const [listLoading, setListLoading] = useState(false);
 
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
@@ -80,6 +94,37 @@ export default function MarginTradingPage() {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  useEffect(() => {
+    if (!listModal) return;
+    const controller = new AbortController();
+    setListLoading(true);
+    setListRows(null);
+    const url = listModal.type === "breadth"
+      ? `/api/mtf/breadth/${listModal.direction}`
+      : `/api/mtf/sector/${encodeURIComponent(listModal.sector)}`;
+    fetch(url, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((d) => { setListRows(d.rows); setListLoading(false); })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setListRows([]);
+        setListLoading(false);
+      });
+    return () => controller.abort();
+  }, [listModal]);
+
+  const listModalTitle = listModal
+    ? listModal.type === "breadth"
+      ? listModal.direction === "up" ? "Leveraging Up" : listModal.direction === "down" ? "Deleveraging" : "Unchanged"
+      : listModal.sector
+    : "";
+
+  const listModalCaption = listModal?.type === "breadth"
+    ? "Every symbol from the full universe in this bucket, not just top movers -- count matches the tile exactly."
+    : listModal?.type === "sector"
+      ? "Every tradeable symbol in this sector, sorted by today's financed amount."
+      : undefined;
 
   const topGainer = data && data.moversUp.length > 0
     ? { symbol: data.moversUp[0].symbol, amtChangePct: data.moversUp[0].amtChangePct as number }
@@ -120,6 +165,7 @@ export default function MarginTradingPage() {
             topGainer={topGainer}
             topLoser={topLoser}
             onSelectSymbol={setSelectedSymbol}
+            onSelectBreadth={(direction) => setListModal({ type: "breadth", direction })}
           />
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
@@ -140,8 +186,20 @@ export default function MarginTradingPage() {
             rows={data.sectorBreakdown}
             unclassifiedAmt={data.unclassifiedAmt}
             unclassifiedCount={data.unclassifiedCount}
+            onSelectSector={(sector) => setListModal({ type: "sector", sector })}
           />
         </>
+      )}
+
+      {listModal && (
+        <SymbolListModal
+          title={listModalTitle}
+          caption={listModalCaption}
+          rows={listRows}
+          loading={listLoading}
+          onClose={() => setListModal(null)}
+          onSelectSymbol={(symbol) => { setListModal(null); setSelectedSymbol(symbol); }}
+        />
       )}
 
       {selectedSymbol && (

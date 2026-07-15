@@ -197,6 +197,27 @@ export async function getBreadth(): Promise<Breadth> {
   };
 }
 
+/**
+ * The exact symbol list behind a getBreadth() count -- same predicate, same
+ * full (unfiltered) universe, so "893" on the tile and the length of this
+ * list always match. Sorted so the most extreme movers surface first for
+ * up/down; "flat" has nothing to rank by change, so it sorts by book size.
+ */
+export async function getBreadthSymbols(direction: "up" | "down" | "flat"): Promise<SymbolSnapshot[]> {
+  const { rows } = await getSnapshot();
+  const filtered = direction === "up"
+    ? rows.filter((r) => (r.amtChangePct ?? 0) > 0)
+    : direction === "down"
+      ? rows.filter((r) => (r.amtChangePct ?? 0) < 0)
+      : rows.filter((r) => r.amtChangePct === 0);
+
+  return filtered.sort((a, b) => {
+    if (direction === "up") return (b.amtChangePct ?? 0) - (a.amtChangePct ?? 0);
+    if (direction === "down") return (a.amtChangePct ?? 0) - (b.amtChangePct ?? 0);
+    return (b.amtToday ?? 0) - (a.amtToday ?? 0);
+  });
+}
+
 export interface MoverRow extends SymbolSnapshot {
   sparkline: number[];
 }
@@ -347,6 +368,24 @@ export async function getSectorBreakdown(): Promise<{
     .sort((a, b) => b.amtToday - a.amtToday);
 
   return { date, rows: sectorRows, unclassifiedAmt, unclassifiedCount };
+}
+
+/**
+ * The exact symbol list behind one getSectorBreakdown() bar (or the
+ * "Unclassified" bucket, passed as sector === "Unclassified") -- same
+ * isTradeable filter and sector lookup, so the bar's book size and this
+ * list's total always tie out. Sorted by today's financed amount, largest
+ * first, matching the bar's own "biggest contributors" framing.
+ */
+export async function getSectorSymbols(sector: string): Promise<SymbolSnapshot[]> {
+  const { rows } = await getSnapshot();
+  const sectorMap = getSectorMap();
+  const filtered = rows.filter((r) => {
+    if (!isTradeable(r)) return false;
+    const info = sectorMap[r.symbol];
+    return sector === "Unclassified" ? !info : info?.sector === sector;
+  });
+  return filtered.sort((a, b) => (b.amtToday ?? 0) - (a.amtToday ?? 0));
 }
 
 export interface DivergenceRow {
