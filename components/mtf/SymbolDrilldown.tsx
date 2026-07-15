@@ -63,10 +63,10 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
               <LineChart data={history} margin={{ top: 5, right: 10, bottom: 20, left: 10 }}>
                 <CartesianGrid stroke="#1E2235" />
                 <XAxis dataKey="date" tick={{ fill: "#6E7590", fontSize: 10 }} />
-                <YAxis yAxisId="amt" tick={{ fill: "#F5820D", fontSize: 10 }}>
+                <YAxis yAxisId="amt" domain={["auto", "auto"]} tick={{ fill: "#F5820D", fontSize: 10 }}>
                   <Label value="₹ Lakhs" angle={-90} position="insideLeft" offset={10} style={{ fill: "#F5820D", fontSize: 10, textAnchor: "middle" }} />
                 </YAxis>
-                <YAxis yAxisId="price" orientation="right" tick={{ fill: "#00C9A7", fontSize: 10 }}>
+                <YAxis yAxisId="price" orientation="right" domain={["auto", "auto"]} tick={{ fill: "#00C9A7", fontSize: 10 }}>
                   <Label value="₹ / share" angle={90} position="insideRight" offset={10} style={{ fill: "#00C9A7", fontSize: 10, textAnchor: "middle" }} />
                 </YAxis>
                 <Tooltip content={<CustomTooltip />} />

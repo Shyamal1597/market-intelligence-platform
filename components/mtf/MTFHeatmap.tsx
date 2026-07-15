@@ -23,11 +23,19 @@ function hexLerp(a: string, b: string, t: number): string {
   return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** Green = leverage building, red = leverage unwinding, grey = no/flat data. Capped at +-50% so one extreme outlier doesn't wash out the rest of the map. */
+/**
+ * Green = leverage building, red = leverage unwinding, grey = no/flat data.
+ * Real day-over-day MTF-amount moves cluster tightly around 0 (p90 is only
+ * ~4.3%, confirmed against live data 2026-07-14) with a long thin tail out
+ * to 100%+. A linear +-50% scale left nearly every box looking the same
+ * washed-out grey since almost nothing gets close to the cap. Capping at
+ * +-20% and applying a sqrt curve pulls the typical, tradeable range apart
+ * visually while still saturating fully for genuine outliers.
+ */
 function colorForChange(pct: number | null | undefined): string {
   if (pct == null) return "#2A2E42";
-  const capped = Math.max(-50, Math.min(50, pct));
-  const t = Math.abs(capped) / 50;
+  const capped = Math.max(-20, Math.min(20, pct));
+  const t = Math.sqrt(Math.abs(capped) / 20);
   return capped >= 0 ? hexLerp("#1E2235", "#00C9A7", t) : hexLerp("#1E2235", "#E84040", t);
 }
 

@@ -21,6 +21,8 @@ export interface SymbolSnapshot {
   priceChangePct: number | null;
   turnoverLakhs: number | null;
   turnoverFinancedPct: number | null;
+  /** See isNavPegged() below. */
+  isNavPegged: boolean;
 }
 
 function pctChange(today: number | null, yesterday: number | null): number | null {
@@ -44,6 +46,29 @@ const MATERIALITY_FLOOR_LAKHS = 100;
 
 function isMaterial(r: SymbolSnapshot): boolean {
   return (r.amtToday ?? 0) >= MATERIALITY_FLOOR_LAKHS;
+}
+
+/**
+ * Liquid/money-market ETFs (LIQUIDBEES, LIQUID, ...) settle at a near-fixed
+ * NAV (~Rs 1000) by design -- their book can be large and genuinely material,
+ * but the "price" never moves, so they're not a leverage/momentum story a
+ * trader can act on and just add visual noise to movers/heatmap/leaderboard.
+ * Detected from today's own OHLC spread rather than a symbol allowlist,
+ * since new NAV-pegged instruments get added over time: if a day's full
+ * high-low range is under 0.3% of the close, the instrument didn't really
+ * trade that day (confirmed against real data 2026-07-14: LIQUIDBEES/LIQUID
+ * sit at ~0.01-0.08%, vs 0.6-9%+ for real equities like RELIANCE/RPGLIFE).
+ */
+const NAV_PEG_RANGE_PCT = 0.3;
+
+function computeIsNavPegged(high: number | null, low: number | null, close: number | null): boolean {
+  if (high === null || low === null || !close) return false;
+  return ((high - low) / close) * 100 < NAV_PEG_RANGE_PCT;
+}
+
+/** Movers/heatmap/leaderboard should only surface stocks with a material AND real (non-NAV-pegged) book. */
+function isTradeable(r: SymbolSnapshot): boolean {
+  return isMaterial(r) && !r.isNavPegged;
 }
 
 /** The two most recent distinct dates in the table, newest first. */
@@ -88,6 +113,7 @@ export async function getSnapshot(): Promise<{
       priceChangePct: pctChange(t.close, y?.close ?? null),
       turnoverLakhs: t.turnover_lakhs,
       turnoverFinancedPct,
+      isNavPegged: computeIsNavPegged(t.high, t.low, t.close),
     };
   });
 
@@ -163,7 +189,7 @@ export async function getMovers(
 ): Promise<{ date: string | null; previousDate: string | null; rows: MoverRow[] }> {
   const { date, previousDate, rows } = await getSnapshot();
   const filtered = rows
-    .filter((r) => isMaterial(r) && r.amtChangePct !== null && (direction === "up" ? r.amtChangePct > 0 : r.amtChangePct < 0))
+    .filter((r) => isTradeable(r) && r.amtChangePct !== null && (direction === "up" ? r.amtChangePct > 0 : r.amtChangePct < 0))
     .sort((a, b) =>
       direction === "up"
         ? (b.amtChangePct ?? 0) - (a.amtChangePct ?? 0)
@@ -197,7 +223,7 @@ export async function getLeverageHeatmap(limit = 120): Promise<{
 }> {
   const { date, rows } = await getSnapshot();
   const nodes = rows
-    .filter((r) => isMaterial(r))
+    .filter((r) => isTradeable(r))
     .sort((a, b) => (b.amtToday ?? 0) - (a.amtToday ?? 0))
     .slice(0, limit)
     .map((r) => ({
@@ -216,7 +242,7 @@ export async function getTurnoverLeaders(
 ): Promise<{ date: string | null; rows: SymbolSnapshot[] }> {
   const { date, rows } = await getSnapshot();
   const sorted = rows
-    .filter((r) => isMaterial(r) && r.turnoverFinancedPct !== null)
+    .filter((r) => isTradeable(r) && r.turnoverFinancedPct !== null)
     .sort((a, b) => (b.turnoverFinancedPct ?? 0) - (a.turnoverFinancedPct ?? 0))
     .slice(0, limit);
   return { date, rows: sorted };
