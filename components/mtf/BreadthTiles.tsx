@@ -10,7 +10,6 @@ interface BreadthProps {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
-  coverageCount: number;
   aggregateTurnoverFinancedPct: number | null;
   avgTurnoverFinancedPct: number | null;
   topGainer: TopMover | null;
@@ -65,12 +64,6 @@ export function BreadthTiles(props: BreadthProps) {
 
       <Tile label="Symbols w/ Data">
         <p className="font-mono text-sm text-primary tabular-nums">{props.totalSymbols}</p>
-      </Tile>
-
-      <Tile label="Coverage Stocks" border="border-amber/20">
-        <p className="font-mono text-sm text-amber tabular-nums">
-          {props.coverageCount} <span className="text-muted">/ {props.totalSymbols}</span>
-        </p>
       </Tile>
 
       <Tile label="Turnover Financed %">

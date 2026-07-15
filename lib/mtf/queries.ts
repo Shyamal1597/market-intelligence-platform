@@ -3,18 +3,16 @@
  * on read from mtf_daily -- nothing derived is stored, so logic can change
  * without re-ingesting.
  *
- * "scope" (all vs coverage) has been removed end-to-end: every function
- * always operates on the full universe. Coverage-universe symbols remain
- * flagged inline via `isCoverage` / `sector` for callers to badge/color.
+ * This page is used by the retail desk and is intentionally independent of
+ * the research-coverage universe (SYMBOL_SECTOR / the Concall Guidance
+ * Tracker) -- a different department uses that data for a different
+ * purpose. Do not reintroduce a coverage/sector cross-reference here.
  */
 import { getMtfDb } from "./db";
-import { SYMBOL_SECTOR } from "@/lib/intel/types";
 
 export interface SymbolSnapshot {
   symbol: string;
   name: string | null;
-  sector: string | null;
-  isCoverage: boolean;
   amtToday: number | null;
   amtYesterday: number | null;
   amtChangePct: number | null;
@@ -82,8 +80,6 @@ export async function getSnapshot(): Promise<{
     return {
       symbol: t.symbol,
       name: t.name,
-      sector: SYMBOL_SECTOR[t.symbol] ?? null,
-      isCoverage: Boolean(SYMBOL_SECTOR[t.symbol]),
       amtToday: t.amt_financed_lakhs,
       amtYesterday: y?.amt_financed_lakhs ?? null,
       amtChangePct: pctChange(t.amt_financed_lakhs, y?.amt_financed_lakhs ?? null),
@@ -107,8 +103,6 @@ export interface Breadth {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
-  /** Count of symbols in SYMBOL_SECTOR (the covered universe), out of totalSymbols. */
-  coverageCount: number;
   /** Sum(amtToday) / Sum(turnoverLakhs) -- book-weighted. */
   aggregateTurnoverFinancedPct: number | null;
   /** Simple mean of each symbol's turnoverFinancedPct -- unweighted, shows typical symbol not the book. */
@@ -137,7 +131,6 @@ export async function getBreadth(): Promise<Breadth> {
     countDown: rows.filter((r) => (r.amtChangePct ?? 0) < 0).length,
     countFlat: rows.filter((r) => r.amtChangePct === 0).length,
     totalSymbols: rows.length,
-    coverageCount: rows.filter((r) => r.isCoverage).length,
     aggregateTurnoverFinancedPct: totalTurnover > 0 ? (totalAmtToday / totalTurnover) * 100 : null,
     avgTurnoverFinancedPct,
   };
@@ -180,19 +173,42 @@ export async function getMovers(
   return { date, previousDate, rows: await attachSparklines(filtered) };
 }
 
-export async function getQuadrant(): Promise<{
-  date: string | null; points: { symbol: string; priceChangePct: number; amtChangePct: number; isCoverage: boolean }[];
+export interface HeatmapNode {
+  symbol: string;
+  name: string | null;
+  /** Sizing value for the treemap box -- today's MTF-financed amount, Rs Lakhs. */
+  amtToday: number;
+  /** Coloring value -- day-over-day % change in financed amount. */
+  amtChangePct: number | null;
+  priceChangePct: number | null;
+  turnoverLakhs: number | null;
+}
+
+/**
+ * Top N most materially-financed stocks, for the leverage heatmap (treemap):
+ * box size = how much money is actually financed (materiality/attention-
+ * worthiness), box color = today's leverage direction/magnitude. Limited to
+ * a bounded top-N (by book size) rather than the whole ~2000-symbol universe
+ * so the chart stays legible -- a treemap with thousands of slivers is as
+ * unreadable as a scatter plot crushed by outliers.
+ */
+export async function getLeverageHeatmap(limit = 120): Promise<{
+  date: string | null; nodes: HeatmapNode[];
 }> {
   const { date, rows } = await getSnapshot();
-  const points = rows
-    .filter((r) => isMaterial(r) && r.priceChangePct !== null && r.amtChangePct !== null)
+  const nodes = rows
+    .filter((r) => isMaterial(r))
+    .sort((a, b) => (b.amtToday ?? 0) - (a.amtToday ?? 0))
+    .slice(0, limit)
     .map((r) => ({
       symbol: r.symbol,
-      priceChangePct: r.priceChangePct as number,
-      amtChangePct: r.amtChangePct as number,
-      isCoverage: r.isCoverage,
+      name: r.name,
+      amtToday: r.amtToday as number,
+      amtChangePct: r.amtChangePct,
+      priceChangePct: r.priceChangePct,
+      turnoverLakhs: r.turnoverLakhs,
     }));
-  return { date, points };
+  return { date, nodes };
 }
 
 export async function getTurnoverLeaders(
@@ -204,48 +220,6 @@ export async function getTurnoverLeaders(
     .sort((a, b) => (b.turnoverFinancedPct ?? 0) - (a.turnoverFinancedPct ?? 0))
     .slice(0, limit);
   return { date, rows: sorted };
-}
-
-export interface SectorBreakdownRow {
-  sector: string;
-  count: number;
-  totalAmtToday: number;
-  avgAmtChangePct: number | null;
-  countUp: number;
-  countDown: number;
-}
-
-/**
- * Aggregates the snapshot by `sector`. Only symbols present in SYMBOL_SECTOR
- * carry a sector, so this is inherently scoped to the covered universe --
- * that's a property of the data, not a reintroduction of the "scope" toggle.
- */
-export async function getSectorBreakdown(): Promise<{ date: string | null; sectors: SectorBreakdownRow[] }> {
-  const { date, rows } = await getSnapshot();
-  const bySector = new Map<string, SymbolSnapshot[]>();
-  for (const r of rows) {
-    if (!r.sector) continue;
-    const arr = bySector.get(r.sector) ?? [];
-    arr.push(r);
-    bySector.set(r.sector, arr);
-  }
-
-  const sectors: SectorBreakdownRow[] = Array.from(bySector.entries()).map(([sector, srows]) => {
-    const withChange = srows.filter((r) => r.amtChangePct !== null);
-    const avgAmtChangePct = withChange.length > 0
-      ? withChange.reduce((s, r) => s + (r.amtChangePct ?? 0), 0) / withChange.length
-      : null;
-    return {
-      sector,
-      count: srows.length,
-      totalAmtToday: srows.reduce((s, r) => s + (r.amtToday ?? 0), 0),
-      avgAmtChangePct,
-      countUp: srows.filter((r) => (r.amtChangePct ?? 0) > 0).length,
-      countDown: srows.filter((r) => (r.amtChangePct ?? 0) < 0).length,
-    };
-  }).sort((a, b) => b.totalAmtToday - a.totalAmtToday);
-
-  return { date, sectors };
 }
 
 export interface SymbolHistoryPoint { date: string; amtFinancedLakhs: number | null; close: number | null; }

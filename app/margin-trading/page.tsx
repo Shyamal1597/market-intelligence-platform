@@ -4,44 +4,39 @@ import { useState, useEffect, useCallback } from "react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { MoversTable } from "@/components/mtf/MoversTable";
-import { QuadrantChart } from "@/components/mtf/QuadrantChart";
+import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
 import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
-import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
 import { SymbolDrilldown } from "@/components/mtf/SymbolDrilldown";
 
 interface Breadth {
   date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
   countUp: number; countDown: number; countFlat: number; totalSymbols: number;
-  coverageCount: number;
   aggregateTurnoverFinancedPct: number | null;
   avgTurnoverFinancedPct: number | null;
 }
 
 interface MoverRow {
-  symbol: string; name: string | null; isCoverage: boolean;
+  symbol: string; name: string | null;
   amtChangePct: number | null; priceChangePct: number | null;
   amtToday: number | null; sparkline: number[];
 }
 
-interface QuadrantPoint { symbol: string; priceChangePct: number; amtChangePct: number; isCoverage: boolean; }
-
-interface TurnoverRow {
-  symbol: string; name: string | null; isCoverage: boolean;
-  turnoverFinancedPct: number | null; amtToday: number | null;
+interface HeatmapNode {
+  symbol: string; name: string | null; amtToday: number;
+  amtChangePct: number | null; priceChangePct: number | null; turnoverLakhs: number | null;
 }
 
-interface SectorRow {
-  sector: string; count: number; totalAmtToday: number;
-  avgAmtChangePct: number | null; countUp: number; countDown: number;
+interface TurnoverRow {
+  symbol: string; name: string | null;
+  turnoverFinancedPct: number | null; amtToday: number | null;
 }
 
 interface DashboardData {
   breadth: Breadth;
   moversUp: MoverRow[];
   moversDown: MoverRow[];
-  quadrant: QuadrantPoint[];
+  heatmap: HeatmapNode[];
   turnoverLeaders: TurnoverRow[];
-  sectors: SectorRow[];
 }
 
 export default function MarginTradingPage() {
@@ -115,14 +110,12 @@ export default function MarginTradingPage() {
               <MoversTable up={data.moversUp} down={data.moversDown} onSelectSymbol={setSelectedSymbol} />
             </div>
             <div className="xl:col-span-4">
-              <QuadrantChart points={data.quadrant} onSelectSymbol={setSelectedSymbol} />
+              <MTFHeatmap nodes={data.heatmap} onSelectSymbol={setSelectedSymbol} />
             </div>
             <div className="xl:col-span-3">
               <TurnoverLeaderboard rows={data.turnoverLeaders} onSelectSymbol={setSelectedSymbol} />
             </div>
           </div>
-
-          <SectorBreakdown sectors={data.sectors} />
         </>
       )}
 

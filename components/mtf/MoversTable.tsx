@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sparkline } from "@/components/macro/Sparkline";
 
 interface MoverRow {
-  symbol: string; name: string | null; isCoverage: boolean;
+  symbol: string; name: string | null;
   amtChangePct: number | null; priceChangePct: number | null;
   amtToday: number | null; sparkline: number[];
 }
@@ -49,7 +49,7 @@ export function MoversTable({
                 className="border-b border-border/40 hover:bg-white/[0.02] transition-colors cursor-pointer"
               >
                 <td className="px-2 py-1.5 text-primary">
-                  {r.symbol} {r.isCoverage && <span className="text-amber">★</span>}
+                  {r.symbol}
                 </td>
                 <td className={`px-2 py-1.5 text-right tabular-nums ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                   {r.amtChangePct?.toFixed(2)}%

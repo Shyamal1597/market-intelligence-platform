@@ -1,7 +1,7 @@
 "use client";
 
 interface Row {
-  symbol: string; name: string | null; isCoverage: boolean;
+  symbol: string; name: string | null;
   turnoverFinancedPct: number | null; amtToday: number | null;
 }
 
@@ -35,7 +35,7 @@ export function TurnoverLeaderboard({
                 className="border-b border-border/40 hover:bg-white/[0.02] transition-colors cursor-pointer"
               >
                 <td className="px-2 py-1.5 text-primary">
-                  {r.symbol} {r.isCoverage && <span className="text-amber">★</span>}
+                  {r.symbol}
                 </td>
                 <td className="px-2 py-1.5 text-right text-amber tabular-nums">
                   {r.turnoverFinancedPct?.toFixed(1)}%
