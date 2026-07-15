@@ -5,32 +5,55 @@ import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { MoversTable } from "@/components/mtf/MoversTable";
 import { QuadrantChart } from "@/components/mtf/QuadrantChart";
+import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
+import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
+import { SymbolDrilldown } from "@/components/mtf/SymbolDrilldown";
 
-type Scope = "all" | "coverage";
+interface Breadth {
+  date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
+  countUp: number; countDown: number; countFlat: number; totalSymbols: number;
+  coverageCount: number;
+  aggregateTurnoverFinancedPct: number | null;
+  avgTurnoverFinancedPct: number | null;
+}
+
+interface MoverRow {
+  symbol: string; name: string | null; isCoverage: boolean;
+  amtChangePct: number | null; priceChangePct: number | null;
+  amtToday: number | null; sparkline: number[];
+}
+
+interface QuadrantPoint { symbol: string; priceChangePct: number; amtChangePct: number; isCoverage: boolean; }
+
+interface TurnoverRow {
+  symbol: string; name: string | null; isCoverage: boolean;
+  turnoverFinancedPct: number | null; amtToday: number | null;
+}
+
+interface SectorRow {
+  sector: string; count: number; totalAmtToday: number;
+  avgAmtChangePct: number | null; countUp: number; countDown: number;
+}
 
 interface DashboardData {
-  scope: Scope;
-  breadth: {
-    date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
-    countUp: number; countDown: number; countFlat: number; totalSymbols: number;
-    aggregateTurnoverFinancedPct: number | null;
-  };
-  moversUp: any[];
-  moversDown: any[];
-  quadrant: any[];
-  turnoverLeaders: any[];
+  breadth: Breadth;
+  moversUp: MoverRow[];
+  moversDown: MoverRow[];
+  quadrant: QuadrantPoint[];
+  turnoverLeaders: TurnoverRow[];
+  sectors: SectorRow[];
 }
 
 export default function MarginTradingPage() {
-  const [scope, setScope] = useState<Scope>("all");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
 
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
     setError(false);
-    fetch(`/api/mtf/dashboard?scope=${scope}`, { signal })
+    fetch("/api/mtf/dashboard", { signal })
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch((err) => {
@@ -38,7 +61,7 @@ export default function MarginTradingPage() {
         setError(true);
         setLoading(false);
       });
-  }, [scope]);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,26 +69,18 @@ export default function MarginTradingPage() {
     return () => controller.abort();
   }, [load]);
 
+  const topGainer = data && data.moversUp.length > 0
+    ? { symbol: data.moversUp[0].symbol, amtChangePct: data.moversUp[0].amtChangePct as number }
+    : null;
+  const topLoser = data && data.moversDown.length > 0
+    ? { symbol: data.moversDown[0].symbol, amtChangePct: data.moversDown[0].amtChangePct as number }
+    : null;
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl font-semibold text-primary">Margin Trading</h1>
         <MtfUpload onComplete={load} />
-      </div>
-
-      <div className="flex items-center gap-0.5 bg-base rounded-lg p-0.5 border border-border/60 w-fit">
-        <button
-          onClick={() => setScope("all")}
-          className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${scope === "all" ? "bg-surface text-amber shadow-sm border border-amber/25" : "text-muted hover:text-primary"}`}
-        >
-          All (~2000)
-        </button>
-        <button
-          onClick={() => setScope("coverage")}
-          className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${scope === "coverage" ? "bg-surface text-amber shadow-sm border border-amber/25" : "text-muted hover:text-primary"}`}
-        >
-          My Coverage
-        </button>
       </div>
 
       {loading && (
@@ -80,10 +95,6 @@ export default function MarginTradingPage() {
         </div>
       )}
 
-      {!loading && data && data.breadth.date !== null && (
-        <BreadthTiles {...data.breadth} />
-      )}
-
       {!loading && error && (
         <div className="rounded border border-border bg-surface p-12 text-center text-danger font-mono text-sm">
           Failed to load margin trading data. Please try again.
@@ -91,14 +102,33 @@ export default function MarginTradingPage() {
       )}
 
       {!loading && data && data.breadth.date !== null && (
-        <MoversTable up={data.moversUp} down={data.moversDown} />
+        <>
+          <BreadthTiles
+            {...data.breadth}
+            topGainer={topGainer}
+            topLoser={topLoser}
+            onSelectSymbol={setSelectedSymbol}
+          />
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+            <div className="xl:col-span-5">
+              <MoversTable up={data.moversUp} down={data.moversDown} onSelectSymbol={setSelectedSymbol} />
+            </div>
+            <div className="xl:col-span-4">
+              <QuadrantChart points={data.quadrant} onSelectSymbol={setSelectedSymbol} />
+            </div>
+            <div className="xl:col-span-3">
+              <TurnoverLeaderboard rows={data.turnoverLeaders} onSelectSymbol={setSelectedSymbol} />
+            </div>
+          </div>
+
+          <SectorBreakdown sectors={data.sectors} />
+        </>
       )}
 
-      {!loading && data && data.breadth.date !== null && (
-        <QuadrantChart points={data.quadrant} />
+      {selectedSymbol && (
+        <SymbolDrilldown symbol={selectedSymbol} onClose={() => setSelectedSymbol(null)} />
       )}
-
-      {/* Turnover leaderboard, drill-down: Tasks 12-13 */}
     </div>
   );
 }

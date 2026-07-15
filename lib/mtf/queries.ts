@@ -2,6 +2,10 @@
  * All derived MTF metrics (% change, rankings, turnover-share) computed here
  * on read from mtf_daily -- nothing derived is stored, so logic can change
  * without re-ingesting.
+ *
+ * "scope" (all vs coverage) has been removed end-to-end: every function
+ * always operates on the full universe. Coverage-universe symbols remain
+ * flagged inline via `isCoverage` / `sector` for callers to badge/color.
  */
 import { getMtfDb } from "./db";
 import { SYMBOL_SECTOR } from "@/lib/intel/types";
@@ -35,8 +39,8 @@ export async function getLatestTwoDates(): Promise<{ latest: string | null; prev
   return { latest: rows[0]?.date ?? null, previous: rows[1]?.date ?? null };
 }
 
-/** Every symbol's today-vs-yesterday snapshot, with derived % changes. */
-export async function getSnapshot(scope: "all" | "coverage"): Promise<{
+/** Every symbol's today-vs-yesterday snapshot, with derived % changes. Full universe, always. */
+export async function getSnapshot(): Promise<{
   date: string | null; previousDate: string | null; rows: SymbolSnapshot[];
 }> {
   const { latest, previous } = await getLatestTwoDates();
@@ -51,7 +55,7 @@ export async function getSnapshot(scope: "all" | "coverage"): Promise<{
     }
   }
 
-  let rows: SymbolSnapshot[] = today.map((t) => {
+  const rows: SymbolSnapshot[] = today.map((t) => {
     const y = yestBySymbol.get(t.symbol);
     const turnoverFinancedPct =
       t.turnover_lakhs && t.turnover_lakhs > 0 && t.amt_financed_lakhs !== null
@@ -73,7 +77,6 @@ export async function getSnapshot(scope: "all" | "coverage"): Promise<{
     };
   });
 
-  if (scope === "coverage") rows = rows.filter((r) => r.isCoverage);
   return { date: latest, previousDate: previous, rows };
 }
 
@@ -86,16 +89,29 @@ export interface Breadth {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
+  /** Count of symbols in SYMBOL_SECTOR (the covered universe), out of totalSymbols. */
+  coverageCount: number;
+  /** Sum(amtToday) / Sum(turnoverLakhs) -- book-weighted. */
   aggregateTurnoverFinancedPct: number | null;
+  /** Simple mean of each symbol's turnoverFinancedPct -- unweighted, shows typical symbol not the book. */
+  avgTurnoverFinancedPct: number | null;
 }
 
-export async function getBreadth(scope: "all" | "coverage"): Promise<Breadth> {
-  const { date, previousDate, rows } = await getSnapshot(scope);
+export async function getBreadth(): Promise<Breadth> {
+  const { date, previousDate, rows } = await getSnapshot();
   const totalAmtToday = rows.reduce((s, r) => s + (r.amtToday ?? 0), 0);
   const totalAmtYesterday = previousDate
     ? rows.reduce((s, r) => s + (r.amtYesterday ?? 0), 0)
     : null;
   const totalTurnover = rows.reduce((s, r) => s + (r.turnoverLakhs ?? 0), 0);
+
+  const financedPcts = rows
+    .map((r) => r.turnoverFinancedPct)
+    .filter((v): v is number => v !== null);
+  const avgTurnoverFinancedPct = financedPcts.length > 0
+    ? financedPcts.reduce((s, v) => s + v, 0) / financedPcts.length
+    : null;
+
   return {
     date, previousDate,
     totalAmtToday, totalAmtYesterday,
@@ -103,7 +119,9 @@ export async function getBreadth(scope: "all" | "coverage"): Promise<Breadth> {
     countDown: rows.filter((r) => (r.amtChangePct ?? 0) < 0).length,
     countFlat: rows.filter((r) => r.amtChangePct === 0).length,
     totalSymbols: rows.length,
+    coverageCount: rows.filter((r) => r.isCoverage).length,
     aggregateTurnoverFinancedPct: totalTurnover > 0 ? (totalAmtToday / totalTurnover) * 100 : null,
+    avgTurnoverFinancedPct,
   };
 }
 
@@ -130,9 +148,9 @@ async function attachSparklines(rows: SymbolSnapshot[]): Promise<MoverRow[]> {
 }
 
 export async function getMovers(
-  scope: "all" | "coverage", direction: "up" | "down", limit = 50,
+  direction: "up" | "down", limit = 50,
 ): Promise<{ date: string | null; previousDate: string | null; rows: MoverRow[] }> {
-  const { date, previousDate, rows } = await getSnapshot(scope);
+  const { date, previousDate, rows } = await getSnapshot();
   const filtered = rows
     .filter((r) => r.amtChangePct !== null && (direction === "up" ? r.amtChangePct > 0 : r.amtChangePct < 0))
     .sort((a, b) =>
@@ -144,10 +162,10 @@ export async function getMovers(
   return { date, previousDate, rows: await attachSparklines(filtered) };
 }
 
-export async function getQuadrant(scope: "all" | "coverage"): Promise<{
+export async function getQuadrant(): Promise<{
   date: string | null; points: { symbol: string; priceChangePct: number; amtChangePct: number; isCoverage: boolean }[];
 }> {
-  const { date, rows } = await getSnapshot(scope);
+  const { date, rows } = await getSnapshot();
   const points = rows
     .filter((r) => r.priceChangePct !== null && r.amtChangePct !== null)
     .map((r) => ({
@@ -160,14 +178,56 @@ export async function getQuadrant(scope: "all" | "coverage"): Promise<{
 }
 
 export async function getTurnoverLeaders(
-  scope: "all" | "coverage", limit = 50,
+  limit = 50,
 ): Promise<{ date: string | null; rows: SymbolSnapshot[] }> {
-  const { date, rows } = await getSnapshot(scope);
+  const { date, rows } = await getSnapshot();
   const sorted = rows
     .filter((r) => r.turnoverFinancedPct !== null)
     .sort((a, b) => (b.turnoverFinancedPct ?? 0) - (a.turnoverFinancedPct ?? 0))
     .slice(0, limit);
   return { date, rows: sorted };
+}
+
+export interface SectorBreakdownRow {
+  sector: string;
+  count: number;
+  totalAmtToday: number;
+  avgAmtChangePct: number | null;
+  countUp: number;
+  countDown: number;
+}
+
+/**
+ * Aggregates the snapshot by `sector`. Only symbols present in SYMBOL_SECTOR
+ * carry a sector, so this is inherently scoped to the covered universe --
+ * that's a property of the data, not a reintroduction of the "scope" toggle.
+ */
+export async function getSectorBreakdown(): Promise<{ date: string | null; sectors: SectorBreakdownRow[] }> {
+  const { date, rows } = await getSnapshot();
+  const bySector = new Map<string, SymbolSnapshot[]>();
+  for (const r of rows) {
+    if (!r.sector) continue;
+    const arr = bySector.get(r.sector) ?? [];
+    arr.push(r);
+    bySector.set(r.sector, arr);
+  }
+
+  const sectors: SectorBreakdownRow[] = Array.from(bySector.entries()).map(([sector, srows]) => {
+    const withChange = srows.filter((r) => r.amtChangePct !== null);
+    const avgAmtChangePct = withChange.length > 0
+      ? withChange.reduce((s, r) => s + (r.amtChangePct ?? 0), 0) / withChange.length
+      : null;
+    return {
+      sector,
+      count: srows.length,
+      totalAmtToday: srows.reduce((s, r) => s + (r.amtToday ?? 0), 0),
+      avgAmtChangePct,
+      countUp: srows.filter((r) => (r.amtChangePct ?? 0) > 0).length,
+      countDown: srows.filter((r) => (r.amtChangePct ?? 0) < 0).length,
+    };
+  }).sort((a, b) => b.totalAmtToday - a.totalAmtToday);
+
+  return { date, sectors };
 }
 
 export interface SymbolHistoryPoint { date: string; amtFinancedLakhs: number | null; close: number | null; }

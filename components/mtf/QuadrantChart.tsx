@@ -16,27 +16,35 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function QuadrantChart({ points }: { points: Point[] }) {
+export function QuadrantChart({
+  points, onSelectSymbol,
+}: { points: Point[]; onSelectSymbol?: (symbol: string) => void }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <p className="text-[10px] uppercase tracking-widest text-muted mb-3">
+    <div className="rounded-lg border border-border bg-surface p-3 h-[560px] flex flex-col">
+      <p className="text-[9px] uppercase tracking-widest text-muted mb-2 shrink-0">
         Price vs. Leverage Change (today)
       </p>
-      <ResponsiveContainer width="100%" height={360}>
-        <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-          <CartesianGrid stroke="#1E2235" />
-          <XAxis type="number" dataKey="priceChangePct" name="Price % Chg" tick={{ fill: "#6E7590", fontSize: 10 }} />
-          <YAxis type="number" dataKey="amtChangePct" name="MTF % Chg" tick={{ fill: "#6E7590", fontSize: 10 }} />
-          <ReferenceLine x={0} stroke="#1E2235" />
-          <ReferenceLine y={0} stroke="#1E2235" />
-          <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
-          <Scatter data={points}>
-            {points.map((p, i) => (
-              <Cell key={i} fill={p.isCoverage ? "#F5820D" : "#6E7590"} fillOpacity={p.isCoverage ? 0.9 : 0.35} />
-            ))}
-          </Scatter>
-        </ScatterChart>
-      </ResponsiveContainer>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+            <CartesianGrid stroke="#1E2235" />
+            <XAxis type="number" dataKey="priceChangePct" name="Price % Chg" tick={{ fill: "#6E7590", fontSize: 10 }} />
+            <YAxis type="number" dataKey="amtChangePct" name="MTF % Chg" tick={{ fill: "#6E7590", fontSize: 10 }} />
+            <ReferenceLine x={0} stroke="#1E2235" />
+            <ReferenceLine y={0} stroke="#1E2235" />
+            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
+            <Scatter
+              data={points}
+              onClick={(p: any) => onSelectSymbol?.(p.symbol)}
+              style={{ cursor: onSelectSymbol ? "pointer" : "default" }}
+            >
+              {points.map((p, i) => (
+                <Cell key={i} fill={p.isCoverage ? "#F5820D" : "#6E7590"} fillOpacity={p.isCoverage ? 0.9 : 0.35} />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

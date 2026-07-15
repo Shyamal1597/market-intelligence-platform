@@ -9,13 +9,15 @@ interface MoverRow {
   amtToday: number | null; sparkline: number[];
 }
 
-export function MoversTable({ up, down }: { up: MoverRow[]; down: MoverRow[] }) {
+export function MoversTable({
+  up, down, onSelectSymbol,
+}: { up: MoverRow[]; down: MoverRow[]; onSelectSymbol?: (symbol: string) => void }) {
   const [tab, setTab] = useState<"up" | "down">("up");
   const rows = tab === "up" ? up : down;
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
-      <div className="flex items-center gap-0.5 p-2 border-b border-border/60">
+    <div className="rounded-lg border border-border bg-surface flex flex-col h-[560px]">
+      <div className="flex items-center gap-0.5 p-2 border-b border-border/60 shrink-0">
         <button
           onClick={() => setTab("up")}
           className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${tab === "up" ? "bg-teal/10 text-teal border border-teal/25" : "text-muted hover:text-primary"}`}
@@ -29,29 +31,33 @@ export function MoversTable({ up, down }: { up: MoverRow[]; down: MoverRow[] }) 
           Deleveraging ({down.length})
         </button>
       </div>
-      <div className="max-h-[500px] overflow-y-auto">
-        <table className="w-full text-xs font-mono">
-          <thead className="sticky top-0 bg-surface">
-            <tr className="text-muted text-[10px] uppercase tracking-wider">
-              <th className="text-left px-3 py-2">Symbol</th>
-              <th className="text-right px-3 py-2">MTF Chg %</th>
-              <th className="text-right px-3 py-2">Price Chg %</th>
-              <th className="text-right px-3 py-2">Trend</th>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <table className="w-full text-[11px] font-mono border-collapse">
+          <thead className="sticky top-0 bg-surface z-10">
+            <tr className="text-muted text-[9px] uppercase tracking-wider border-b border-border">
+              <th className="text-left font-normal px-2 py-1.5">Symbol</th>
+              <th className="text-right font-normal px-2 py-1.5">MTF Chg %</th>
+              <th className="text-right font-normal px-2 py-1.5">Price Chg %</th>
+              <th className="text-right font-normal px-2 py-1.5">Trend</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.symbol} className="border-t border-border/40 hover:bg-base/40">
-                <td className="px-3 py-2 text-primary">
+              <tr
+                key={r.symbol}
+                onClick={() => onSelectSymbol?.(r.symbol)}
+                className="border-b border-border/40 hover:bg-white/[0.02] transition-colors cursor-pointer"
+              >
+                <td className="px-2 py-1.5 text-primary">
                   {r.symbol} {r.isCoverage && <span className="text-amber">★</span>}
                 </td>
-                <td className={`px-3 py-2 text-right ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
+                <td className={`px-2 py-1.5 text-right tabular-nums ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                   {r.amtChangePct?.toFixed(2)}%
                 </td>
-                <td className={`px-3 py-2 text-right ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
+                <td className={`px-2 py-1.5 text-right tabular-nums ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                   {r.priceChangePct?.toFixed(2)}%
                 </td>
-                <td className="px-3 py-2 w-24">
+                <td className="px-2 py-1.5 w-20">
                   <Sparkline data={r.sparkline} positive={(r.amtChangePct ?? 0) >= 0} />
                 </td>
               </tr>

@@ -1,26 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getBreadth, getMovers, getQuadrant, getTurnoverLeaders } from "@/lib/mtf/queries";
+import { NextResponse } from "next/server";
+import { getBreadth, getMovers, getQuadrant, getTurnoverLeaders, getSectorBreakdown } from "@/lib/mtf/queries";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const scopeParam = req.nextUrl.searchParams.get("scope");
-  const scope = scopeParam === "coverage" ? "coverage" : "all";
-
-  const [breadth, moversUp, moversDown, quadrant, turnoverLeaders] = await Promise.all([
-    getBreadth(scope),
-    getMovers(scope, "up", 50),
-    getMovers(scope, "down", 50),
-    getQuadrant(scope),
-    getTurnoverLeaders(scope, 50),
+export async function GET() {
+  const [breadth, moversUp, moversDown, quadrant, turnoverLeaders, sectorBreakdown] = await Promise.all([
+    getBreadth(),
+    getMovers("up", 50),
+    getMovers("down", 50),
+    getQuadrant(),
+    getTurnoverLeaders(50),
+    getSectorBreakdown(),
   ]);
 
   return NextResponse.json({
-    scope,
     breadth,
     moversUp: moversUp.rows,
     moversDown: moversDown.rows,
     quadrant: quadrant.points,
     turnoverLeaders: turnoverLeaders.rows,
+    sectors: sectorBreakdown.sectors,
   });
 }
