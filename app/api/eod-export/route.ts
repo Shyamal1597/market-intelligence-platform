@@ -3,10 +3,17 @@
  *
  * Generates the daily EOD Snippets Excel report. Layout, fonts, borders,
  * column widths and section styling are matched cell-by-cell against a real
- * Sunidhi-authored report (2026-07-15) -- not a from-scratch design. Notably:
- * there is NO colored banner strip in the real template (just a small plain
- * Sunidhi logo top-right), section titles are plain bold black text in a
- * bordered box (no dark fill), and data rows are center-aligned.
+ * Sunidhi-authored report (2026-07-15).
+ *
+ * The red/blue title banner in the real file is NOT a colored cell fill --
+ * it's a floating shape/textbox, which ExcelJS's read API doesn't expose
+ * (only raster picture drawings, not native Excel shapes). It's rebuilt here
+ * with cell fills instead, which renders the same but can't be verified
+ * against the source file's exact shape properties the way everything else
+ * in this file was. Every other style choice below (the light-gray header
+ * fill via Excel's theme color "Background 1, Darker 25%", black bold
+ * header text, center-aligned data, no fill on footer/disclaimer rows) IS
+ * verified cell-by-cell against the real file.
  */
 
 import { NextResponse } from "next/server";
@@ -30,6 +37,19 @@ const C = {
   negRed:   A("FF0000"),
   black:    A("000000"),
   midGray:  A("808080"),
+  bannerRed:  A("C00000"),
+  bannerBlue: A("1F3864"),
+  white:      A("FFFFFF"),
+};
+
+/** Excel theme color "White, Background 1, Darker 25%" -- the exact fill
+ * used on every header row in the real template (confirmed via raw XML
+ * read: {theme:0, tint:-0.35}, not a literal hex -- a plain hex guess
+ * would silently mismatch if the workbook's theme palette ever changes). */
+const HEADER_FILL = {
+  type: "pattern" as const,
+  pattern: "solid" as const,
+  fgColor: { theme: 0, tint: -0.3499862666707358 },
 };
 
 const THIN = { style: "thin" as const, color: { argb: C.black } };
@@ -63,6 +83,7 @@ function hRule(ws: ExcelJS.Worksheet, r: number, c1: number, c2: number) {
 /** Section title, e.g. "FII/FPI/DII trading activity...", "Sectorial Contribution in SENSEX". */
 function sectionTitle(cell: ExcelJS.Cell, text: string, size = 14) {
   cell.value = text;
+  cell.fill = HEADER_FILL;
   cell.font = { bold: true, size, name: "Calibri" };
   cell.alignment = { horizontal: "center", vertical: "middle" };
 }
@@ -70,6 +91,7 @@ function sectionTitle(cell: ExcelJS.Cell, text: string, size = 14) {
 /** Column header, e.g. "Category", "Buy Value", "Index", "(%)". */
 function colHdr(cell: ExcelJS.Cell, text: string, size = 14, alignLeft = false) {
   cell.value = text;
+  cell.fill = HEADER_FILL;
   cell.font = { bold: true, size, name: "Calibri" };
   cell.alignment = { horizontal: alignLeft ? "left" : "center", vertical: "middle", wrapText: true };
 }
@@ -203,20 +225,42 @@ export async function GET() {
     const WIDTHS = [6.44, 18.11, 18.11, 18.11, 18.11, 18.11, 18.11, 18.55, 18.11];
     WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    // -- Rows 1-8: plain Sunidhi logo, top-right -- NO banner/strip -----------
-    // The real template has no colored header at all, just a small corner logo.
+    // -- Rows 1-7: branded banner -------------------------------------------
+    // Rebuilt with cell fills -- the real file draws this as a floating
+    // shape (not a cell fill), which ExcelJS can't read back out. Same
+    // rendered look, different underlying mechanism.
+    const blueFill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: C.bannerBlue } };
+    const redFill  = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: C.bannerRed } };
+
+    for (const r of [1, 2]) {
+      ws.getRow(r).height = 7;
+      for (let c = 1; c <= 9; c++) ws.getCell(r, c).fill = redFill;
+    }
+    for (const r of [3, 4, 5, 6]) {
+      ws.getRow(r).height = 22;
+      for (let c = 1; c <= 9; c++) ws.getCell(r, c).fill = blueFill;
+    }
+    ws.mergeCells(3, 2, 6, 6);
+    const titleCell = ws.getCell(3, 2);
+    titleCell.value = "EOD Snippets On Market";
+    titleCell.fill = blueFill;
+    titleCell.font = { bold: true, size: 18, color: { argb: C.white }, name: "Calibri" };
+    titleCell.alignment = { horizontal: "center", vertical: "middle" };
+
+    ws.getRow(7).height = 5;
+    for (let c = 1; c <= 9; c++) ws.getCell(7, c).fill = redFill;
+
     try {
       const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
       const imgId = wb.addImage({ buffer: readFileSync(logoPath) as never, extension: "png" });
       ws.addImage(imgId, {
-        tl: { col: 7, row: 0.3 },
-        br: { col: 8.6, row: 5.3 },
+        tl: { col: 6.2, row: 1 },
+        br: { col: 8.9, row: 6.7 },
         editAs: "oneCell",
       } as never);
     } catch { /* logo not found -- skip */ }
 
-    ws.getRow(7).height = 15;
-    hRule(ws, 7, 2, 9);
+    ws.getRow(8).height = 8;
 
     // -- Row 9: Date, right-aligned in H9:I9 only ------------------------------
     ws.getRow(9).height = 18;
