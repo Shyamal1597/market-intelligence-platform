@@ -535,3 +535,77 @@ export async function getIngestVerification(date: string): Promise<IngestVerific
     priceGuardTriggeredSymbols,
   };
 }
+
+export interface ContinuousFunderRow {
+  symbol: string;
+  name: string | null;
+  streakDays: number;
+  amtChangePct: number;
+  priceChangePct: number | null;
+  amtToday: number | null;
+  sparkline: number[];
+}
+
+/**
+ * Symbols with N or more consecutive UPLOADED days of same-direction
+ * MTF-financed change -- a sustained multi-day build (or unwind), not a
+ * one-day blip. "Consecutive" means consecutive entries in mtf_daily, i.e.
+ * consecutive uploads, not consecutive calendar trading days -- days we
+ * were never given a file for (weekends, holidays, or gaps in what's been
+ * uploaded) aren't counted as breaking the streak, since we have no data
+ * to say one way or the other for those days.
+ */
+export async function getContinuousFunders(
+  direction: "up" | "down", minStreak = 4, limit = 50,
+): Promise<{ date: string | null; rows: ContinuousFunderRow[] }> {
+  const { date, rows: snapshotRows } = await getSnapshot();
+  if (!date) return { date: null, rows: [] };
+
+  const bySnapshot = new Map(snapshotRows.map((r) => [r.symbol, r]));
+
+  const db = await getMtfDb();
+  const allRows = db.prepare(
+    "SELECT symbol, date, amt_financed_lakhs FROM mtf_daily ORDER BY date ASC",
+  ).all() as { symbol: string; date: string; amt_financed_lakhs: number | null }[];
+
+  const history = new Map<string, { date: string; amt: number | null }[]>();
+  for (const r of allRows) {
+    const arr = history.get(r.symbol) ?? [];
+    arr.push({ date: r.date, amt: r.amt_financed_lakhs });
+    history.set(r.symbol, arr);
+  }
+
+  const results: ContinuousFunderRow[] = [];
+
+  for (const [symbol, series] of history) {
+    const snap = bySnapshot.get(symbol);
+    if (!snap || !isTradeable(snap)) continue;
+    if (series.length < minStreak + 1) continue;
+
+    let streak = 0;
+    for (let i = series.length - 1; i >= 1; i--) {
+      const today = series[i].amt;
+      const yesterday = series[i - 1].amt;
+      if (today == null || yesterday == null || yesterday === 0) break;
+      const pct = ((today - yesterday) / Math.abs(yesterday)) * 100;
+      const matches = direction === "up" ? pct > 0 : pct < 0;
+      if (!matches) break;
+      streak++;
+    }
+
+    if (streak >= minStreak) {
+      results.push({
+        symbol,
+        name: snap.name,
+        streakDays: streak,
+        amtChangePct: snap.amtChangePct ?? 0,
+        priceChangePct: snap.priceChangePct,
+        amtToday: snap.amtToday,
+        sparkline: series.filter((s) => s.amt != null).map((s) => s.amt as number),
+      });
+    }
+  }
+
+  results.sort((a, b) => b.streakDays - a.streakDays || Math.abs(b.amtChangePct) - Math.abs(a.amtChangePct));
+  return { date, rows: results.slice(0, limit) };
+}

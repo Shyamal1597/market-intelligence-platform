@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
-import { MoversTable } from "@/components/mtf/MoversTable";
+import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
 import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
 import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
@@ -18,11 +18,14 @@ interface Breadth {
   avgTurnoverFinancedPct: number | null;
 }
 
-interface MoverRow {
+interface FunderRow {
   symbol: string; name: string | null;
-  amtChangePct: number | null; priceChangePct: number | null;
+  streakDays: number;
+  amtChangePct: number; priceChangePct: number | null;
   amtToday: number | null; sparkline: number[];
 }
+
+interface TopMover { symbol: string; amtChangePct: number }
 
 interface HeatmapNode {
   symbol: string; name: string | null; amtToday: number;
@@ -47,8 +50,10 @@ interface DivergenceRow {
 
 interface DashboardData {
   breadth: Breadth;
-  moversUp: MoverRow[];
-  moversDown: MoverRow[];
+  topGainer: TopMover | null;
+  topLoser: TopMover | null;
+  continuousFundersUp: FunderRow[];
+  continuousFundersDown: FunderRow[];
   heatmap: HeatmapNode[];
   turnoverLeaders: TurnoverRow[];
   sectorBreakdown: SectorRow[];
@@ -126,13 +131,6 @@ export default function MarginTradingPage() {
       ? "Every tradeable symbol in this sector, sorted by today's financed amount."
       : undefined;
 
-  const topGainer = data && data.moversUp.length > 0
-    ? { symbol: data.moversUp[0].symbol, amtChangePct: data.moversUp[0].amtChangePct as number }
-    : null;
-  const topLoser = data && data.moversDown.length > 0
-    ? { symbol: data.moversDown[0].symbol, amtChangePct: data.moversDown[0].amtChangePct as number }
-    : null;
-
   return (
     <div className="p-6 space-y-3">
       <div className="flex items-center justify-between">
@@ -162,15 +160,15 @@ export default function MarginTradingPage() {
         <>
           <BreadthTiles
             {...data.breadth}
-            topGainer={topGainer}
-            topLoser={topLoser}
+            topGainer={data.topGainer}
+            topLoser={data.topLoser}
             onSelectSymbol={setSelectedSymbol}
             onSelectBreadth={(direction) => setListModal({ type: "breadth", direction })}
           />
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
             <div className="xl:col-span-5">
-              <MoversTable up={data.moversUp} down={data.moversDown} onSelectSymbol={setSelectedSymbol} />
+              <ContinuousFundersTable up={data.continuousFundersUp} down={data.continuousFundersDown} onSelectSymbol={setSelectedSymbol} />
             </div>
             <div className="xl:col-span-4">
               <MTFHeatmap nodes={data.heatmap} onSelectSymbol={setSelectedSymbol} />
