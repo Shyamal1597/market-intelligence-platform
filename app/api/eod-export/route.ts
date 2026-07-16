@@ -138,42 +138,6 @@ function sectorPct(cell: ExcelJS.Cell, value: number) {
 // headlessly (confirmed 2026-07-16). giftnifty.org is a small, plain
 // server-rendered page with the same figure, and scrapes cleanly.
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-
-async function fetchGiftNiftyFromGiftNiftyOrg(): Promise<QuoteData | null> {
-  try {
-    const res = await fetch("https://giftnifty.org/", { headers: { "User-Agent": UA } });
-    if (!res.ok) return null;
-    const html = await res.text();
-
-    const priceMatch = html.match(/class="font-number">([\d,]+)(?:<small>(\.\d+)<\/small>)?/);
-    if (!priceMatch) return null;
-    const price = parseFloat(priceMatch[1].replace(/,/g, "") + (priceMatch[2] ?? ""));
-
-    const pctBlockMatch = html.match(/class="percent"><div class="(positive|negative)">([\s\S]*?)<\/div><\/div>/);
-    if (!pctBlockMatch) return null;
-    const sign = pctBlockMatch[1] === "positive" ? 1 : -1;
-    const nums = pctBlockMatch[2].replace(/<[^>]+>/g, " ").match(/[\d.]+/g);
-    if (!nums || nums.length < 2) return null;
-
-    const changePercent = sign * parseFloat(nums[0]);
-    const change = sign * parseFloat(nums[1]);
-
-    return {
-      symbol: "GIFT_NIFTY",
-      label: "GIFT NIFTY",
-      price,
-      change,
-      changePercent,
-      previousClose: price - change,
-      history: [],
-    };
-  } catch {
-    return null;
-  }
-}
-
 // -- FY label: "FY 26-27" format -----------------------------------------------
 
 function fyLongLabel(d: Date): string {
@@ -185,12 +149,11 @@ function fyLongLabel(d: Date): string {
 
 export async function GET() {
   try {
-    const [flowData, macroQuotes, globalQuotes, bseSectors, giftNiftyQuote] = await Promise.all([
+    const [flowData, macroQuotes, globalQuotes, bseSectors] = await Promise.all([
       fetchAllFlowData(),
-      fetchAllQuotes(),
+      fetchAllQuotes(), // includes GIFT NIFTY (see lib/gift-nifty.ts)
       fetchGlobalQuotes(),
       fetchBseSectors().catch(() => []), // non-fatal: blank rows if BSE is down
-      fetchGiftNiftyFromGiftNiftyOrg().catch(() => null), // non-fatal: N/A if source is down
     ]);
 
     const eodSectors = mapEodSectors(bseSectors);
@@ -352,7 +315,7 @@ export async function GET() {
     ];
     const APAC = [
       { label: "Shanghai Composite", sym: "000001.SS" },
-      { label: "GIFT NIFTY",         sym: null },
+      { label: "GIFT NIFTY",         sym: "GIFT_NIFTY" },
       { label: "Nikkei 225",        sym: "^N225" },
       { label: "Hang Seng",         sym: "^HSI" },
     ];
@@ -375,7 +338,7 @@ export async function GET() {
     for (let i = 0; i < APAC.length; i++) {
       const row = 27 + i;
       const ap = APAC[i];
-      const apQ = ap.sym === null && ap.label === "GIFT NIFTY" ? giftNiftyQuote : ap.sym ? Q(ap.sym) : null;
+      const apQ = Q(ap.sym);
       label(ws.getCell(row, 6), ap.label);
       ws.getCell(row, 6).alignment = { horizontal: "left", vertical: "middle" };
       if (apQ) {

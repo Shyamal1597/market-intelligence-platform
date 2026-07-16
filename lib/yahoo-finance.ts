@@ -1,4 +1,6 @@
 // lib/yahoo-finance.ts
+import { fetchGiftNifty } from "@/lib/gift-nifty";
+
 export interface QuoteData {
   symbol: string;
   label: string;
@@ -138,9 +140,10 @@ const TROY_OZ_PER_10G = 10 / 31.1035;
 const TROY_OZ_PER_KG  = 1000 / 31.1035;
 
 export async function fetchAllQuotes(): Promise<QuoteData[]> {
-  const results = await Promise.allSettled(
-    Object.keys(SYMBOLS).map(fetchQuote)
-  );
+  const [results, giftNifty] = await Promise.all([
+    Promise.allSettled(Object.keys(SYMBOLS).map(fetchQuote)),
+    fetchGiftNifty().catch(() => null),
+  ]);
 
   const quotes = results
     .filter((r): r is PromiseFulfilledResult<QuoteData | null> =>
@@ -148,6 +151,8 @@ export async function fetchAllQuotes(): Promise<QuoteData[]> {
     )
     .map((r) => r.value)
     .filter((v): v is QuoteData => v !== null);
+
+  if (giftNifty) quotes.push(giftNifty);
 
   // Find gold, silver (USD/oz) and INR rate for conversion
   const gold    = quotes.find((q) => q.symbol === "GC=F");

@@ -21,7 +21,7 @@ const INDIA_MACRO = [
 
 // -- Groups for the live terminal -----------------------------------------------
 const LIVE_GROUPS: Record<string, string[]> = {
-  India:       ["^NSEI", "^BSESN", "^NSEBANK", "^INDIAVIX"],
+  India:       ["^NSEI", "GIFT_NIFTY", "^BSESN", "^NSEBANK", "^INDIAVIX"],
   Commodities: ["BZ=F", "GOLD_INR", "SILVER_INR"],
   FX:          ["INR=X"],
   Global:      ["^TNX", "DX-Y.NYB", "^VIX"],
@@ -182,8 +182,9 @@ export default function MacroPage() {
                 </div>
                 {loading
                   ? symbols.map((_, i) => <LiveSkeleton key={i} />)
-                  : quotes
-                      .filter((q) => symbols.includes(q.symbol))
+                  : symbols
+                      .map((sym) => quotes.find((q) => q.symbol === sym))
+                      .filter((q): q is Quote => q != null)
                       .map((q) => <LiveRow key={q.symbol} q={q} />)
                 }
               </div>
