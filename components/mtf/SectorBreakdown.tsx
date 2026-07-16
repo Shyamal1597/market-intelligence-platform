@@ -53,8 +53,8 @@ export function SectorBreakdown({
               <span className={`w-16 shrink-0 text-right tabular-nums ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                 {r.amtChangePct != null ? `${r.amtChangePct >= 0 ? "+" : ""}${r.amtChangePct.toFixed(1)}%` : "—"}
               </span>
-              <span className="w-10 shrink-0 text-right text-muted/60 tabular-nums" title="Symbols in this sector">
-                {r.symbolCount}
+              <span className="w-20 shrink-0 text-right text-muted/60 tabular-nums">
+                {r.symbolCount} {r.symbolCount === 1 ? "stock" : "stocks"}
               </span>
             </button>
           ))}
@@ -67,7 +67,9 @@ export function SectorBreakdown({
               <div className="flex-1 h-4" />
               <span className="w-24 shrink-0 text-right tabular-nums">{fmtLakhs(unclassifiedAmt)}</span>
               <span className="w-16 shrink-0" />
-              <span className="w-10 shrink-0 text-right tabular-nums">{unclassifiedCount}</span>
+              <span className="w-20 shrink-0 text-right tabular-nums">
+                {unclassifiedCount} {unclassifiedCount === 1 ? "stock" : "stocks"}
+              </span>
             </button>
           )}
         </div>
