@@ -20,7 +20,7 @@ interface Breadth {
 
 interface FunderRow {
   symbol: string; name: string | null;
-  streakDays: number;
+  cont: number;
   amtChangePct: number; priceChangePct: number | null;
   amtToday: number | null; sparkline: number[];
 }

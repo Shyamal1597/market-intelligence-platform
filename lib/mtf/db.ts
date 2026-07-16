@@ -44,6 +44,25 @@ export async function getMtfDb(): Promise<Database.Database> {
 
     CREATE INDEX IF NOT EXISTS idx_mtf_daily_symbol ON mtf_daily(symbol);
     CREATE INDEX IF NOT EXISTS idx_mtf_daily_date ON mtf_daily(date);
+
+    -- From the "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets (Volume Movers
+    -- panel only). "cont" is the report's own count of positive (POSITIVE
+    -- sheet) or negative (NEGATIVE sheet) day-over-day financed-amount
+    -- changes across its trailing ~5-day window -- confirmed by hand against
+    -- real data (2026-07-16): it is a frequency count, NOT a consecutive
+    -- streak (a stock with +,-,-,+,+ across the window gets cont=3 in the
+    -- POSITIVE sheet and cont=2 in the NEGATIVE sheet simultaneously, which
+    -- a true streak could never produce for the same day).
+    CREATE TABLE IF NOT EXISTS mtf_mover_cont (
+      date            TEXT NOT NULL,
+      symbol          TEXT NOT NULL,
+      direction       TEXT NOT NULL CHECK(direction IN ('up','down')),
+      cont            INTEGER NOT NULL,
+      latest_pct_chg  REAL,
+      PRIMARY KEY (date, symbol, direction)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_mtf_mover_cont_date ON mtf_mover_cont(date);
   `);
 
   return _db;

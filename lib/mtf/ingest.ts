@@ -30,6 +30,38 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+interface MoverContRow { symbol: string; cont: number; latestPctChg: number | null; }
+
+/**
+ * "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets, Volume Movers panel only
+ * (cols A-M; the Price Mover panel starting at col O is a separate ranking
+ * we don't need -- price change is already tracked from BHAVCOPY). Row
+ * layout: Symbol, Cont., %Change, <date value>, %Change, <date value>, ...
+ * repeating across a trailing ~5-day window, ending with a base value.
+ *
+ * "Cont." is NOT a consecutive streak -- confirmed against real data
+ * (2026-07-16): it's the report's own count of positive (POSITIVE sheet) or
+ * negative (NEGATIVE sheet) day-over-day changes across that window. A
+ * stock with +,-,-,+,+ gets cont=3 in POSITIVE and cont=2 in NEGATIVE
+ * simultaneously, which a true streak could never produce for the same day.
+ * %Change is stored as a fraction (0.284 = 28.4%) in the sheet; converted
+ * to a plain percentage here to match every other %change field in this app.
+ */
+function parseMoverSheet(sheet: XLSX.WorkSheet | undefined): MoverContRow[] {
+  if (!sheet) return [];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 }).slice(2);
+  const out: MoverContRow[] = [];
+  for (const row of rows) {
+    const symbol = String(row[0] ?? "").trim().toUpperCase();
+    if (!symbol) continue;
+    const cont = num(row[1]);
+    if (cont === null) continue;
+    const latestPct = num(row[2]);
+    out.push({ symbol, cont, latestPctChg: latestPct !== null ? latestPct * 100 : null });
+  }
+  return out;
+}
+
 export interface IngestSummary {
   date: string | null;
   rowsIngested: number;
@@ -167,6 +199,37 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
     for (const r of rows) upsert.run(r);
   });
   upsertAll(dbRows);
+
+  // "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" -- optional, not every file has
+  // them (e.g. a partial/incomplete day's file may only have these two
+  // sheets and lack MTF TRADING/BHAVCOPY entirely, which fails ingestion
+  // above before we'd ever reach here; conversely some files have MTF
+  // TRADING/BHAVCOPY but skip these). Non-fatal either way.
+  const positiveRows = parseMoverSheet(wb.Sheets["MTF DATA POSITIVE"]);
+  const negativeRows = parseMoverSheet(wb.Sheets["MTF DATA NEGATIVE"]);
+
+  if (positiveRows.length > 0 || negativeRows.length > 0) {
+    const upsertCont = db.prepare(`
+      INSERT INTO mtf_mover_cont (date, symbol, direction, cont, latest_pct_chg)
+      VALUES (@date, @symbol, @direction, @cont, @latest_pct_chg)
+      ON CONFLICT(date, symbol, direction) DO UPDATE SET
+        cont = excluded.cont, latest_pct_chg = excluded.latest_pct_chg
+    `);
+    const upsertContAll = db.transaction((rows: (MoverContRow & { direction: "up" | "down" })[]) => {
+      for (const r of rows) {
+        upsertCont.run({
+          date: tradeDate, symbol: r.symbol, direction: r.direction,
+          cont: r.cont, latest_pct_chg: r.latestPctChg,
+        });
+      }
+    });
+    upsertContAll([
+      ...positiveRows.map((r) => ({ ...r, direction: "up" as const })),
+      ...negativeRows.map((r) => ({ ...r, direction: "down" as const })),
+    ]);
+  } else {
+    warnings.push('"MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets not found or empty -- continuous-funding data not updated for this date.');
+  }
 
   return {
     date: tradeDate,

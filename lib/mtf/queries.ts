@@ -539,24 +539,28 @@ export async function getIngestVerification(date: string): Promise<IngestVerific
 export interface ContinuousFunderRow {
   symbol: string;
   name: string | null;
-  streakDays: number;
+  cont: number;
   amtChangePct: number;
   priceChangePct: number | null;
   amtToday: number | null;
   sparkline: number[];
 }
 
+const MIN_CONT = 4;
+
 /**
- * Symbols with N or more consecutive UPLOADED days of same-direction
- * MTF-financed change -- a sustained multi-day build (or unwind), not a
- * one-day blip. "Consecutive" means consecutive entries in mtf_daily, i.e.
- * consecutive uploads, not consecutive calendar trading days -- days we
- * were never given a file for (weekends, holidays, or gaps in what's been
- * uploaded) aren't counted as breaking the streak, since we have no data
- * to say one way or the other for those days.
+ * Symbols flagged by the report's own "MTF DATA POSITIVE"/"MTF DATA
+ * NEGATIVE" sheets with cont >= 4 (see parseMoverSheet in lib/mtf/ingest.ts
+ * for exactly what "cont" means -- a frequency count over the report's own
+ * trailing window, not a streak). Sourced directly from that sheet per
+ * explicit instruction, rather than derived from our own accumulated
+ * upload history; our own mtf_daily history is still used for the trend
+ * sparkline, and priceChangePct/amtChangePct still come from our own
+ * snapshot (same split-guarded, day-over-day methodology as every other
+ * panel), so only the "which stocks qualify" part changed.
  */
 export async function getContinuousFunders(
-  direction: "up" | "down", minStreak = 4, limit = 50,
+  direction: "up" | "down", minCont = MIN_CONT, limit = 50,
 ): Promise<{ date: string | null; rows: ContinuousFunderRow[] }> {
   const { date, rows: snapshotRows } = await getSnapshot();
   if (!date) return { date: null, rows: [] };
@@ -564,48 +568,39 @@ export async function getContinuousFunders(
   const bySnapshot = new Map(snapshotRows.map((r) => [r.symbol, r]));
 
   const db = await getMtfDb();
-  const allRows = db.prepare(
-    "SELECT symbol, date, amt_financed_lakhs FROM mtf_daily ORDER BY date ASC",
-  ).all() as { symbol: string; date: string; amt_financed_lakhs: number | null }[];
+  const contRows = db.prepare(
+    "SELECT symbol, cont, latest_pct_chg FROM mtf_mover_cont WHERE date = ? AND direction = ? AND cont >= ?",
+  ).all(date, direction, minCont) as { symbol: string; cont: number; latest_pct_chg: number | null }[];
 
-  const history = new Map<string, { date: string; amt: number | null }[]>();
-  for (const r of allRows) {
-    const arr = history.get(r.symbol) ?? [];
-    arr.push({ date: r.date, amt: r.amt_financed_lakhs });
-    history.set(r.symbol, arr);
+  if (contRows.length === 0) return { date, rows: [] };
+
+  const symbols = contRows.map((r) => r.symbol);
+  const placeholders = symbols.map(() => "?").join(",");
+  const history = db.prepare(
+    `SELECT symbol, date, amt_financed_lakhs FROM mtf_daily WHERE symbol IN (${placeholders}) ORDER BY date ASC`,
+  ).all(...symbols) as { symbol: string; date: string; amt_financed_lakhs: number | null }[];
+  const sparkBySymbol = new Map<string, number[]>();
+  for (const h of history) {
+    const arr = sparkBySymbol.get(h.symbol) ?? [];
+    if (h.amt_financed_lakhs != null) arr.push(h.amt_financed_lakhs);
+    sparkBySymbol.set(h.symbol, arr);
   }
 
   const results: ContinuousFunderRow[] = [];
-
-  for (const [symbol, series] of history) {
-    const snap = bySnapshot.get(symbol);
+  for (const r of contRows) {
+    const snap = bySnapshot.get(r.symbol);
     if (!snap || !isTradeable(snap)) continue;
-    if (series.length < minStreak + 1) continue;
-
-    let streak = 0;
-    for (let i = series.length - 1; i >= 1; i--) {
-      const today = series[i].amt;
-      const yesterday = series[i - 1].amt;
-      if (today == null || yesterday == null || yesterday === 0) break;
-      const pct = ((today - yesterday) / Math.abs(yesterday)) * 100;
-      const matches = direction === "up" ? pct > 0 : pct < 0;
-      if (!matches) break;
-      streak++;
-    }
-
-    if (streak >= minStreak) {
-      results.push({
-        symbol,
-        name: snap.name,
-        streakDays: streak,
-        amtChangePct: snap.amtChangePct ?? 0,
-        priceChangePct: snap.priceChangePct,
-        amtToday: snap.amtToday,
-        sparkline: series.filter((s) => s.amt != null).map((s) => s.amt as number),
-      });
-    }
+    results.push({
+      symbol: r.symbol,
+      name: snap.name,
+      cont: r.cont,
+      amtChangePct: snap.amtChangePct ?? r.latest_pct_chg ?? 0,
+      priceChangePct: snap.priceChangePct,
+      amtToday: snap.amtToday,
+      sparkline: sparkBySymbol.get(r.symbol) ?? [],
+    });
   }
 
-  results.sort((a, b) => b.streakDays - a.streakDays || Math.abs(b.amtChangePct) - Math.abs(a.amtChangePct));
+  results.sort((a, b) => b.cont - a.cont || Math.abs(b.amtChangePct) - Math.abs(a.amtChangePct));
   return { date, rows: results.slice(0, limit) };
 }
