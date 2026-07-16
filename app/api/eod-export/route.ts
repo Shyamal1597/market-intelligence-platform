@@ -37,9 +37,6 @@ const C = {
   negRed:   A("FF0000"),
   black:    A("000000"),
   midGray:  A("808080"),
-  bannerRed:  A("C00000"),
-  bannerBlue: A("1F3864"),
-  white:      A("FFFFFF"),
 };
 
 /** Excel theme color "White, Background 1, Darker 25%" -- the exact fill
@@ -236,39 +233,25 @@ export async function GET() {
     WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
     // -- Rows 1-7: branded banner -------------------------------------------
-    // Rebuilt with cell fills -- the real file draws this as a floating
-    // shape (not a cell fill), which ExcelJS can't read back out. Same
-    // rendered look, different underlying mechanism.
-    const blueFill = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: C.bannerBlue } };
-    const redFill  = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: C.bannerRed } };
-
-    for (const r of [1, 2]) {
-      ws.getRow(r).height = 7;
-      for (let c = 1; c <= 9; c++) ws.getCell(r, c).fill = redFill;
-    }
-    for (const r of [3, 4, 5, 6]) {
-      ws.getRow(r).height = 22;
-      for (let c = 1; c <= 9; c++) ws.getCell(r, c).fill = blueFill;
-    }
-    ws.mergeCells(3, 2, 6, 6);
-    const titleCell = ws.getCell(3, 2);
-    titleCell.value = "EOD Snippets On Market";
-    titleCell.fill = blueFill;
-    titleCell.font = { bold: true, size: 18, color: { argb: C.white }, name: "Calibri" };
-    titleCell.alignment = { horizontal: "center", vertical: "middle" };
-
+    // The real file draws this as 6 overlapping shapes (2 rectangles, a
+    // text box with a drop shadow, an accent-line pair, and the logo
+    // picture) -- extracted from its raw drawing XML (xl/drawings/
+    // drawing1.xml) for exact geometry and colors, including the theme
+    // color used for the blue (dk2 0E2841 with lumMod 75%/lumOff 25%
+    // resolves to #215F9A -- not a literal hex anywhere in the file).
+    // Rendered once as a static PNG (scripts/generate-eod-banner.js) since
+    // none of it is dynamic, and embedded as a single image stretched
+    // across A1:I7 -- far more reliable than approximating 6 shapes with
+    // cell fills.
+    for (const r of [1, 2]) ws.getRow(r).height = 7;
+    for (const r of [3, 4, 5, 6]) ws.getRow(r).height = 22;
     ws.getRow(7).height = 5;
-    for (let c = 1; c <= 9; c++) ws.getCell(7, c).fill = redFill;
 
     try {
-      const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
-      const imgId = wb.addImage({ buffer: readFileSync(logoPath) as never, extension: "png" });
-      ws.addImage(imgId, {
-        tl: { col: 6.2, row: 1 },
-        br: { col: 8.9, row: 6.7 },
-        editAs: "oneCell",
-      } as never);
-    } catch { /* logo not found -- skip */ }
+      const bannerPath = path.join(process.cwd(), "public", "images", "eod-banner.png");
+      const bannerId = wb.addImage({ buffer: readFileSync(bannerPath) as never, extension: "png" });
+      ws.addImage(bannerId, { tl: { col: 0, row: 0 }, br: { col: 9, row: 7 } } as never);
+    } catch { /* banner not found -- skip */ }
 
     ws.getRow(8).height = 8;
 
