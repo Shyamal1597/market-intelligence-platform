@@ -141,17 +141,27 @@ function coloredPct(cell: ExcelJS.Cell, value: number | null, size = 11) {
   cell.alignment = { horizontal: "center", vertical: "middle" };
 }
 
-/** Sectorial-contribution cells are bold and plain black in the real template
- * (not colored by sign) -- matched exactly, not a design choice made here. */
 function sectorLabel(cell: ExcelJS.Cell, text: string) {
   cell.value = text;
   cell.font = { bold: true, size: 9, name: "Calibri" };
 }
 
+/**
+ * The static font color on these cells in the real file IS plain black --
+ * but that's not the whole picture: the file also carries conditional-
+ * formatting rules on exactly these ranges (C18:C23, E18:E23, G18:G23,
+ * I18:I23) that recolor red when <0 and green when >0. Missed this
+ * initially by reading only the base cell.font color, not the workbook's
+ * conditionalFormattings -- applying the same red/green directly as a
+ * static color here reproduces the same rendered result.
+ */
 function sectorPct(cell: ExcelJS.Cell, value: number) {
   cell.value = value / 100;
   cell.numFmt = "0.00%";
-  cell.font = { bold: true, size: 9, name: "Calibri", color: { argb: C.black } };
+  cell.font = {
+    bold: true, size: 9, name: "Calibri",
+    color: { argb: value > 0 ? C.posGreen : value < 0 ? C.negRed : C.black },
+  };
   cell.alignment = { horizontal: "center" };
 }
 
