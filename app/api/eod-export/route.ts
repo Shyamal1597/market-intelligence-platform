@@ -1,8 +1,12 @@
 /**
  * GET /api/eod-export
  *
- * Generates the daily EOD Snippets Excel report matching the Sunidhi template.
- * Uses exceljs for full styling: fills, font colors, borders, merged cells, logo.
+ * Generates the daily EOD Snippets Excel report. Layout, fonts, borders,
+ * column widths and section styling are matched cell-by-cell against a real
+ * Sunidhi-authored report (2026-07-15) -- not a from-scratch design. Notably:
+ * there is NO colored banner strip in the real template (just a small plain
+ * Sunidhi logo top-right), section titles are plain bold black text in a
+ * bordered box (no dark fill), and data rows are center-aligned.
  */
 
 import { NextResponse } from "next/server";
@@ -22,143 +26,147 @@ export const dynamic = "force-dynamic";
 const A = (hex: string) => `FF${hex}`; // prepend full-opacity alpha
 
 const C = {
-  posGreen:   A("00B050"),
-  negRed:     A("FF0000"),
-  darkHdr:    A("595959"),  // section header bg
-  white:      A("FFFFFF"),
-  black:      A("000000"),
-  bannerRed:  A("C00000"),  // top/bottom red strip
-  bannerBlue: A("1F3864"),  // main header blue
-  footerGray: A("D3D3D3"),
-  midGray:    A("808080"),
-  borderBlack:A("000000"),
-  borderGray: A("BFBFBF"),
+  posGreen: A("00B050"),
+  negRed:   A("FF0000"),
+  black:    A("000000"),
+  midGray:  A("808080"),
 };
 
-// -- Thin border helper ---------------------------------------------------------
+const THIN = { style: "thin" as const, color: { argb: C.black } };
 
-const THIN = (c = C.borderGray) =>
-  ({ style: "thin" as const, color: { argb: c } });
+/** Draws a border around only the OUTER perimeter of a range -- matches the
+ * reference template's "boxed section" look (no internal grid lines). */
+function boxBorder(ws: ExcelJS.Worksheet, r1: number, c1: number, r2: number, c2: number) {
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      const cell = ws.getCell(r, c);
+      const border: Partial<ExcelJS.Borders> = { ...cell.border };
+      if (r === r1) border.top = THIN;
+      if (r === r2) border.bottom = THIN;
+      if (c === c1) border.left = THIN;
+      if (c === c2) border.right = THIN;
+      cell.border = border;
+    }
+  }
+}
 
-const BORDER = (c = C.borderGray) => ({
-  top: THIN(c), bottom: THIN(c), left: THIN(c), right: THIN(c),
-});
+/** A full-width horizontal rule (used to separate a section title from its column headers). */
+function hRule(ws: ExcelJS.Worksheet, r: number, c1: number, c2: number) {
+  for (let c = c1; c <= c2; c++) {
+    const cell = ws.getCell(r, c);
+    cell.border = { ...cell.border, bottom: THIN };
+  }
+}
 
 // -- Style appliers -------------------------------------------------------------
 
-function darkHdr(cell: ExcelJS.Cell, text: string, fontSize = 10) {
+/** Section title, e.g. "FII/FPI/DII trading activity...", "Sectorial Contribution in SENSEX". */
+function sectionTitle(cell: ExcelJS.Cell, text: string, size = 14) {
   cell.value = text;
-  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.darkHdr } };
-  cell.font = { bold: true, color: { argb: C.white }, name: "Calibri", size: fontSize };
+  cell.font = { bold: true, size, name: "Calibri" };
   cell.alignment = { horizontal: "center", vertical: "middle" };
-  cell.border = BORDER(C.borderBlack);
 }
 
-function colHdr(cell: ExcelJS.Cell, text: string) {
+/** Column header, e.g. "Category", "Buy Value", "Index", "(%)". */
+function colHdr(cell: ExcelJS.Cell, text: string, size = 14, alignLeft = false) {
   cell.value = text;
-  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.darkHdr } };
-  cell.font = { bold: true, color: { argb: C.white }, name: "Calibri", size: 9 };
-  cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-  cell.border = BORDER(C.borderBlack);
+  cell.font = { bold: true, size, name: "Calibri" };
+  cell.alignment = { horizontal: alignLeft ? "left" : "center", vertical: "middle", wrapText: true };
 }
 
-function label(cell: ExcelJS.Cell, text: string, bold = false) {
+function label(cell: ExcelJS.Cell, text: string, size = 11) {
   cell.value = text;
-  cell.font = { name: "Calibri", size: 10, bold, color: { argb: C.black } };
-  cell.alignment = { vertical: "middle" };
-  cell.border = BORDER(C.borderBlack);
+  cell.font = { name: "Calibri", size, color: { argb: C.black } };
+  cell.alignment = { horizontal: "center", vertical: "middle" };
 }
 
-function neutral(cell: ExcelJS.Cell, value: number, fmt = "#,##0.00") {
+function neutral(cell: ExcelJS.Cell, value: number, fmt = "#,##0.00", size = 11) {
   cell.value = value;
   cell.numFmt = fmt;
-  cell.font = { name: "Calibri", size: 10, color: { argb: C.black } };
-  cell.alignment = { horizontal: "right", vertical: "middle" };
-  cell.border = BORDER(C.borderBlack);
+  cell.font = { name: "Calibri", size, color: { argb: C.black } };
+  cell.alignment = { horizontal: "center", vertical: "middle" };
 }
 
-function colored(cell: ExcelJS.Cell, value: number | null, fmt = "#,##0.00") {
+function colored(cell: ExcelJS.Cell, value: number | null, fmt = "#,##0.00", size = 11) {
   if (value === null) {
     cell.value = "N/A";
-    cell.font = { name: "Calibri", size: 10, color: { argb: C.midGray } };
-    cell.alignment = { horizontal: "center" };
-    cell.border = BORDER(C.borderBlack);
+    cell.font = { name: "Calibri", size, color: { argb: C.midGray } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
     return;
   }
   cell.value = value;
   cell.numFmt = fmt;
   cell.font = {
-    name: "Calibri", size: 10,
+    name: "Calibri", size,
     color: { argb: value > 0 ? C.posGreen : value < 0 ? C.negRed : C.black },
   };
-  cell.alignment = { horizontal: "right", vertical: "middle" };
-  cell.border = BORDER(C.borderBlack);
+  cell.alignment = { horizontal: "center", vertical: "middle" };
 }
 
-function coloredPct(cell: ExcelJS.Cell, value: number | null) {
+function coloredPct(cell: ExcelJS.Cell, value: number | null, size = 11) {
   if (value === null) {
     cell.value = "N/A";
-    cell.font = { name: "Calibri", size: 10, color: { argb: C.midGray } };
-    cell.alignment = { horizontal: "center" };
-    cell.border = BORDER(C.borderBlack);
+    cell.font = { name: "Calibri", size, color: { argb: C.midGray } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
     return;
   }
   cell.value = value / 100;
   cell.numFmt = "0.00%";
   cell.font = {
-    name: "Calibri", size: 10,
+    name: "Calibri", size,
     color: { argb: value > 0 ? C.posGreen : value < 0 ? C.negRed : C.black },
   };
-  cell.alignment = { horizontal: "right", vertical: "middle" };
-  cell.border = BORDER(C.borderBlack);
+  cell.alignment = { horizontal: "center", vertical: "middle" };
 }
 
-// -- GIFT NIFTY from NSE allIndices --------------------------------------------
-// Yahoo Finance does not carry GIFT NIFTY; fetch directly from NSE India.
+/** Sectorial-contribution cells are bold and plain black in the real template
+ * (not colored by sign) -- matched exactly, not a design choice made here. */
+function sectorLabel(cell: ExcelJS.Cell, text: string) {
+  cell.value = text;
+  cell.font = { bold: true, size: 9, name: "Calibri" };
+}
 
-const NSE_UA =
+function sectorPct(cell: ExcelJS.Cell, value: number) {
+  cell.value = value / 100;
+  cell.numFmt = "0.00%";
+  cell.font = { bold: true, size: 9, name: "Calibri", color: { argb: C.black } };
+  cell.alignment = { horizontal: "center" };
+}
+
+// -- GIFT NIFTY from giftnifty.org ----------------------------------------------
+// NSE's own site is behind Akamai bot protection and unreliable to scrape
+// headlessly (confirmed 2026-07-16). giftnifty.org is a small, plain
+// server-rendered page with the same figure, and scrapes cleanly.
+
+const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-async function fetchGiftNiftyFromNse(): Promise<QuoteData | null> {
+async function fetchGiftNiftyFromGiftNiftyOrg(): Promise<QuoteData | null> {
   try {
-    const htmlH = {
-      "User-Agent": NSE_UA,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Cache-Control": "no-cache",
-    };
-    function extractCookies(res: Response): string {
-      const h = res.headers as Headers & { getSetCookie?: () => string[] };
-      const arr = h.getSetCookie
-        ? h.getSetCookie()
-        : (res.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
-      return arr.map((c) => c.split(";")[0].trim()).filter(Boolean).join("; ");
-    }
-    const homeRes = await fetch("https://www.nseindia.com", { headers: htmlH });
-    const cookie = extractCookies(homeRes);
-    await fetch("https://www.nseindia.com/market-data/live-market-indices?symbol=GIFT-NIFTY", {
-      headers: { ...htmlH, Cookie: cookie, Referer: "https://www.nseindia.com/" },
-    });
-    const apiRes = await fetch("https://www.nseindia.com/api/allIndices", {
-      headers: {
-        "User-Agent": NSE_UA,
-        Accept: "application/json, text/plain, */*",
-        "X-Requested-With": "XMLHttpRequest",
-        Referer: "https://www.nseindia.com/market-data/live-market-indices?symbol=GIFT-NIFTY",
-        Cookie: cookie,
-      },
-    });
-    if (!apiRes.ok) return null;
-    const json = await apiRes.json() as { data?: { index: string; last: number; previousClose: number; percentChange: number; change: number }[] };
-    const entry = json.data?.find((d) => /GIFT/i.test(d.index));
-    if (!entry) return null;
+    const res = await fetch("https://giftnifty.org/", { headers: { "User-Agent": UA } });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    const priceMatch = html.match(/class="font-number">([\d,]+)(?:<small>(\.\d+)<\/small>)?/);
+    if (!priceMatch) return null;
+    const price = parseFloat(priceMatch[1].replace(/,/g, "") + (priceMatch[2] ?? ""));
+
+    const pctBlockMatch = html.match(/class="percent"><div class="(positive|negative)">([\s\S]*?)<\/div><\/div>/);
+    if (!pctBlockMatch) return null;
+    const sign = pctBlockMatch[1] === "positive" ? 1 : -1;
+    const nums = pctBlockMatch[2].replace(/<[^>]+>/g, " ").match(/[\d.]+/g);
+    if (!nums || nums.length < 2) return null;
+
+    const changePercent = sign * parseFloat(nums[0]);
+    const change = sign * parseFloat(nums[1]);
+
     return {
-      symbol: "GIFT_NIFTY_NSE",
+      symbol: "GIFT_NIFTY",
       label: "GIFT NIFTY",
-      price: entry.last,
-      change: entry.change,
-      changePercent: entry.percentChange,
-      previousClose: entry.previousClose,
+      price,
+      change,
+      changePercent,
+      previousClose: price - change,
       history: [],
     };
   } catch {
@@ -182,16 +190,16 @@ export async function GET() {
       fetchAllQuotes(),
       fetchGlobalQuotes(),
       fetchBseSectors().catch(() => []), // non-fatal: blank rows if BSE is down
-      fetchGiftNiftyFromNse().catch(() => null), // non-fatal: N/A if NSE is down
+      fetchGiftNiftyFromGiftNiftyOrg().catch(() => null), // non-fatal: N/A if source is down
     ]);
 
     const eodSectors = mapEodSectors(bseSectors);
 
     const { entries, snapshot } = flowData;
     const today = new Date();
-    const fy = fyLongLabel(today);
 
     const fiiTotals = computePeriodTotals(entries, today);
+    const fy = fyLongLabel(today);
 
     const diiMtd = entries
       .filter((e) => e.date.slice(0, 7) >= fiiTotals.startOfMonth)
@@ -212,7 +220,7 @@ export async function GET() {
 
     const dateStr = today.toLocaleDateString("en-IN", {
       day: "2-digit", month: "long", year: "numeric",
-    }); // "05 June 2026"
+    });
 
     const fiiDateStr = (() => {
       const raw = (snapshot as { date?: string } | null)?.date;
@@ -228,199 +236,133 @@ export async function GET() {
     wb.creator = "Sunidhi Research";
     const ws = wb.addWorksheet("Sheet1");
 
-    // Column widths (1=A … 10=J)
-    const WIDTHS = [2, 22, 17, 13, 10, 22, 17, 14, 14, 2];
+    // Column widths (1=A ... 9=I) -- match the real template exactly.
+    const WIDTHS = [6.44, 18.11, 18.11, 18.11, 18.11, 18.11, 18.11, 18.55, 18.11];
     WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    // -- ROWS 1-7: Branded header -----------------------------------------------
-
-    // -- Fill header cells individually to avoid merge conflicts -------------
-    const blueFill = { type: "pattern" as const, pattern: "solid" as const,
-                       fgColor: { argb: C.bannerBlue } };
-    const redFill  = { type: "pattern" as const, pattern: "solid" as const,
-                       fgColor: { argb: C.bannerRed  } };
-
-    // Rows 1-2: red strip -- fill each cell
-    for (const r of [1, 2]) {
-      ws.getRow(r).height = 7;
-      for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = redFill;
-    }
-
-    // Rows 3-6: blue banner -- fill each cell
-    for (const r of [3, 4, 5, 6]) {
-      ws.getRow(r).height = 22;
-      for (let c = 1; c <= 10; c++) ws.getCell(r, c).fill = blueFill;
-    }
-
-    // Title span across rows 3-6, cols 2-6 (left side of banner)
-    ws.mergeCells(3, 2, 6, 6);
-    const titleCell = ws.getCell(3, 2);
-    titleCell.value = "EOD Snippets On Market";
-    titleCell.fill = blueFill;
-    titleCell.font = { bold: true, size: 18, color: { argb: C.white }, name: "Calibri" };
-    titleCell.alignment = { horizontal: "center", vertical: "middle" };
-
-    // Row 7: red bottom strip -- fill each cell
-    ws.getRow(7).height = 5;
-    for (let c = 1; c <= 10; c++) ws.getCell(7, c).fill = redFill;
-
-    // Embed Sunidhi logo (right side of banner rows 2-6)
+    // -- Rows 1-8: plain Sunidhi logo, top-right -- NO banner/strip -----------
+    // The real template has no colored header at all, just a small corner logo.
     try {
       const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const imgId = wb.addImage({ buffer: readFileSync(logoPath) as any, extension: "png" });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const imgId = wb.addImage({ buffer: readFileSync(logoPath) as never, extension: "png" });
       ws.addImage(imgId, {
-        tl: { col: 6.2, row: 1 },
-        br: { col: 9.8, row: 6.8 },
+        tl: { col: 7, row: 0.3 },
+        br: { col: 8.6, row: 5.3 },
         editAs: "oneCell",
-      } as any);
+      } as never);
     } catch { /* logo not found -- skip */ }
 
-    // -- Row 8: blank spacer ---------------------------------------------------
-    ws.getRow(8).height = 8;
+    ws.getRow(7).height = 15;
+    hRule(ws, 7, 2, 9);
 
-    // -- Row 9: Date ------------------------------------------------------------
-    ws.getRow(9).height = 20;
-    ws.mergeCells(9, 2, 9, 9);
-    const dateCell = ws.getCell(9, 2);
+    // -- Row 9: Date, right-aligned in H9:I9 only ------------------------------
+    ws.getRow(9).height = 18;
+    ws.mergeCells(9, 8, 9, 9);
+    const dateCell = ws.getCell(9, 8);
     dateCell.value = dateStr;
-    dateCell.font = { bold: true, size: 12, name: "Calibri", color: { argb: C.black } };
-    dateCell.alignment = { horizontal: "center", vertical: "middle" };
-
-    // -- Row 10: blank ---------------------------------------------------------
-    ws.getRow(10).height = 5;
+    dateCell.font = { bold: true, size: 14, name: "Calibri" };
+    dateCell.alignment = { horizontal: "center" };
 
     // -- Row 11: FII section title ----------------------------------------------
     ws.getRow(11).height = 18;
     ws.mergeCells(11, 2, 11, 9);
-    darkHdr(ws.getCell(11, 2),
-      "FII/FPI/DII trading activity across Indian Exchanges - CM (Rs. In Cr.)", 10);
+    sectionTitle(ws.getCell(11, 2), "FII/FPI/DII trading activity across Indian Exchanges - CM (Rs. In Cr.)");
 
     // -- Row 12: column headers -------------------------------------------------
-    ws.getRow(12).height = 30;
+    ws.getRow(12).height = 18;
     ws.mergeCells(12, 2, 12, 3);
     colHdr(ws.getCell(12, 2), "Category");
-    ([ [4,"Date"], [5,"Buy Value"], [6,"Sell Value"],
-       [7,"Net Value"], [8,`MTD\n(${fy})`], [9,`YTD\n(${fy})`] ] as [number,string][])
+    ([ [4, "Date"], [5, "Buy Value"], [6, "Sell Value"],
+       [7, "Net Value"], [8, `MTD (${fy})`], [9, `YTD (${fy})`] ] as [number, string][])
       .forEach(([c, t]) => colHdr(ws.getCell(12, c), t));
 
     // -- Row 13: FII/FPI --------------------------------------------------------
-    ws.getRow(13).height = 16;
     ws.mergeCells(13, 2, 13, 3);
-    label(ws.getCell(13, 2), "FII/FPI", true);
-    ws.getCell(13, 2).alignment = { horizontal: "center", vertical: "middle" };
+    label(ws.getCell(13, 2), "FII/FPI");
     label(ws.getCell(13, 4), fiiDateStr);
-    ws.getCell(13, 4).alignment = { horizontal: "center", vertical: "middle" };
     neutral(ws.getCell(13, 5), snapshot?.fiiEquityBuy ?? 0);
     neutral(ws.getCell(13, 6), snapshot?.fiiEquitySell ?? 0);
     colored(ws.getCell(13, 7), snapshot?.fiiEquityNet ?? 0);
-    colored(ws.getCell(13, 8), fiiTotals.mtd);
-    colored(ws.getCell(13, 9), fiiTotals.ytd);
+    colored(ws.getCell(13, 8), fiiTotals.mtd, "#,##0.00", 10);
+    colored(ws.getCell(13, 9), fiiTotals.ytd, "#,##0.00", 10);
 
     // -- Row 14: DII ------------------------------------------------------------
-    ws.getRow(14).height = 16;
     ws.mergeCells(14, 2, 14, 3);
-    label(ws.getCell(14, 2), "DII", true);
-    ws.getCell(14, 2).alignment = { horizontal: "center", vertical: "middle" };
+    label(ws.getCell(14, 2), "DII");
     label(ws.getCell(14, 4), fiiDateStr);
-    ws.getCell(14, 4).alignment = { horizontal: "center", vertical: "middle" };
     neutral(ws.getCell(14, 5), snapshot?.diiEquityBuy ?? 0);
     neutral(ws.getCell(14, 6), snapshot?.diiEquitySell ?? 0);
     colored(ws.getCell(14, 7), snapshot?.diiEquityNet ?? 0);
-    colored(ws.getCell(14, 8), diiMtd);
-    colored(ws.getCell(14, 9), diiYtd);
+    colored(ws.getCell(14, 8), diiMtd, "#,##0.00", 10);
+    colored(ws.getCell(14, 9), diiYtd, "#,##0.00", 10);
 
-    // -- Row 15: blank ---------------------------------------------------------
-    ws.getRow(15).height = 5;
+    boxBorder(ws, 11, 2, 14, 9);
+    hRule(ws, 11, 2, 9);
 
-    // -- Row 16: Sectorial title ------------------------------------------------
+    // -- Row 16: Sectorial title -------------------------------------------------
     ws.getRow(16).height = 18;
     ws.mergeCells(16, 2, 16, 9);
-    darkHdr(ws.getCell(16, 2), "Sectorial Contribution in SENSEX");
+    sectionTitle(ws.getCell(16, 2), "Sectorial Contribution in SENSEX");
 
-    // -- Row 17: sectorial column headers --------------------------------------
-    ws.getRow(17).height = 16;
-    ([2,4,6,8] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "Index"));
-    ([3,5,7,9] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "(%)"));
+    // -- Row 17: sectorial column headers ---------------------------------------
+    ws.getRow(17).height = 18;
+    ([2, 4, 6, 8] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "Index", 14, true));
+    ([3, 5, 7, 9] as number[]).forEach((c) => colHdr(ws.getCell(17, c), "(%)"));
 
-    // -- Rows 18-23: BSE SENSEX sectorial data (6 rows × 4 sector pairs) -------
-    //
-    // Column layout per row:
-    //   B(2)=sector1 name  C(3)=% | D(4)=sector2 name  E(5)=% |
-    //   F(6)=sector3 name  G(7)=% | H(8)=sector4 name  I(9)=%
-    //
-    // eodSectors[] is indexed 0..23 in row-major order matching the template.
+    // -- Rows 18-23: BSE SENSEX sectorial data (6 rows x 4 sector pairs) -------
     for (let row = 18; row <= 23; row++) {
-      ws.getRow(row).height = 14;
-      const baseIdx = (row - 18) * 4; // 0, 4, 8, 12, 16, 20
-
+      const baseIdx = (row - 18) * 4;
       const COL_PAIRS: [number, number][] = [[2, 3], [4, 5], [6, 7], [8, 9]];
 
       COL_PAIRS.forEach(([cLabel, cPct], colIdx) => {
         const s = eodSectors[baseIdx + colIdx];
-        const labelCell = ws.getCell(row, cLabel);
-        const pctCell   = ws.getCell(row, cPct);
-
         if (s) {
-          labelCell.value = s.label;
-          labelCell.font  = { name: "Calibri", size: 9, color: { argb: C.black } };
-          labelCell.alignment = { vertical: "middle" };
-          labelCell.border = BORDER(C.borderBlack);
-
-          pctCell.value  = s.changePercent / 100;
-          pctCell.numFmt = "0.00%";
-          pctCell.font   = {
-            name: "Calibri", size: 9,
-            color: {
-              argb: s.changePercent > 0
-                ? C.posGreen
-                : s.changePercent < 0
-                ? C.negRed
-                : C.black,
-            },
-          };
-          pctCell.alignment = { horizontal: "right", vertical: "middle" };
-          pctCell.border = BORDER(C.borderBlack);
-        } else {
-          // BSE didn't return this index -- leave blank with border
-          labelCell.border = BORDER(C.borderBlack);
-          pctCell.border   = BORDER(C.borderBlack);
+          sectorLabel(ws.getCell(row, cLabel), s.label);
+          sectorPct(ws.getCell(row, cPct), s.changePercent);
         }
       });
     }
 
-    // -- Row 24: blank ---------------------------------------------------------
-    ws.getRow(24).height = 5;
+    boxBorder(ws, 16, 2, 23, 9);
+    hRule(ws, 16, 2, 9);
+    hRule(ws, 17, 2, 9);
 
-    // -- Row 25: Commodity + APAC headers --------------------------------------
-    ws.getRow(25).height = 30;
-    ([ [2,"Commodity"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
-       [6,"Asia Pacific"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
-      .forEach(([c, t]) => colHdr(ws.getCell(25, c), t));
+    // -- Row 25/26: Commodity + Asia Pacific (staggered header, matches template) ---
+    // Commodity's own header sits on row 25; Asia Pacific gets a section title on
+    // row 25 (merged F25:I25) with its OWN Index/CMP/Points/(%) header one row
+    // below (row 26) -- so Commodities has 5 data rows (26-30) but Asia Pacific
+    // only has 4 (27-30), both ending together at row 30. This offset is real,
+    // verified cell-by-cell against the reference -- not a bug to "fix".
+    ws.getRow(25).height = 16;
+    ([ [2, "Commodity"], [3, `CMP @\n${timeStamp}`], [4, "Points"], [5, "(%)"] ] as [number, string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(25, c), t, 12, c === 2));
+    ws.mergeCells(25, 6, 25, 9);
+    sectionTitle(ws.getCell(25, 6), "Asia Pacific", 12);
 
-    // -- Rows 26-30: Commodities (B-E) + APAC (F-I) ----------------------------
+    ws.getRow(26).height = 16;
+    ([ [6, "Index"], [7, `CMP @\n${timeStamp}`], [8, "Points"], [9, "(%)"] ] as [number, string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(26, c), t, 12, c === 6));
+
     const COMMODITIES = [
-      { label: "Gold",            sym: "GC=F",      fmt: "#,##0.000" },
-      { label: "Silver",          sym: "SI=F",      fmt: "#,##0.000" },
-      { label: "Brent Crude",     sym: "BZ=F",      fmt: "#,##0.000" },
-      { label: "WTI Nymex Crude", sym: "CL=F",      fmt: "#,##0.000" },
-      { label: "Natural Gas",     sym: "NG=F",      fmt: "#,##0.000" },
+      { label: "Gold",            sym: "GC=F", fmt: "#,##0.000" },
+      { label: "Silver",          sym: "SI=F", fmt: "#,##0.000" },
+      { label: "Brent Crude",     sym: "BZ=F", fmt: "#,##0.000" },
+      { label: "WTI Nymex Crude", sym: "CL=F", fmt: "#,##0.000" },
+      { label: "Natural Gas",     sym: "NG=F", fmt: "#,##0.000" },
     ];
     const APAC = [
       { label: "Shanghai Composite", sym: "000001.SS" },
-      { label: "GIFT NIFTY",         sym: null },        // fetched from NSE, not Yahoo Finance
-      { label: "Nikkei 225",          sym: "^N225"     },
-      { label: "Hang Seng",           sym: "^HSI"      },
+      { label: "GIFT NIFTY",         sym: null },
+      { label: "Nikkei 225",        sym: "^N225" },
+      { label: "Hang Seng",         sym: "^HSI" },
     ];
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < COMMODITIES.length; i++) {
       const row = 26 + i;
-      ws.getRow(row).height = 14;
-
       const cm = COMMODITIES[i];
       const cmQ = Q(cm.sym);
       label(ws.getCell(row, 2), cm.label);
+      ws.getCell(row, 2).alignment = { horizontal: "left", vertical: "middle" };
       if (cmQ) {
         neutral(ws.getCell(row, 3), cmQ.price, cm.fmt);
         colored(ws.getCell(row, 4), cmQ.change, cm.fmt);
@@ -428,63 +370,57 @@ export async function GET() {
       } else {
         [3, 4, 5].forEach((c) => colored(ws.getCell(row, c), null));
       }
+    }
 
-      if (i < APAC.length) {
-        const ap = APAC[i];
-        // GIFT NIFTY row uses the NSE-sourced quote; all others use Yahoo Finance pool
-        const apQ = ap.sym === null && ap.label === "GIFT NIFTY"
-          ? giftNiftyQuote
-          : ap.sym ? Q(ap.sym) : null;
-        label(ws.getCell(row, 6), ap.label);
-        if (apQ) {
-          neutral(ws.getCell(row, 7), apQ.price, "#,##0.00");
-          colored(ws.getCell(row, 8), apQ.change, "#,##0.00");
-          coloredPct(ws.getCell(row, 9), apQ.changePercent);
-        } else {
-          [7, 8, 9].forEach((c) => colored(ws.getCell(row, c), null));
-        }
+    for (let i = 0; i < APAC.length; i++) {
+      const row = 27 + i;
+      const ap = APAC[i];
+      const apQ = ap.sym === null && ap.label === "GIFT NIFTY" ? giftNiftyQuote : ap.sym ? Q(ap.sym) : null;
+      label(ws.getCell(row, 6), ap.label);
+      ws.getCell(row, 6).alignment = { horizontal: "left", vertical: "middle" };
+      if (apQ) {
+        neutral(ws.getCell(row, 7), apQ.price, "#,##0.00");
+        colored(ws.getCell(row, 8), apQ.change, "#,##0.00");
+        coloredPct(ws.getCell(row, 9), apQ.changePercent);
       } else {
-        [6, 7, 8, 9].forEach((c) => {
-          ws.getCell(row, c).border = BORDER(C.borderBlack);
-        });
+        [7, 8, 9].forEach((c) => colored(ws.getCell(row, c), null));
       }
     }
 
-    // -- Row 31: blank ---------------------------------------------------------
-    ws.getRow(31).height = 5;
+    boxBorder(ws, 25, 2, 30, 5);
+    boxBorder(ws, 25, 6, 30, 9);
+    hRule(ws, 26, 6, 9);
 
-    // -- Row 32: Europe + America headers --------------------------------------
-    ws.getRow(32).height = 18;
+    // -- Row 32/33: Europe + America ---------------------------------------------
+    ws.getRow(32).height = 16;
     ws.mergeCells(32, 2, 32, 5);
-    darkHdr(ws.getCell(32, 2), "Europe");
+    sectionTitle(ws.getCell(32, 2), "Europe", 12);
     ws.mergeCells(32, 6, 32, 9);
-    darkHdr(ws.getCell(32, 6), "America");
+    sectionTitle(ws.getCell(32, 6), "America", 12);
 
-    // -- Row 33: column headers -------------------------------------------------
-    ws.getRow(33).height = 30;
-    ([ [2,"Index"], [3,`CMP @\n${timeStamp}`], [4,"Points"], [5,"(%)"],
-       [6,"Index"], [7,`CMP @\n${timeStamp}`], [8,"Points"], [9,"(%)"] ] as [number,string][])
-      .forEach(([c, t]) => colHdr(ws.getCell(33, c), t));
+    ws.getRow(33).height = 16;
+    ([ [2, "Index"], [3, `CMP @\n${timeStamp}`], [4, "Points"], [5, "(%)"],
+       [6, "Index"], [7, `CMP @\n${timeStamp}`], [8, "Points"], [9, "(%)"] ] as [number, string][])
+      .forEach(([c, t]) => colHdr(ws.getCell(33, c), t, 12, c === 2 || c === 6));
 
-    // -- Rows 34-36: Europe (B-E) + America (F-I) ------------------------------
-    const EUROPE  = [
-      { label: "FTSE 100",         sym: "^FTSE"  },
-      { label: "DAX",              sym: "^GDAXI" },
-      { label: "CAC",              sym: "^FCHI"  },
+    const EUROPE = [
+      { label: "FTSE 100", sym: "^FTSE" },
+      { label: "DAX",      sym: "^GDAXI" },
+      { label: "CAC",      sym: "^FCHI" },
     ];
     const AMERICA = [
-      { label: "Dow Jones",        sym: "^DJI"  },
+      { label: "Dow Jones",        sym: "^DJI" },
       { label: "S&P 500",          sym: "^GSPC" },
       { label: "Nasdaq Composite", sym: "^IXIC" },
     ];
 
     for (let i = 0; i < 3; i++) {
       const row = 34 + i;
-      ws.getRow(row).height = 14;
 
       const eu = EUROPE[i];
       const euQ = Q(eu.sym);
       label(ws.getCell(row, 2), eu.label);
+      ws.getCell(row, 2).alignment = { horizontal: "left", vertical: "middle" };
       if (euQ) {
         neutral(ws.getCell(row, 3), euQ.price, "#,##0.00");
         colored(ws.getCell(row, 4), euQ.change, "#,##0.00");
@@ -496,6 +432,7 @@ export async function GET() {
       const am = AMERICA[i];
       const amQ = Q(am.sym);
       label(ws.getCell(row, 6), am.label);
+      ws.getCell(row, 6).alignment = { horizontal: "left", vertical: "middle" };
       if (amQ) {
         neutral(ws.getCell(row, 7), amQ.price, "#,##0.00");
         colored(ws.getCell(row, 8), amQ.change, "#,##0.00");
@@ -505,18 +442,19 @@ export async function GET() {
       }
     }
 
-    // -- Row 37: blank ---------------------------------------------------------
-    ws.getRow(37).height = 6;
+    boxBorder(ws, 32, 2, 36, 5);
+    boxBorder(ws, 32, 6, 36, 9);
+    hRule(ws, 33, 2, 9);
 
     // -- Row 38: Disclaimer header ----------------------------------------------
-    ws.getRow(38).height = 16;
+    ws.getRow(38).height = 18;
     ws.mergeCells(38, 2, 38, 9);
     const discHdr = ws.getCell(38, 2);
     discHdr.value = "Disclosures and Disclaimer:-";
-    discHdr.font = { bold: true, underline: true, name: "Calibri", size: 10 };
+    discHdr.font = { bold: true, underline: true, size: 14, name: "Calibri" };
 
     // -- Row 39: Disclaimer text (tall) ----------------------------------------
-    ws.getRow(39).height = 320;
+    ws.getRow(39).height = 318;
     ws.mergeCells(39, 2, 39, 9);
     const discBody = ws.getCell(39, 2);
     discBody.value =
@@ -526,35 +464,31 @@ export async function GET() {
       `Sunidhi or its associates / analyst has not received any compensation / managed or co-managed public offering of securities of the company covered by Analyst during the past twelve months. Sunidhi or its associates has not received any compensation or other benefits from the company covered by Analyst or third party in connection with the research report. Analyst has not served as an officer, director or employee of subject company and Sunidhi / analyst has not been engaged in market making activity of the subject company.\n\n` +
       `Analyst or his relatives do not hold beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. Sunidhi or its associates may have investment positions in the stocks recommended in this report, which may have beneficial ownership of 1% or more in the subject company at the end of the month immediately preceding the date of publication of this research report. However, Sunidhi is maintaining Chinese wall between other business divisions or activities. Analyst has exercised due diligence in checking correctness of details and opinion expressed herein is unbiased.\n\n` +
       `This report is meant for personal informational purposes and is not be construed as a solicitation or financial advice or an offer to buy or sell any securities or related financial instruments. While utmost care has been taken in preparing this report, we claim no responsibility for its accuracy. Recipients should not regard the report as a substitute for the exercise of their own judgment. Any opinions expressed in this report are subject to change without any notice and this report is not under any obligation to update or keep current the information contained herein. Past performance is not necessarily indicative of future results. This report accepts no liability whatsoever for any loss or damage of any kind arising out of the use of all or any part of this report.\n\n` +
-      `The information in this document has been printed on the basis of publicly available information, internal data and other reliable sources believed to be true, but we do not represent that it is accurate or complete and it should not be relied on as such, as this document is for general guidance only. Sunidhi or any of its affiliates/ group companies shall not be in any way responsible for any loss or damage that may arise to any person from any inadvertent error in the information contained in this report. Sunidhi has not independently verified all the information contained within this document. Accordingly, we cannot testify, nor make any representation or`;
-    discBody.font = { name: "Calibri", size: 9, color: { argb: C.black } };
+      `Each recipient of this document should make such investigations as they deem necessary to arrive at an independent evaluation of an investment in the securities of the companies referred to in this document (including the merits and risks involved), and should consult their own advisors to determine the merits and risks of such an investment.\n\n` +
+      `The information in this document has been printed on the basis of publicly available information, internal data and other reliable sources believed to be true, but we do not represent that it is accurate or complete and it should not be relied on as such, as this document is for general guidance only. Sunidhi or any of its affiliates/ group companies shall not be in any way responsible for any loss or damage that may arise to any person from any inadvertent error in the information contained in this report. Sunidhi has not independently verified all the information contained within this document. Accordingly, we cannot testify, nor make any representation or warranty, express or implied, to the accuracy, contents or data contained within this document. While Sunidhi endeavors to update on a reasonable basis the information discussed in this material, there may be regulatory, compliance, or other reasons that prevent us from doing so. Neither Sunidhi nor its directors, employees or affiliates shall be liable for any loss or damage that may arise from or in connection with the use of this information.`;
+    discBody.font = { name: "Calibri", size: 8, color: { argb: C.black } };
     discBody.alignment = { wrapText: true, vertical: "top" };
 
+    boxBorder(ws, 38, 2, 39, 9);
+    hRule(ws, 38, 2, 9);
+
     // -- Row 40: Company footer -------------------------------------------------
-    ws.getRow(40).height = 16;
+    ws.getRow(40).height = 18.6;
     ws.mergeCells(40, 2, 40, 9);
     const footerCell = ws.getCell(40, 2);
     footerCell.value = "Sunidhi Securities & Finance Ltd. - Research Analyst - INH000000000";
-    footerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.footerGray } };
-    footerCell.font = { bold: true, name: "Calibri", size: 10 };
-    footerCell.alignment = { horizontal: "center", vertical: "middle" };
-    footerCell.border = BORDER(C.borderBlack);
+    footerCell.font = { bold: true, name: "Calibri", size: 9 };
+    footerCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
     // -- Row 41: Address --------------------------------------------------------
-    ws.getRow(41).height = 14;
+    ws.getRow(41).height = 20.4;
     ws.mergeCells(41, 2, 41, 9);
     const addrCell = ws.getCell(41, 2);
-    addrCell.value =
-      "Registered office address (configure via MTF_COMPLIANCE_ADDRESS)";
-    addrCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.footerGray } };
+    addrCell.value = "Registered office address (configure via MTF_COMPLIANCE_ADDRESS)";
     addrCell.font = { name: "Calibri", size: 9 };
-    addrCell.alignment = { horizontal: "center", vertical: "middle" };
-    addrCell.border = BORDER(C.borderBlack);
+    addrCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
-    // -- Rows 42-44: Registration table ----------------------------------------
-    const regFill = { type: "pattern" as const, pattern: "solid" as const,
-                       fgColor: { argb: C.footerGray } };
-
+    // -- Rows 42-44: Registration table ------------------------------------------
     const REG_ROWS: Array<[number, [number, number, string][]]> = [
       [42, [[2, 3, "Bombay Stock Exchange (BSE)"],
             [4, 6, "National Stock Exchange of India Ltd (NSE)"],
@@ -568,16 +502,22 @@ export async function GET() {
     ];
 
     for (const [row, cols] of REG_ROWS) {
-      ws.getRow(row).height = 14;
       for (const [c1, c2, text] of cols) {
         if (c1 !== c2) ws.mergeCells(row, c1, row, c2);
         const cell = ws.getCell(row, c1);
         cell.value = text;
-        cell.fill = regFill;
-        cell.font = { name: "Calibri", size: 9, bold: row === 42 };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-        cell.border = BORDER(C.borderBlack);
+        cell.font = { name: "Calibri", size: 9 };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       }
+    }
+
+    boxBorder(ws, 40, 2, 44, 9);
+    hRule(ws, 40, 2, 9);
+    hRule(ws, 41, 2, 9);
+    for (let r = 42; r <= 44; r++) {
+      ws.getCell(r, 4).border = { ...ws.getCell(r, 4).border, left: THIN };
+      ws.getCell(r, 7).border = { ...ws.getCell(r, 7).border, left: THIN };
+      if (r < 44) hRule(ws, r, 2, 9);
     }
 
     // -- Serialize --------------------------------------------------------------

@@ -42,43 +42,44 @@ interface BseRawItem {
 
 // -- EOD template sector grid ---------------------------------------------------
 //
-// 24 sectors displayed as 6 rows × 4 paired (Index | %) columns.
-// Order matches the original Sunidhi Excel template exactly.
+// 24 sectors displayed as 6 rows x 4 paired (Index | %) columns. Order and
+// exact codes verified cell-by-cell against a real Sunidhi-authored EOD
+// report (2026-07-15) and BSE's live cat=2/cat=3 index list -- NOT a guess.
 //
-// Row 18 → indices 0-3  | Row 19 → 4-7  | Row 20 → 8-11
-// Row 21 → indices 12-15 | Row 22 → 16-19 | Row 23 → 20-23
+// Row 18 -> indices 0-3  | Row 19 -> 4-7  | Row 20 -> 8-11
+// Row 21 -> indices 12-15 | Row 22 -> 16-19 | Row 23 -> 20-23
 
 export const EOD_SENSEX_SECTORS: ReadonlyArray<{ label: string; code: string }> = [
   // Row 18
   { label: "Capital Goods",           code: "BSECG"   }, // cat=2
-  { label: "Energy",                  code: "ENERGY"  }, // cat=2
-  { label: "Financial Services",      code: "FINSER"  }, // cat=2
-  { label: "Private Banks",           code: "BSEPBI"  }, // cat=2
-  // Row 19
-  { label: "Telecom",                 code: "TELCOM"  }, // cat=2
-  { label: "Power",                   code: "POWER"   }, // cat=2
-  { label: "Auto",                    code: "AUTO"    }, // cat=2
-  { label: "Metal",                   code: "METAL"   }, // cat=2
-  // Row 20
-  { label: "Industrials",             code: "INDSTR"  }, // cat=2
-  { label: "Healthcare",              code: "BSEHC"   }, // cat=2
-  { label: "Services",                code: "BSESER"  }, // cat=2
+  { label: "Bankex",                  code: "BANKEX"  }, // cat=2
   { label: "Commodities",             code: "COMDTY"  }, // cat=2
+  { label: "Infrastructure",          code: "INFRA"   }, // cat=3
+  // Row 19
+  { label: "Consumer Durables",       code: "BSECD"   }, // cat=2
+  { label: "Energy",                  code: "ENERGY"  }, // cat=2
+  { label: "Services",                code: "BSESER"  }, // cat=2
+  { label: "Focused IT",              code: "FOCIT"   }, // cat=2
+  // Row 20
+  { label: "Financial Services",      code: "FINSER"  }, // cat=2
+  { label: "Auto",                    code: "AUTO"    }, // cat=2
+  { label: "Utilities",               code: "UTILS"   }, // cat=2
+  { label: "Realty",                  code: "REALTY"  }, // cat=2
   // Row 21
   { label: "Consumer Discretionary",  code: "CONDIS"  }, // cat=2
-  { label: "Realty",                  code: "REALTY"  }, // cat=2
-  { label: "Infrastructure",          code: "INFRA"   }, // cat=3
-  { label: "IT",                      code: "BSEIT"   }, // cat=2
-  // Row 22
-  { label: "Consumer Durables",       code: "BSECD"   }, // cat=2
-  { label: "PSU Bank",                code: "PSUBNK"  }, // cat=2
-  { label: "Bankex",                  code: "BANKEX"  }, // cat=2
-  { label: "Manufacturing",           code: "MFG"     }, // cat=3
-  // Row 23
-  { label: "Oil & Gas",               code: "OILGAS"  }, // cat=2
   { label: "PSU",                     code: "BSEPSU"  }, // cat=3
+  { label: "Metal",                   code: "METAL"   }, // cat=2
   { label: "FMCG",                    code: "BSEFMCG" }, // cat=2
-  { label: "Focused IT",              code: "FOCIT"   }, // cat=2
+  // Row 22
+  { label: "Oil & Gas",               code: "OILGAS"  }, // cat=2
+  { label: "Telecom",                 code: "TELCOM"  }, // cat=2
+  { label: "TECK",                    code: "TECK"    }, // cat=3
+  { label: "POWER & ENERGY",          code: "POWENE"  }, // cat=3
+  // Row 23
+  { label: "Healthcare",              code: "BSEHC"   }, // cat=2
+  { label: "Power",                   code: "POWER"   }, // cat=2
+  { label: "IT",                      code: "BSEIT"   }, // cat=2
+  { label: "Manufacturing",           code: "MFG"     }, // cat=3
 ];
 
 // -- BSE HTTP fetch (insecureHTTPParser for malformed headers) -----------------
