@@ -255,8 +255,17 @@ export async function GET() {
 
     ws.getRow(8).height = 8;
 
-    // -- Row 9: Date, right-aligned in H9:I9 only ------------------------------
+    // -- Row 9: Date, right-aligned in H9:I9, with a single consolidated ---------
+    // price-snapshot timestamp just to its left (cols F:G) -- one clock
+    // reading for the whole report instead of repeating "CMP @ <time>" in
+    // every Commodity/Asia Pacific/Europe/America column header.
     ws.getRow(9).height = 18;
+    ws.mergeCells(9, 6, 9, 7);
+    const timestampCell = ws.getCell(9, 6);
+    timestampCell.value = `Prices as of ${timeStamp}`;
+    timestampCell.font = { italic: true, size: 10, color: { argb: C.midGray }, name: "Calibri" };
+    timestampCell.alignment = { horizontal: "right", vertical: "middle" };
+
     ws.mergeCells(9, 8, 9, 9);
     const dateCell = ws.getCell(9, 8);
     dateCell.value = dateStr;
@@ -334,13 +343,13 @@ export async function GET() {
     // only has 4 (27-30), both ending together at row 30. This offset is real,
     // verified cell-by-cell against the reference -- not a bug to "fix".
     ws.getRow(25).height = 16;
-    ([ [2, "Commodity"], [3, `CMP @\n${timeStamp}`], [4, "Points"], [5, "(%)"] ] as [number, string][])
+    ([ [2, "Commodity"], [3, "CMP @"], [4, "Points"], [5, "(%)"] ] as [number, string][])
       .forEach(([c, t]) => colHdr(ws.getCell(25, c), t, 12, c === 2));
     ws.mergeCells(25, 6, 25, 9);
     sectionTitle(ws.getCell(25, 6), "Asia Pacific", 12);
 
     ws.getRow(26).height = 16;
-    ([ [6, "Index"], [7, `CMP @\n${timeStamp}`], [8, "Points"], [9, "(%)"] ] as [number, string][])
+    ([ [6, "Index"], [7, "CMP @"], [8, "Points"], [9, "(%)"] ] as [number, string][])
       .forEach(([c, t]) => colHdr(ws.getCell(26, c), t, 12, c === 6));
 
     const COMMODITIES = [
@@ -399,8 +408,8 @@ export async function GET() {
     sectionTitle(ws.getCell(32, 6), "America", 12);
 
     ws.getRow(33).height = 16;
-    ([ [2, "Index"], [3, `CMP @\n${timeStamp}`], [4, "Points"], [5, "(%)"],
-       [6, "Index"], [7, `CMP @\n${timeStamp}`], [8, "Points"], [9, "(%)"] ] as [number, string][])
+    ([ [2, "Index"], [3, "CMP @"], [4, "Points"], [5, "(%)"],
+       [6, "Index"], [7, "CMP @"], [8, "Points"], [9, "(%)"] ] as [number, string][])
       .forEach(([c, t]) => colHdr(ws.getCell(33, c), t, 12, c === 2 || c === 6));
 
     const EUROPE = [
