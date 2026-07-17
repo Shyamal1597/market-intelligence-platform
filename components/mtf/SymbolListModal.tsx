@@ -60,13 +60,16 @@ function SortHeader({
 }: { label: string; field: SortField; active: boolean; dir: SortDir; onClick: (f: SortField) => void; align?: "left" | "right" }) {
   const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
   return (
-    <th className={`font-normal px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
+    <th className={`font-normal p-0 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         onClick={() => onClick(field)}
-        className={`inline-flex items-center gap-1 hover:text-primary transition-colors ${active ? "text-primary" : ""} ${align === "right" ? "flex-row-reverse" : ""}`}
+        title={`Sort by ${label}`}
+        className={`inline-flex items-center gap-1 w-full px-2 py-1.5 rounded-sm hover:bg-amber/10 hover:text-amber transition-colors cursor-pointer ${
+          active ? "text-amber" : "text-muted"
+        } ${align === "right" ? "flex-row-reverse justify-start" : "justify-start"}`}
       >
         {label}
-        <Icon size={10} className={active ? "opacity-100" : "opacity-40"} />
+        <Icon size={12} className={active ? "opacity-100" : "opacity-70"} />
       </button>
     </th>
   );
