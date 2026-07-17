@@ -81,10 +81,27 @@ function CustomContent(props: any) {
   );
 }
 
+/** Recharts' squarified Treemap places boxes in the order of the data array,
+ * starting from the top-left and proceeding in reading order -- so sorting
+ * all "adding leverage" boxes before all "reducing leverage" ones clusters
+ * green toward the left and red toward the right, instead of interleaving
+ * them purely by book size. */
+function sortForLeftRightGrouping(nodes: HeatmapNode[]): HeatmapNode[] {
+  const sign = (n: HeatmapNode) => {
+    const pct = n.amtChangePct ?? 0;
+    return pct > 0 ? 1 : pct < 0 ? -1 : 0;
+  };
+  return [...nodes].sort((a, b) => {
+    const s = sign(b) - sign(a);
+    if (s !== 0) return s;
+    return (b.amtToday ?? 0) - (a.amtToday ?? 0);
+  });
+}
+
 export function MTFHeatmap({
   nodes, onSelectSymbol,
 }: { nodes: HeatmapNode[]; onSelectSymbol?: (symbol: string) => void }) {
-  const data = nodes.map((n) => ({ ...n, name: n.symbol, size: n.amtToday }));
+  const data = sortForLeftRightGrouping(nodes).map((n) => ({ ...n, name: n.symbol, size: n.amtToday }));
 
   return (
     <div className="rounded-lg border border-border bg-surface p-3 h-[560px] flex flex-col">
