@@ -3,13 +3,9 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from "recharts";
+import { fmtCr } from "@/lib/mtf/format";
 
 interface HistoryPoint { date: string; amtFinancedLakhs: number | null; close: number | null; }
-
-function fmtLakhs(v: number | null): string {
-  if (v === null) return "—";
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
-}
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -18,10 +14,16 @@ function CustomTooltip({ active, payload, label }: any) {
   return (
     <div className="bg-[#13151E] border border-[#1E2235] rounded px-2.5 py-2 text-[11px] font-mono text-[#F0EDE8]">
       <p className="font-bold mb-1">{label}</p>
-      <p style={{ color: "#F5820D" }}>MTF financed: {fmtLakhs(amt)}</p>
+      <p style={{ color: "#F5820D" }}>MTF financed: {fmtCr(amt)}</p>
       <p style={{ color: "#00C9A7" }}>Close price: {price !== null ? `₹${price.toLocaleString("en-IN")}` : "—"}</p>
     </div>
   );
+}
+
+/** Recharts' default axis tick just prints the raw number -- convert each
+ * generated tick (still in Lakhs, the underlying data's unit) to Crores. */
+function amtAxisTick(v: number): string {
+  return (v / 100).toLocaleString("en-IN", { maximumFractionDigits: 1 });
 }
 
 export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: () => void }) {
@@ -53,7 +55,7 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
           <>
             <div className="flex items-center gap-4 mb-2 text-[10px] font-mono">
               <span className="flex items-center gap-1.5" style={{ color: "#F5820D" }}>
-                <span className="w-2 h-0.5 inline-block" style={{ background: "#F5820D" }} /> MTF Financed (₹ Lakhs) — left axis
+                <span className="w-2 h-0.5 inline-block" style={{ background: "#F5820D" }} /> MTF Financed (₹ Cr) — left axis
               </span>
               <span className="flex items-center gap-1.5" style={{ color: "#00C9A7" }}>
                 <span className="w-2 h-0.5 inline-block" style={{ background: "#00C9A7" }} /> Close Price (₹) — right axis
@@ -63,14 +65,14 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
               <LineChart data={history} margin={{ top: 5, right: 10, bottom: 20, left: 10 }}>
                 <CartesianGrid stroke="#1E2235" />
                 <XAxis dataKey="date" tick={{ fill: "#6E7590", fontSize: 10 }} />
-                <YAxis yAxisId="amt" domain={["auto", "auto"]} tick={{ fill: "#F5820D", fontSize: 10 }}>
-                  <Label value="₹ Lakhs" angle={-90} position="insideLeft" offset={10} style={{ fill: "#F5820D", fontSize: 10, textAnchor: "middle" }} />
+                <YAxis yAxisId="amt" domain={["auto", "auto"]} tick={{ fill: "#F5820D", fontSize: 10 }} tickFormatter={amtAxisTick}>
+                  <Label value="₹ Cr" angle={-90} position="insideLeft" offset={10} style={{ fill: "#F5820D", fontSize: 10, textAnchor: "middle" }} />
                 </YAxis>
                 <YAxis yAxisId="price" orientation="right" domain={["auto", "auto"]} tick={{ fill: "#00C9A7", fontSize: 10 }}>
                   <Label value="₹ / share" angle={90} position="insideRight" offset={10} style={{ fill: "#00C9A7", fontSize: 10, textAnchor: "middle" }} />
                 </YAxis>
                 <Tooltip content={<CustomTooltip />} />
-                <Line yAxisId="amt" type="monotone" dataKey="amtFinancedLakhs" stroke="#F5820D" strokeWidth={1.5} dot={false} name="MTF ₹L" />
+                <Line yAxisId="amt" type="monotone" dataKey="amtFinancedLakhs" stroke="#F5820D" strokeWidth={1.5} dot={false} name="MTF ₹Cr" />
                 <Line yAxisId="price" type="monotone" dataKey="close" stroke="#00C9A7" strokeWidth={1.5} dot={false} name="Close" />
               </LineChart>
             </ResponsiveContainer>

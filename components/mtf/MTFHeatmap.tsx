@@ -1,6 +1,7 @@
 "use client";
 
 import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
+import { fmtCr } from "@/lib/mtf/format";
 
 export interface HeatmapNode {
   symbol: string;
@@ -9,11 +10,6 @@ export interface HeatmapNode {
   amtChangePct: number | null;
   priceChangePct: number | null;
   turnoverLakhs: number | null;
-}
-
-function fmtLakhs(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
 }
 
 function hexLerp(a: string, b: string, t: number): string {
@@ -46,7 +42,7 @@ function CustomTooltip({ active, payload }: any) {
     <div className="bg-[#13151E] border border-[#1E2235] rounded px-2.5 py-2 text-[11px] font-mono text-[#F0EDE8] max-w-[220px]">
       <p className="font-bold mb-1">{p.symbol}</p>
       {p.name && <p className="text-[#6E7590] mb-1 leading-snug">{p.name}</p>}
-      <p>MTF financed today: {fmtLakhs(p.amtToday ?? null)}</p>
+      <p>MTF financed today: {fmtCr(p.amtToday ?? null)}</p>
       <p style={{ color: (p.amtChangePct ?? 0) >= 0 ? "#00C9A7" : "#E84040" }}>
         MTF change: {p.amtChangePct != null ? `${p.amtChangePct >= 0 ? "+" : ""}${p.amtChangePct.toFixed(1)}%` : "—"}
       </p>

@@ -2,12 +2,9 @@
 
 import { useState, useCallback, useRef } from "react";
 import { Upload, X, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet } from "lucide-react";
+import { fmtCr } from "@/lib/mtf/format";
 
 type UploadState = "idle" | "uploading" | "complete" | "error";
-
-function fmtLakhs(v: number): string {
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
-}
 
 interface IngestVerification {
   date: string;
@@ -136,7 +133,7 @@ export function MtfUpload({ onComplete }: { onComplete?: () => void }) {
                 <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
                   <div className="px-3 py-2 rounded-lg border border-border bg-base/30">
                     <p className="text-[9px] uppercase tracking-wider text-muted/60 mb-0.5">Total Book</p>
-                    <p className="text-primary">{fmtLakhs(summary.verification.totalAmtToday)}</p>
+                    <p className="text-primary">{fmtCr(summary.verification.totalAmtToday)}</p>
                   </div>
                   <div className="px-3 py-2 rounded-lg border border-border bg-base/30">
                     <p className="text-[9px] uppercase tracking-wider text-muted/60 mb-0.5">Symbols</p>

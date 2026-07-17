@@ -1,5 +1,7 @@
 "use client";
 
+import { fmtCr } from "@/lib/mtf/format";
+
 interface TopMover { symbol: string; amtChangePct: number }
 
 interface BreadthProps {
@@ -16,10 +18,6 @@ interface BreadthProps {
   topLoser: TopMover | null;
   onSelectSymbol?: (symbol: string) => void;
   onSelectBreadth?: (direction: "up" | "down" | "flat") => void;
-}
-
-function fmtLakhs(v: number): string {
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
 }
 
 function Tile({
@@ -51,7 +49,7 @@ export function BreadthTiles(props: BreadthProps) {
       </Tile>
 
       <Tile label="Total MTF Book">
-        <p className="font-mono text-sm text-primary tabular-nums">{fmtLakhs(props.totalAmtToday)}</p>
+        <p className="font-mono text-sm text-primary tabular-nums">{fmtCr(props.totalAmtToday)}</p>
         {bookChangePct !== null && (
           <p className={`font-mono text-[10px] tabular-nums ${bookChangePct >= 0 ? "text-teal" : "text-danger"}`}>
             {bookChangePct >= 0 ? "+" : ""}{bookChangePct.toFixed(2)}% <span className="text-muted/60">vs prior day</span>

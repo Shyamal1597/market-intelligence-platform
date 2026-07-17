@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { X, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { fmtCr } from "@/lib/mtf/format";
 
 interface Row {
   symbol: string;
@@ -13,11 +14,6 @@ interface Row {
 
 type SortField = "symbol" | "amtChangePct" | "priceChangePct" | "amtToday";
 type SortDir = "asc" | "desc";
-
-function fmtLakhs(v: number | null): string {
-  if (v == null) return "—";
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
-}
 
 // Words that don't contribute a letter to a company's common short-form --
 // e.g. "State Bank OF India" -> S,B,I -> "SBI", not "SBOI".
@@ -178,7 +174,7 @@ export function SymbolListModal({
                         <td className={`px-2 py-1.5 text-right tabular-nums ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                           {r.priceChangePct != null ? `${r.priceChangePct >= 0 ? "+" : ""}${r.priceChangePct.toFixed(2)}%` : "—"}
                         </td>
-                        <td className="px-2 py-1.5 text-right text-muted tabular-nums">{fmtLakhs(r.amtToday)}</td>
+                        <td className="px-2 py-1.5 text-right text-muted tabular-nums">{fmtCr(r.amtToday)}</td>
                       </tr>
                     ))
                   )}

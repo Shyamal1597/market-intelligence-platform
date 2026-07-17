@@ -1,13 +1,10 @@
 "use client";
 
+import { fmtCr } from "@/lib/mtf/format";
+
 interface Row {
   symbol: string; name: string | null;
   turnoverFinancedPct: number | null; amtToday: number | null;
-}
-
-function fmtLakhs(v: number | null): string {
-  if (v === null) return "—";
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
 }
 
 /**
@@ -74,7 +71,7 @@ export function TurnoverLeaderboard({
                     {multiple != null ? `${multiple.toFixed(1)}x` : "—"}
                   </td>
                   <td className="px-2 py-1.5 text-right text-muted tabular-nums">
-                    {fmtLakhs(r.amtToday)}
+                    {fmtCr(r.amtToday)}
                   </td>
                 </tr>
               );

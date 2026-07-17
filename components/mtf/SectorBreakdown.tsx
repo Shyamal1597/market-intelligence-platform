@@ -1,15 +1,13 @@
 "use client";
 
+import { fmtCr } from "@/lib/mtf/format";
+
 export interface SectorRow {
   sector: string;
   amtToday: number;
   amtYesterday: number;
   amtChangePct: number | null;
   symbolCount: number;
-}
-
-function fmtLakhs(v: number): string {
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })} L`;
 }
 
 export function SectorBreakdown({
@@ -49,7 +47,7 @@ export function SectorBreakdown({
               <div className="flex-1 h-4 bg-base/40 rounded-sm overflow-hidden">
                 <div className="h-full bg-amber/70 rounded-sm" style={{ width: `${(r.amtToday / max) * 100}%` }} />
               </div>
-              <span className="w-24 shrink-0 text-right text-muted tabular-nums">{fmtLakhs(r.amtToday)}</span>
+              <span className="w-24 shrink-0 text-right text-muted tabular-nums">{fmtCr(r.amtToday)}</span>
               <span className={`w-16 shrink-0 text-right tabular-nums ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                 {r.amtChangePct != null ? `${r.amtChangePct >= 0 ? "+" : ""}${r.amtChangePct.toFixed(1)}%` : "—"}
               </span>
@@ -65,7 +63,7 @@ export function SectorBreakdown({
             >
               <span className="w-44 shrink-0">Unclassified</span>
               <div className="flex-1 h-4" />
-              <span className="w-24 shrink-0 text-right tabular-nums">{fmtLakhs(unclassifiedAmt)}</span>
+              <span className="w-24 shrink-0 text-right tabular-nums">{fmtCr(unclassifiedAmt)}</span>
               <span className="w-16 shrink-0" />
               <span className="w-20 shrink-0 text-right tabular-nums">
                 {unclassifiedCount} {unclassifiedCount === 1 ? "stock" : "stocks"}
