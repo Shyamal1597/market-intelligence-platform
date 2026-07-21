@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import type {
   Breadth, ContinuousFunderRow, SectorBreakdownRow, SymbolSnapshot, DivergenceRow, HeatmapNode,
 } from "../queries";
@@ -55,13 +56,19 @@ function fmtCrLocal(lakhs: number | null | undefined): string {
   return `Rs ${(lakhs / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr`;
 }
 
+// Read into a Buffer (not passed as a path string): @react-pdf/renderer's image resolver runs
+// url.parse() on string src values, and on Windows a raw filesystem path like
+// "C:\Users\...\mtf-pulse-banner.png" gets misread as a URL with protocol "c:", so it falls
+// through to a fetch() on an invalid URL. That failure is swallowed per-image internally, so the
+// PDF still renders -- just silently without the banner. A Buffer sidesteps URL parsing entirely.
 const BANNER_PATH = path.join(process.cwd(), "public", "images", "mtf-pulse-banner.png");
+const BANNER_BUFFER = readFileSync(BANNER_PATH);
 
 export interface MtfReportData {
   date: string;
   breadth: Breadth;
-  topGainer: { symbol: string; amtChangePct: number } | null;
-  topLoser: { symbol: string; amtChangePct: number } | null;
+  topGainer: { symbol: string; amtChangePct: number | null } | null;
+  topLoser: { symbol: string; amtChangePct: number | null } | null;
   sectors: SectorBreakdownRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
@@ -117,7 +124,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
     <Document title="MTF Market Pulse" author="Sunidhi Securities & Finance Ltd.">
       {/* Page 1: Banner, KPIs, Sector Flow */}
       <Page size="A4" style={styles.page}>
-        <Image src={BANNER_PATH} style={styles.banner} />
+        <Image src={BANNER_BUFFER} style={styles.banner} />
         <View style={styles.updatedRow}>
           <Text style={styles.updatedText}>MTF Market Pulse — a curated summary. Full symbol-level data lives on the live MTF dashboard.</Text>
           <Text style={styles.updatedText}>Last updated: {data.date}</Text>
@@ -247,7 +254,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
 
       {/* Page 4: Disclaimer (verbatim from the reference report) */}
       <Page size="A4" style={styles.page}>
-        <Image src={BANNER_PATH} style={[styles.banner, { height: 40 }]} />
+        <Image src={BANNER_BUFFER} style={[styles.banner, { height: 40 }]} />
         <Text style={styles.disclaimerTitle}>Disclosures and Disclaimer</Text>
         <Text style={styles.disclaimerBody}>
           Disclosures and Disclaimers: This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as “Sunidhi”) SEBI Research Analyst
