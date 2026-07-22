@@ -1,7 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { curateForPdf } from "./curate";
 import type {
-  SectorBreakdownRow, ContinuousFunderRow, DivergenceRow, HeatmapNode, SymbolSnapshot,
+  SectorBreakdownRow, ContinuousFunderRow, DivergenceRow, HeatmapNode,
 } from "../queries";
 
 function sector(sector: string, amtToday: number): SectorBreakdownRow {
@@ -9,13 +9,6 @@ function sector(sector: string, amtToday: number): SectorBreakdownRow {
 }
 function funder(symbol: string, cont: number): ContinuousFunderRow {
   return { symbol, name: null, cont, amtChangePct: 1, priceChangePct: 1, amtToday: 100, sparkline: [] };
-}
-function snapshot(symbol: string, turnoverFinancedPct: number): SymbolSnapshot {
-  return {
-    symbol, name: null, amtToday: 100, amtYesterday: 100, amtChangePct: 0,
-    priceToday: 100, priceYesterday: 100, priceChangePct: 0,
-    turnoverLakhs: 1000, turnoverFinancedPct, isNavPegged: false,
-  };
 }
 function divergent(symbol: string, amtChangePct: number): DivergenceRow {
   return {
@@ -44,11 +37,6 @@ describe("curateForPdf", () => {
   test("continuous funders passes through shorter lists unchanged (fewer than 100 persistent movers on a given day)", () => {
     const rows = Array.from({ length: 79 }, (_, i) => funder(`SYM${i}`, 4));
     expect(curateForPdf.continuousFunders(rows)).toHaveLength(79);
-  });
-
-  test("trims turnover leaders to top 12", () => {
-    const rows = Array.from({ length: 20 }, (_, i) => snapshot(`SYM${i}`, 50 - i));
-    expect(curateForPdf.turnoverLeaders(rows)).toHaveLength(12);
   });
 
   test("trims divergence to top 12", () => {

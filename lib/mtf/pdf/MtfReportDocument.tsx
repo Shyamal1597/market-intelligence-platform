@@ -2,7 +2,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import type {
-  Breadth, ContinuousFunderRow, SectorBreakdownRow, SymbolSnapshot, DivergenceRow, HeatmapNode,
+  Breadth, ContinuousFunderRow, SectorBreakdownRow, DivergenceRow, HeatmapNode,
 } from "../queries";
 
 // react-pdf's built-in "Helvetica" font family covers regular/bold/oblique
@@ -10,7 +10,6 @@ import type {
 
 const TEAL = "#0F9D6B";   // slightly deeper than the dashboard's #00C9A7 -- reads better on white
 const DANGER = "#C4322A"; // slightly deeper than the dashboard's #E84040 -- same reason
-const AMBER = "#B8600A";
 const MUTED = "#6B7280";
 const BORDER = "#E2E5EA";
 const INK = "#1C1814";
@@ -41,6 +40,8 @@ const styles = StyleSheet.create({
   colWide: { width: "34%" },
   colNum: { width: "17%", textAlign: "right" },
   colNumSmall: { width: "14%", textAlign: "right" },
+  colTerm: { width: "20%", fontFamily: "Helvetica-Bold" },
+  colDefinition: { width: "80%" },
   disclaimerTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", textAlign: "center", marginBottom: 8 },
   disclaimerBody: { fontSize: 7.5, lineHeight: 1.4, color: INK, marginBottom: 6 },
   footer: { position: "absolute", bottom: 16, left: 28, right: 28, fontSize: 6.5, color: MUTED, textAlign: "center" },
@@ -80,7 +81,6 @@ export interface MtfReportData {
   unclassifiedCount: number;
   fundersUp: ContinuousFunderRow[];
   fundersDown: ContinuousFunderRow[];
-  turnoverLeaders: SymbolSnapshot[];
   divergence: DivergenceRow[];
   topMovers: HeatmapNode[];
 }
@@ -90,6 +90,41 @@ function KpiTile({ label, value, color }: { label: string; value: string; color?
     <View style={styles.kpiTile}>
       <Text style={styles.kpiLabel}>{label}</Text>
       <Text style={[styles.kpiValue, color ? { color } : {}]}>{value}</Text>
+    </View>
+  );
+}
+
+function sortByBookDesc(rows: ContinuousFunderRow[]): ContinuousFunderRow[] {
+  return [...rows].sort((a, b) => (b.amtToday ?? 0) - (a.amtToday ?? 0));
+}
+
+const GLOSSARY: { term: string; def: string }[] = [
+  { term: "Total MTF Book", def: "Total value of shares currently bought on margin (borrowed money) across every tracked stock, as of today." },
+  { term: "vs Prior Day", def: "% change in the Total MTF Book compared to the previous trading day." },
+  { term: "Leveraging Up / Deleveraging", def: "Number of stocks where margin financing increased / decreased today." },
+  { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
+  { term: "Turnover Financed %", def: "Share of today's total market trading value that was done using margin financing -- a market-wide average, not any single stock." },
+  { term: "Top Gainer / Top Loser", def: "The single stock with the largest % increase / decrease in MTF financing today -- this is a change in margin financing, not in the stock's share price." },
+  { term: "Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
+  { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
+  { term: "Price Chg %", def: "Day-over-day % change in that stock's share price." },
+  { term: "Book", def: "The MTF-financed amount for that stock, shown in Rs Crores." },
+  { term: "Leverage up/down, price up/down", def: "Flags days where margin financing and the share price moved in OPPOSITE directions -- financing added to a falling stock, or pulled from a rising one." },
+];
+
+function Glossary() {
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <Text style={styles.sectionTitle}>Glossary</Text>
+      <Text style={styles.sectionSubtitle}>What each term on this report means.</Text>
+      <View style={styles.table}>
+        {GLOSSARY.map((g, i) => (
+          <View key={g.term} style={i === GLOSSARY.length - 1 ? styles.trLast : styles.tr}>
+            <Text style={[styles.tdCell, styles.colTerm]}>{g.term}</Text>
+            <Text style={[styles.tdCell, styles.colDefinition]}>{g.def}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -137,6 +172,8 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           <Text style={styles.updatedText}>Last updated: {data.date}</Text>
         </View>
 
+        <Glossary />
+
         <Text style={styles.sectionTitle}>Market Snapshot</Text>
         <View style={styles.kpiGrid}>
           <View style={styles.kpiRow}>
@@ -148,8 +185,8 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           <View style={styles.kpiRow}>
             <KpiTile label="Unchanged" value={String(breadth.countFlat)} />
             <KpiTile label="Turnover Financed %" value={breadth.aggregateTurnoverFinancedPct != null ? `${breadth.aggregateTurnoverFinancedPct.toFixed(1)}%` : "—"} />
-            <KpiTile label="Top Gainer" value={data.topGainer ? `${data.topGainer.symbol} ${fmtPct(data.topGainer.amtChangePct)}` : "—"} color={TEAL} />
-            <KpiTile label="Top Loser" value={data.topLoser ? `${data.topLoser.symbol} ${fmtPct(data.topLoser.amtChangePct)}` : "—"} color={DANGER} />
+            <KpiTile label="Top Gainer (MTF Chg%)" value={data.topGainer ? `${data.topGainer.symbol} ${fmtPct(data.topGainer.amtChangePct)}` : "—"} color={TEAL} />
+            <KpiTile label="Top Loser (MTF Chg%)" value={data.topLoser ? `${data.topLoser.symbol} ${fmtPct(data.topLoser.amtChangePct)}` : "—"} color={DANGER} />
           </View>
         </View>
 
@@ -180,38 +217,23 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           )}
         </View>
 
-        {/* Short table (~12 rows) -- fits on page 1 alongside the KPI/sector content above,
-            instead of a near-empty dedicated page. */}
-        <Text style={styles.sectionTitle}>Turnover / Crowding Leaders</Text>
-        <Text style={styles.sectionSubtitle}>Highest MTF book relative to today&rsquo;s traded value — a large multiple means an unwind would have nowhere to go.</Text>
-        <View style={styles.table}>
-          <View style={styles.tr}>
-            <Text style={[styles.thCell, styles.colWide]}>Symbol</Text>
-            <Text style={[styles.thCell, styles.colNum]}>Book / Turnover</Text>
-            <Text style={[styles.thCell, styles.colNum]}>MTF Book</Text>
-          </View>
-          {data.turnoverLeaders.map((r, i) => (
-            <View key={r.symbol} style={i === data.turnoverLeaders.length - 1 ? styles.trLast : styles.tr}>
-              <Text style={[styles.tdCell, styles.colWide]}>{r.symbol}</Text>
-              <Text style={[styles.tdCell, styles.colNum, r.turnoverFinancedPct != null && r.turnoverFinancedPct / 100 >= 30 ? { color: DANGER, fontFamily: "Helvetica-Bold" } : r.turnoverFinancedPct != null && r.turnoverFinancedPct / 100 >= 10 ? { color: AMBER, fontFamily: "Helvetica-Bold" } : {}]}>
-                {r.turnoverFinancedPct != null ? `${(r.turnoverFinancedPct / 100).toFixed(1)}x` : "—"}
-              </Text>
-              <Text style={[styles.tdCell, styles.colNum]}>{fmtCrLocal(r.amtToday)}</Text>
-            </View>
-          ))}
-        </View>
-
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
       {/* Page 2: Continuous Funders -- Leveraging Up. Own page (not side-by-side) because this
           list runs to 100+ rows -- react-pdf auto-continues overflowing content onto additional
           A4 pages cloned from this one, so the table just flows across as many physical pages as
-          it needs. */}
+          it needs. Two tables: the first ranked by persistence (cont) then magnitude, the second
+          the SAME row set re-ranked by book size -- "which of these has the most money behind it." */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
         <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
         <FunderTable rows={data.fundersUp} />
+
+        <Text style={styles.sectionTitle}>Same list, ranked by book size</Text>
+        <Text style={styles.sectionSubtitle}>The same {data.fundersUp.length} stocks above, re-sorted by MTF book size (highest first) instead of persistence -- which of these persistent movers has the most money behind it.</Text>
+        <FunderTable rows={sortByBookDesc(data.fundersUp)} />
+
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
@@ -220,6 +242,11 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.sectionTitle}>Continuous Funders — Deleveraging</Text>
         <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. {data.fundersDown.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
         <FunderTable rows={data.fundersDown} />
+
+        <Text style={styles.sectionTitle}>Same list, ranked by book size</Text>
+        <Text style={styles.sectionSubtitle}>The same {data.fundersDown.length} stocks above, re-sorted by MTF book size (highest first) instead of persistence -- which of these persistent movers has the most money behind it.</Text>
+        <FunderTable rows={sortByBookDesc(data.fundersDown)} />
+
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 

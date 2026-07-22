@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import {
-  getBreadth, getMovers, getContinuousFunders, getLeverageHeatmap, getTurnoverLeaders,
+  getBreadth, getMovers, getContinuousFunders, getLeverageHeatmap,
   getSectorBreakdown, getDivergence,
 } from "@/lib/mtf/queries";
 import { curateForPdf } from "@/lib/mtf/pdf/curate";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [breadth, topUp, topDown, fundersUp, fundersDown, heatmap, turnoverLeaders, sectorBreakdown, divergence] =
+    const [breadth, topUp, topDown, fundersUp, fundersDown, heatmap, sectorBreakdown, divergence] =
       await Promise.all([
         getBreadth(),
         getMovers("up", 1),
@@ -19,7 +19,6 @@ export async function GET() {
         getContinuousFunders("up", 4, 100),
         getContinuousFunders("down", 4, 100),
         getLeverageHeatmap(120),
-        getTurnoverLeaders(50),
         getSectorBreakdown(),
         getDivergence(30),
       ]);
@@ -43,7 +42,6 @@ export async function GET() {
           unclassifiedCount: sectorBreakdown.unclassifiedCount,
           fundersUp: curateForPdf.continuousFunders(fundersUp.rows),
           fundersDown: curateForPdf.continuousFunders(fundersDown.rows),
-          turnoverLeaders: curateForPdf.turnoverLeaders(turnoverLeaders.rows),
           divergence: curateForPdf.divergence(divergence.rows),
           topMovers: curateForPdf.topMovers(heatmap.nodes),
         },
