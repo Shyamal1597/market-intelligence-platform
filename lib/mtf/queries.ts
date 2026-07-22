@@ -190,7 +190,17 @@ export async function getBreadth(): Promise<Breadth> {
     totalAmtToday, totalAmtYesterday,
     countUp: rows.filter((r) => (r.amtChangePct ?? 0) > 0).length,
     countDown: rows.filter((r) => (r.amtChangePct ?? 0) < 0).length,
-    countFlat: rows.filter((r) => r.amtChangePct === 0).length,
+    // "?? 0" (not a strict "=== 0"): amtChangePct is null both for a genuinely
+    // new symbol (no prior-day baseline) and for a 0-Lakh book that stayed at
+    // 0-Lakh (pctChange's divide-by-zero guard can't compute 0/0, even though
+    // "stayed at zero" is unambiguously a flat/unchanged case, not unknown).
+    // A strict "=== 0" check drops both kinds of null-amtChangePct symbol from
+    // every bucket -- confirmed against real data: countUp+countDown+countFlat
+    // undercounted totalSymbols by exactly the count of null-amtChangePct
+    // rows (8 of 2142 on 2026-07-20). Folding them into "flat" keeps
+    // up+down+flat === totalSymbols always true, and there's no separate
+    // "new symbol" bucket in the UI for the rare genuinely-new case to go to.
+    countFlat: rows.filter((r) => (r.amtChangePct ?? 0) === 0).length,
     totalSymbols: rows.length,
     aggregateTurnoverFinancedPct: totalTurnover > 0 ? (totalAmtToday / totalTurnover) * 100 : null,
     avgTurnoverFinancedPct,
@@ -209,7 +219,10 @@ export async function getBreadthSymbols(direction: "up" | "down" | "flat"): Prom
     ? rows.filter((r) => (r.amtChangePct ?? 0) > 0)
     : direction === "down"
       ? rows.filter((r) => (r.amtChangePct ?? 0) < 0)
-      : rows.filter((r) => r.amtChangePct === 0);
+      // "?? 0" here too -- must match getBreadth()'s countFlat predicate
+      // exactly, or the tile's count and this list's length would disagree
+      // again for the same null-amtChangePct rows (see countFlat's comment).
+      : rows.filter((r) => (r.amtChangePct ?? 0) === 0);
 
   return filtered.sort((a, b) => {
     if (direction === "up") return (b.amtChangePct ?? 0) - (a.amtChangePct ?? 0);
