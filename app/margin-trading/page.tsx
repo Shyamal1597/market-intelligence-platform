@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Download } from "lucide-react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
+import { MtfGlossary } from "@/components/mtf/MtfGlossary";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
@@ -199,6 +200,8 @@ export default function MarginTradingPage() {
 
       {!loading && data && data.breadth.date !== null && (
         <>
+          <MtfGlossary />
+
           <BreadthTiles
             {...data.breadth}
             topGainer={data.topGainer}
