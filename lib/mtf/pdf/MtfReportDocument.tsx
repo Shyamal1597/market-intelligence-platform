@@ -49,6 +49,25 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 16, left: 28, right: 28, fontSize: 6.5, color: MUTED, textAlign: "center" },
 });
 
+// `fixed` + `render` (not a static child) so this clones onto EVERY physical
+// page react-pdf auto-generates when a section's content overflows one page
+// (e.g. the 100-row Continuous Funders/Price Movers tables) -- a plain
+// static Text placed once in a Page's children only lands on whichever
+// physical page the content flow happens to end on, not every one.
+// pageNumber/totalPages are computed across the WHOLE document, not just
+// the current <Page> block.
+function Footer() {
+  return (
+    <Text
+      style={styles.footer}
+      fixed
+      render={({ pageNumber, totalPages }) =>
+        `Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.   |   Page ${pageNumber} of ${totalPages}`
+      }
+    />
+  );
+}
+
 function pctColor(v: number | null | undefined): string {
   if (v == null) return MUTED;
   return v >= 0 ? TEAL : DANGER;
@@ -242,7 +261,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           )}
         </View>
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 2: Continuous Funders -- Leveraging Up. Own page (not side-by-side) because this
@@ -259,7 +278,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.sectionSubtitle}>The same {data.fundersUp.length} stocks above, re-sorted by MTF book size (highest first) instead of persistence -- which of these persistent movers has the most money behind it.</Text>
         <FunderTable rows={sortByBookDesc(data.fundersUp)} />
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 3: Continuous Funders -- Deleveraging. Same auto-pagination note as above. */}
@@ -272,7 +291,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.sectionSubtitle}>The same {data.fundersDown.length} stocks above, re-sorted by MTF book size (highest first) instead of persistence -- which of these persistent movers has the most money behind it.</Text>
         <FunderTable rows={sortByBookDesc(data.fundersDown)} />
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 4: Price Movers -- Price Up. Symmetric counterpart to Continuous Funders
@@ -284,7 +303,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently positive — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversUp.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
         <FunderTable rows={data.priceMoversUp} />
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 5: Price Movers -- Price Down. Same auto-pagination note as pages 2-3. */}
@@ -293,7 +312,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently negative — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversDown.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
         <FunderTable rows={data.priceMoversDown} />
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 6: Divergence + Top Movers */}
@@ -342,7 +361,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           ))}
         </View>
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+        <Footer />
       </Page>
 
       {/* Page 7: Disclaimer (verbatim from the reference report) */}
@@ -411,6 +430,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           <Text style={{ fontSize: 7, color: MUTED }}>MSEI Registration no. INZ000000000</Text>
         </View>
         <Text style={{ fontSize: 7, color: MUTED, marginTop: 4 }}>Compliance Officer: Compliance Officer Name — Phone: +91-00000-00000</Text>
+        <Footer />
       </Page>
     </Document>
   );
