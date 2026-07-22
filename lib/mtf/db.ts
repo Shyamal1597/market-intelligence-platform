@@ -54,16 +54,33 @@ export async function getMtfDb(): Promise<Database.Database> {
     -- POSITIVE sheet and cont=2 in the NEGATIVE sheet simultaneously, which
     -- a true streak could never produce for the same day).
     CREATE TABLE IF NOT EXISTS mtf_mover_cont (
-      date            TEXT NOT NULL,
-      symbol          TEXT NOT NULL,
-      direction       TEXT NOT NULL CHECK(direction IN ('up','down')),
-      cont            INTEGER NOT NULL,
-      latest_pct_chg  REAL,
+      date                  TEXT NOT NULL,
+      symbol                TEXT NOT NULL,
+      direction             TEXT NOT NULL CHECK(direction IN ('up','down')),
+      cont                  INTEGER NOT NULL,
+      latest_pct_chg        REAL,
+      price_cont            INTEGER,
+      price_latest_pct_chg  REAL,
       PRIMARY KEY (date, symbol, direction)
     );
 
     CREATE INDEX IF NOT EXISTS idx_mtf_mover_cont_date ON mtf_mover_cont(date);
   `);
+
+  // price_cont/price_latest_pct_chg: added after mtf_mover_cont already
+  // shipped, so existing on-disk databases need an explicit migration --
+  // this codebase's first column addition to an existing table (every prior
+  // change has been a new CREATE TABLE IF NOT EXISTS). Guarded by
+  // pragma table_info so it's safe to run against a fresh DB (columns
+  // already present via the CREATE TABLE above) or an older one.
+  const moverContColumns = _db.prepare("PRAGMA table_info(mtf_mover_cont)").all() as { name: string }[];
+  const moverContColumnNames = new Set(moverContColumns.map((c) => c.name));
+  if (!moverContColumnNames.has("price_cont")) {
+    _db.exec("ALTER TABLE mtf_mover_cont ADD COLUMN price_cont INTEGER");
+  }
+  if (!moverContColumnNames.has("price_latest_pct_chg")) {
+    _db.exec("ALTER TABLE mtf_mover_cont ADD COLUMN price_latest_pct_chg REAL");
+  }
 
   return _db;
 }

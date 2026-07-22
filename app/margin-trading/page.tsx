@@ -6,6 +6,7 @@ import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { MtfGlossary } from "@/components/mtf/MtfGlossary";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
+import { PriceMoversTable } from "@/components/mtf/PriceMoversTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
 import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
 import { DivergencePanel } from "@/components/mtf/DivergencePanel";
@@ -16,14 +17,21 @@ interface Breadth {
   date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
   countUp: number; countDown: number; countFlat: number; totalSymbols: number;
   aggregateTurnoverFinancedPct: number | null;
-  avgTurnoverFinancedPct: number | null;
+  medianTurnoverFinancedPct: number | null;
 }
 
 interface FunderRow {
   symbol: string; name: string | null;
-  cont: number;
+  cont: number; priceCont: number | null;
   amtChangePct: number; priceChangePct: number | null;
   amtToday: number | null; sparkline: number[];
+}
+
+interface PriceMoverRow {
+  symbol: string; name: string | null;
+  priceCont: number; cont: number | null;
+  amtChangePct: number | null; priceChangePct: number | null;
+  amtToday: number | null; priceToday: number | null; sparkline: number[];
 }
 
 interface TopMover { symbol: string; amtChangePct: number }
@@ -50,10 +58,14 @@ interface DashboardData {
   topLoser: TopMover | null;
   continuousFundersUp: FunderRow[];
   continuousFundersDown: FunderRow[];
+  priceMoversUp: PriceMoverRow[];
+  priceMoversDown: PriceMoverRow[];
   heatmap: HeatmapNode[];
   sectorBreakdown: SectorRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
+  excludedAmt: number;
+  excludedCount: number;
   divergence: DivergenceRow[];
 }
 
@@ -203,14 +215,12 @@ export default function MarginTradingPage() {
             onSelectBreadth={(direction) => setListModal({ type: "breadth", direction })}
           />
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-            <div className="xl:col-span-7">
-              <ContinuousFundersTable up={data.continuousFundersUp} down={data.continuousFundersDown} onSelectSymbol={setSelectedSymbol} />
-            </div>
-            <div className="xl:col-span-5">
-              <MTFHeatmap nodes={data.heatmap} onSelectSymbol={setSelectedSymbol} />
-            </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            <ContinuousFundersTable up={data.continuousFundersUp} down={data.continuousFundersDown} onSelectSymbol={setSelectedSymbol} />
+            <PriceMoversTable up={data.priceMoversUp} down={data.priceMoversDown} onSelectSymbol={setSelectedSymbol} />
           </div>
+
+          <MTFHeatmap nodes={data.heatmap} onSelectSymbol={setSelectedSymbol} />
 
           <DivergencePanel rows={data.divergence} onSelectSymbol={setSelectedSymbol} />
 
@@ -218,6 +228,8 @@ export default function MarginTradingPage() {
             rows={data.sectorBreakdown}
             unclassifiedAmt={data.unclassifiedAmt}
             unclassifiedCount={data.unclassifiedCount}
+            excludedAmt={data.excludedAmt}
+            excludedCount={data.excludedCount}
             onSelectSector={(sector) => setListModal({ type: "sector", sector })}
           />
         </>

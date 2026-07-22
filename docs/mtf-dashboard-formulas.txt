@@ -1,0 +1,343 @@
+================================================================================
+MARGIN TRADING DASHBOARD (/margin-trading, live page) -- CALCULATION REFERENCE
+================================================================================
+Covers every number and visual shown on the live dashboard page itself (not
+the PDF export -- see docs/mtf-pdf-formulas.txt for that, which shares the
+same underlying formulas but curates each list to a shorter "Top N").
+Source of truth: lib/mtf/queries.ts, lib/mtf/ingest.ts, lib/mtf/sector.ts,
+lib/mtf/format.ts, components/mtf/*.tsx, app/api/mtf/dashboard/route.ts.
+Last verified against the codebase: 2026-07-22.
+
+
+--------------------------------------------------------------------------------
+1. DATA FRESHNESS
+--------------------------------------------------------------------------------
+The dashboard always shows the single most recent date present in mtf_daily.
+  getLatestTwoDates() -> SELECT DISTINCT date FROM mtf_daily ORDER BY date DESC LIMIT 2
+The 2nd-most-recent date is "previousDate" -- every day-over-day comparison
+below is measured against it. A fresh Excel upload becomes "today" the
+moment it's ingested; there is no separate publish/approval step.
+
+
+--------------------------------------------------------------------------------
+2. GUARDS APPLIED BEFORE ANY NUMBER BELOW IS COMPUTED
+--------------------------------------------------------------------------------
+a) Day-over-day % change (generic formula, used everywhere a "Chg %" appears):
+     pctChange(today, yesterday) = ((today - yesterday) / abs(yesterday)) * 100
+   Returns null if either value is missing or yesterday = 0.
+
+b) PRICE change guard (MAX_PLAUSIBLE_PRICE_CHANGE_PCT = 50):
+     priceChangePct = pctChange(price_today, price_yesterday)
+     if abs(priceChangePct) > 50%  -> reported as null
+   A single-day price move beyond 50% is virtually never organic trading --
+   it means a stock/ETF split or bonus issue happened between the two days,
+   and our feed carries UNADJUSTED closes (no retroactive split-adjustment
+   like a charting platform would apply). Both stored prices are genuinely
+   real, exchange-reported values -- this is NOT a data error, just two
+   numbers that aren't comparable across a split boundary. Confirmed against
+   real data: PSUBANK (Kotak Nifty PSU Bank ETF) genuinely traded Rs 822.75
+   on one day and Rs 85.31 the next after a real ~10x unit split; a naive
+   % change reads as a fake "-89.6% crash" that never happened to any
+   holder's position value. Reported as null (not shown) rather than as that
+   fake number, in movers/divergence/drilldown/heatmap alike.
+   (This guard does NOT apply to the MTF-financed AMOUNT -- large swings
+   there are real and expected off a small base; see MATERIALITY_FLOOR below
+   for how amount-side noise is handled instead.)
+
+c) MATERIALITY FLOOR (MATERIALITY_FLOOR_LAKHS = 100, i.e. Rs 1 Cr):
+     isMaterial = (amtToday >= 100 Lakhs)
+   Below this, a day-over-day % change in financed amount is statistical
+   noise (e.g. a thinly-traded fund's book moving Rs 5L -> Rs 59L reads as
+   "+1038%" but is economically trivial), not a real leverage signal.
+   Excludes roughly the bottom ~25% of the universe by book size while
+   keeping every symbol with a genuinely material MTF position.
+
+d) NAV-PEGGED INSTRUMENT DETECTION (NAV_PEG_RANGE_PCT = 0.3%):
+     isNavPegged = ((high - low) / close) * 100 < 0.3%
+   Liquid/money-market ETFs (LIQUIDBEES, LIQUID, etc.) settle at a near-fixed
+   NAV by design -- their book can be large and genuinely material, but the
+   "price" never moves, so they're not a leverage/momentum story a trader
+   can act on and just add visual noise to movers/heatmap/Continuous Funders.
+   Detected from today's OWN OHLC spread (not a symbol allowlist, since new
+   NAV-pegged instruments get added over time). Confirmed against real data:
+   LIQUIDBEES/LIQUID sit at ~0.01-0.08% daily range vs 0.6-9%+ for real
+   equities.
+
+e) COMBINED TRADEABILITY FILTER:
+     isTradeable = isMaterial AND NOT isNavPegged
+   Applied by: Continuous Funders, Price Movers, Heatmap, Sector Breakdown,
+   Divergence, and the Top MTF Mover breadth tile.
+   NOT applied by: the Leveraging Up/Deleveraging/Unchanged breadth COUNTS
+   and the "Total MTF Book"/"Turnover Financed %" totals, which deliberately
+   sum the WHOLE universe (see section 3's note on the universe-scope gap
+   this creates against every isTradeable-filtered panel below it).
+
+
+--------------------------------------------------------------------------------
+3. BREADTH TILES (top strip)
+--------------------------------------------------------------------------------
+Last Updated             = the latest date itself (section 1)
+Total MTF Book           = sum(amtToday) across the FULL universe -- every
+                           symbol in mtf_daily for the latest date, no
+                           tradeability filter applied
+  vs prior day            = pctChange(totalAmtToday, totalAmtYesterday)
+Leveraging Up            = count of symbols where amtChangePct > 0
+                           (full universe, unfiltered)
+Deleveraging             = count of symbols where amtChangePct < 0
+                           (full universe, unfiltered)
+Unchanged                = count of symbols where amtChangePct = 0
+                           (full universe, unfiltered) -- also catches
+                           amtChangePct = null (see the code comment on
+                           countFlat: null happens both for a genuinely-new
+                           symbol AND for a 0-Lakh book that stayed at
+                           0-Lakh, and folding both into "flat" is what
+                           keeps up+down+flat === totalSymbols always true)
+Symbols w/ Data          = total row count in the latest snapshot (full
+                           universe)
+Turnover Financed % (agg)= "aggregateTurnoverFinancedPct" -- BOOK-WEIGHTED,
+                           WHOLE universe: sum(amtToday) / sum(turnoverLakhs)
+                           * 100. Can exceed 100% since the book is a
+                           cumulative stock, not a single day's flow.
+Median Financed %        = "medianTurnoverFinancedPct" -- MEDIAN (not mean)
+                           of each TRADEABLE symbol's own turnoverFinancedPct
+                           (isTradeable-filtered, section 2e). A simple
+                           unweighted MEAN was tried first and confirmed
+                           unusable against real data (2026-07-20): it read
+                           450.5%, dominated by a handful of near-zero-
+                           turnover-day outliers (e.g. CREST at 30,423% --
+                           Rs 6.75L of turnover against a real Rs 2,053.6L
+                           book). One such row moves a mean over ~2,100
+                           symbols by double-digit percentage points; the
+                           median that same day was a far more
+                           representative 282.3% (tradeable-only).
+Top MTF Mover (up/down)  = the single tradeable symbol with the highest /
+                           lowest amtChangePct today (getMovers(dir, limit=1))
+Clicking a breadth tile opens the FULL symbol list behind that exact count
+  (getBreadthSymbols) -- same predicate as the tile itself, so the number on
+  the tile and the length of that list always match exactly. Sorted by
+  |amtChangePct| descending for up/down, by book size descending for "flat"
+  (nothing else to rank flat symbols by).
+
+UNIVERSE-SCOPE GAP: "Total MTF Book" and "Turnover Financed %" sum the WHOLE
+  universe (no isTradeable filter), while Continuous Funders/Price Movers/
+  Heatmap/Sector Breakdown/Divergence all exclude immaterial/NAV-pegged
+  symbols. Confirmed against real data (2026-07-20): whole-universe book was
+  Rs 135,984.97 Cr across 2,142 symbols; the tradeable-only subset used by
+  every other panel was Rs 135,821.95 Cr across 1,592 symbols -- a
+  Rs 163.02 Cr / 550-symbol gap, by design, not a discrepancy. Sector
+  Breakdown's own caption states the exact current-day gap explicitly.
+
+
+--------------------------------------------------------------------------------
+4. CONTINUOUS FUNDERS TABLE -- VOLUME MOVERS (Leveraging Up / Deleveraging tabs)
+--------------------------------------------------------------------------------
+IMPORTANT -- neither "Cont." column is computed from our own accumulated
+upload history. Both are read directly from the uploaded report's own "MTF
+DATA POSITIVE" / "MTF DATA NEGATIVE" sheets via parseMoverSheet() in
+lib/mtf/ingest.ts, and stored verbatim in the mtf_mover_cont table. Each
+sheet row holds TWO independent blocks for the SAME symbol:
+  MTF Cont.   = cols A-M ("Margin Trading Volume Movers" block, column 2) --
+                a FREQUENCY COUNT of positive (or negative) day-over-day
+                MTF-FINANCING changes across the report's own trailing
+                ~5-day window -- NOT a consecutive streak. (Confirmed
+                against real data: a symbol showed cont=3 on the positive
+                sheet and cont=2 on the negative sheet for the SAME day --
+                only possible for a frequency count, never a true streak.)
+  Price Cont. = cols O+ ("Margin Trading Price Mover" block, column 2) --
+                the SAME symbol's own PRICE-persistence count, using the
+                identical frequency-count convention but counting positive/
+                negative day-over-day PRICE changes instead of financing
+                changes. Genuinely independent of MTF Cont.: confirmed
+                against real data (2026-07-20), CEATLTD had MTF Cont=5/5
+                (financing built every day) while its own Price Cont was
+                only 2/5 (price rarely followed).
+Selection: getContinuousFunders(direction, minCont=4, limit=50) --
+  WHERE date = latest AND direction = 'up'/'down' AND cont >= 4 (the MTF-side
+  cont only -- Price Cont. is NOT filtered on here, just displayed for
+  cross-reference), joined back against the day's own snapshot and filtered
+  to isTradeable (section 2e) -- a symbol flagged in the source sheet but
+  immaterial/NAV-pegged today is dropped from the table.
+MTF Chg % displayed = snap.amtChangePct (our own standard pctChange formula,
+  section 2a, computed from our accumulated mtf_daily history) if available,
+  falling back to the sheet's own latest_pct_chg only when our own history
+  has no prior-day row for that symbol (e.g. a brand-new listing). This
+  fallback is a narrow edge case, but worth knowing: the report's own
+  %Change column uses a DIFFERENT convention than pctChange() above --
+  (new - old) / new instead of (new - old) / abs(old) -- confirmed by hand
+  against real data (2026-07-20, several symbols on both sheets matched this
+  formula exactly). The two conventions diverge more the larger the % change
+  is, so a fallback-sourced number can read noticeably different from a
+  normally-computed one for the same symbol.
+Sort: click any column header (Symbol/MTF Cont./Price Cont./MTF Chg %/Price
+  Chg %) to sort ascending/descending on that column (nulls sort last).
+  Before any column is clicked, rows are in the API's own default order:
+  MTF Cont. DESCENDING, then abs(amtChangePct) DESCENDING as a tiebreak.
+Dashboard shows up to 100 per direction (the tab label shows the exact
+  count, e.g. "Leveraging Up (100)").
+Sparkline column = that symbol's own amt_financed_lakhs history across every
+  date on record in mtf_daily (our own accumulated upload history -- this is
+  the one part of this feature that DOES use our own time series, purely for
+  the trend visualization, not for computing either Cont. figure).
+Trend color: teal (up tab) / red (down tab) -- fixed by which tab is active,
+  not derived from the sparkline's own shape.
+
+
+--------------------------------------------------------------------------------
+5. PRICE MOVERS TABLE -- symmetric counterpart, ranked by PRICE persistence
+--------------------------------------------------------------------------------
+Reuses the exact same already-ingested mtf_mover_cont rows as section 4 --
+no separate data source. getPriceMovers(direction, minCont=4, limit=50):
+  WHERE date = latest AND direction = 'up'/'down' AND price_cont >= 4 (note:
+  filtered on the PRICE-side count this time, MTF Cont. is just displayed
+  for cross-reference, mirrored from section 4).
+  direction "up" reads the POSITIVE sheet's price_cont (days price rose),
+  "down" reads the NEGATIVE sheet's price_cont (days price fell) -- same
+  split as the MTF side, just on the price-persistence dimension instead.
+A stock can appear here with a persistently rising/falling price even if
+  its MTF-financing trend is flat, weak, or moving the opposite way --
+  e.g. ACI showed Price Cont=5/5 with MTF Cont=0/5 on 2026-07-20 (price
+  persistently up 5 straight days on essentially no financing trend at all).
+Sort default: Price Cont. DESCENDING, then abs(priceChangePct) DESCENDING.
+  Same click-to-sort behavior as section 4.
+Sparkline column = that symbol's own CLOSE PRICE history (not financed
+  amount) -- this card is about price persistence, so the trend line shows
+  price, not the book.
+Tabs labeled "Price Up (N)" / "Price Down (N)" to avoid confusion with the
+  MTF-side "Leveraging Up/Deleveraging" labels in section 4.
+
+
+--------------------------------------------------------------------------------
+6. MTF LEVERAGE HEATMAP (treemap)
+--------------------------------------------------------------------------------
+Node set: getLeverageHeatmap(limit=120) -- top 120 TRADEABLE symbols
+  (section 2e) sorted by amtToday (book size) descending. Bounded to a
+  fixed top-N (not the whole ~2000-symbol universe) so the chart stays
+  legible -- a treemap with thousands of slivers is as unreadable as a
+  scatter plot crushed by outliers.
+Box SIZE = amtToday (today's MTF-financed amount) -- bigger box = more
+  money actually financed on that stock = more "material"/attention-worthy.
+Box COLOR = derived from amtChangePct via colorForChange():
+    capped = clamp(amtChangePct, -20, +20)
+    t = sqrt(abs(capped) / 20)
+    color = lerp(#1E2235 -> #00C9A7, t)   if capped >= 0  (green, adding leverage)
+    color = lerp(#1E2235 -> #E84040, t)   if capped <  0  (red, reducing leverage)
+    color = #2A2E42 (grey)                 if amtChangePct is null (no prior-day data)
+  Capped at +-20% (not the raw range) and sqrt-curved because real day-over-
+  day MTF-amount moves cluster tightly around 0 (p90 is only ~4.3%,
+  confirmed against real data) -- a naive linear +-50% scale left nearly
+  every box the same washed-out grey. Capping tighter and applying sqrt
+  pulls the typical, tradeable range visually apart while outliers still
+  fully saturate.
+Box ORDER: sortForLeftRightGrouping() sorts by sign of amtChangePct first
+  (positive before negative), then by amtToday descending within each sign.
+  Recharts' squarified treemap places boxes in data-array order starting
+  top-left in reading order, so this clusters green boxes toward the left
+  and red boxes toward the right instead of interleaving them purely by size.
+Text label shown inside a box only if width > 42px and height > 22px
+  (symbol only); the % change line additionally requires height > 34px.
+Clicking a box opens that symbol's drilldown (section 9).
+Layout: placed BELOW the Continuous Funders / Price Movers row (sections 4-5,
+  side by side above it), full page width, for legibility with ~120 nodes.
+
+
+--------------------------------------------------------------------------------
+7. SECTOR BREAKDOWN (bar list)
+--------------------------------------------------------------------------------
+Groups every TRADEABLE symbol (section 2e) by its REAL exchange-sourced
+sector classification -- NOT the research-coverage SYMBOL_SECTOR map used
+elsewhere in this codebase (a deliberate, explicit separation: this page
+serves the retail desk and covers the full MTF universe, not just the ~100
+research-covered stocks).
+Classification source: lib/mtf/sector.ts reads data/mtf-sector-cache.json,
+  built by scripts/mtf-build-sector-cache.ts via the pipeline:
+    NSE EQUITY_L.csv (symbol -> ISIN)
+    -> BSE unified bhavcopy (ISIN -> BSE scrip code)
+    -> BSE ComHeadernew API (scrip code -> Sector/IndustryNew)
+  sanity-checked by confirming BSE's own returned SecurityId matches the
+  symbol being queried. Re-read from disk on every request (not cached in
+  memory) so the dashboard always reflects the latest cache build without a
+  server restart.
+Per sector:
+  Bar length / Book = sum(amtToday) of every tradeable symbol in that sector
+  Chg %             = pctChange(sector's sum(amtToday), sector's sum(amtYesterday))
+  Stocks count       = count of tradeable symbols in that sector
+Symbols with no resolvable sector are pooled into a separate "Unclassified"
+  row (shown at the bottom, muted styling) rather than silently dropped.
+  Symbols excluded by isTradeable (immaterial/NAV-pegged) are NOT part of
+  either bucket -- their combined amount/count is surfaced as
+  excludedAmt/excludedCount and shown directly in this panel's own caption
+  (see section 3's "UNIVERSE-SCOPE GAP" note -- sector rows + Unclassified
+  sum to the tradeable-only total, not the whole-universe "Total MTF Book").
+Clicking a sector row opens the full symbol list behind that bar
+  (getSectorSymbols) -- same isTradeable filter and sector lookup, sorted by
+  amtToday descending, so the bar's book size and that list's total always
+  tie out exactly.
+
+
+--------------------------------------------------------------------------------
+8. LEVERAGE VS PRICE DIVERGENCE PANEL
+--------------------------------------------------------------------------------
+Flags TRADEABLE symbols (section 2e) where MTF financing and price moved in
+OPPOSITE directions TODAY -- a single-day signal, distinct from Price Cont./
+MTF Cont. (sections 4-5), which track a MULTI-DAY pattern. A stock can show
+up here without qualifying as a Continuous Funder in either direction, and
+vice versa -- these are two different lenses on the same underlying data,
+not the same check computed twice.
+  divergent = sign(amtChangePct) != sign(priceChangePct)
+              AND both are non-null and non-zero
+  gap = abs(amtChangePct) + abs(priceChangePct)
+  MIN_DIVERGENCE_GAP_PCT = 8  ->  only kept if gap >= 8
+  (Below this, a sign mismatch is routine noise -- confirmed against real
+  data: the median gap across every sign-mismatched symbol is only ~3%, and
+  57% of the whole universe has SOME sign mismatch on any given day.
+  Requiring >=8% -- roughly the 85th percentile of the gap distribution --
+  keeps this panel to genuinely notable cases.)
+Pattern label:
+  amtChangePct > 0  -> "leverage-up-price-down"   (margin being added
+                        against a falling stock -- unwind risk grows if the
+                        fall continues)
+  amtChangePct < 0  -> "leverage-down-price-up"    (margin being pulled from
+                        a rising stock)
+Sorted descending by gap. Dashboard shows top 30 (getDivergence(30)).
+
+
+--------------------------------------------------------------------------------
+9. SYMBOL DRILLDOWN (per-symbol chart, opened by clicking any row/box)
+--------------------------------------------------------------------------------
+Plots that symbol's FULL history from mtf_daily (every date on record for
+  that symbol, no date range limiting):
+  Left axis  = amt_financed_lakhs, converted to Cr for display (divide by 100)
+  Right axis = close price, shown as-is (raw Rupees, no conversion)
+No guards/filters applied here (materiality floor, NAV-peg detection, and
+  the 50% price guard are movers/heatmap/breadth-only concerns) -- the
+  drilldown is a raw, unfiltered look at one symbol's own numbers.
+Opened from a list modal (breadth tile, sector row, Continuous Funders,
+  Price Movers) stays mounted underneath the drilldown -- closing the
+  drilldown returns to that list, it does not close back to the bare
+  dashboard.
+
+
+--------------------------------------------------------------------------------
+10. SYMBOL LIST MODAL (search + sort, used by breadth tiles / sector rows /
+    Continuous Funders / Price Movers lists)
+--------------------------------------------------------------------------------
+Search matching (matchesSearch): a query matches a row if the query is a
+  substring of the symbol, a substring of the company name, OR matches the
+  name's ACRONYM. Acronym = first letter of each significant word in the
+  company name after stripping stopwords (OF, THE, AND, LTD, LIMITED, CO,
+  CORP, CORPORATION, PVT, PRIVATE, INC, PLC, &) -- e.g. "State Bank of
+  India" -> "SBI", so a search for "SBI" finds it even though those three
+  letters never appear together in the name itself.
+Sort: clicking a column header toggles ascending/descending on that column.
+  Nulls always sort LAST regardless of direction (treated as "no data", not
+  as "smallest").
+
+
+--------------------------------------------------------------------------------
+11. NUMBER FORMATTING (dashboard-wide, lib/mtf/format.ts)
+--------------------------------------------------------------------------------
+- All Lakhs figures from the database are converted to Crores for display:
+    Cr = Lakhs / 100,  shown as "₹{value} Cr"  (1 Crore = 100 Lakhs)
+- Percentages shown to 2 decimal places with an explicit "+" sign for
+  non-negative values (e.g. "+3.49%", "-2.80%").
+================================================================================

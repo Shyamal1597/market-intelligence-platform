@@ -11,11 +11,13 @@ export interface SectorRow {
 }
 
 export function SectorBreakdown({
-  rows, unclassifiedAmt, unclassifiedCount, onSelectSector,
+  rows, unclassifiedAmt, unclassifiedCount, excludedAmt, excludedCount, onSelectSector,
 }: {
   rows: SectorRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
+  excludedAmt: number;
+  excludedCount: number;
   onSelectSector?: (sector: string) => void;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.amtToday));
@@ -30,6 +32,10 @@ export function SectorBreakdown({
         book. Sector comes from BSE&rsquo;s real exchange classification (not the research coverage list) --
         every symbol in the file gets grouped, not just the ~100 covered stocks. Click a row to see the exact
         stocks behind it.
+        {excludedCount > 0 && (
+          <> This panel excludes {excludedCount} immaterial/NAV-pegged symbol{excludedCount === 1 ? "" : "s"} ({fmtCr(excludedAmt)}),
+          same as Continuous Funders/Heatmap/Divergence -- that&rsquo;s why these bars won&rsquo;t sum to the &ldquo;Total MTF Book&rdquo; tile above, which counts the whole universe.</>
+        )}
       </p>
       {rows.length === 0 ? (
         <p className="text-[11px] text-muted font-mono py-4">

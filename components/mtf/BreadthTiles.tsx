@@ -14,7 +14,7 @@ interface BreadthProps {
   countFlat: number;
   totalSymbols: number;
   aggregateTurnoverFinancedPct: number | null;
-  avgTurnoverFinancedPct: number | null;
+  medianTurnoverFinancedPct: number | null;
   topGainer: TopMover | null;
   topLoser: TopMover | null;
   onSelectSymbol?: (symbol: string) => void;
@@ -22,12 +22,13 @@ interface BreadthProps {
 }
 
 function Tile({
-  label, border, children, onClick,
-}: { label: string; border?: string; children: React.ReactNode; onClick?: () => void }) {
+  label, border, children, onClick, tooltip,
+}: { label: string; border?: string; children: React.ReactNode; onClick?: () => void; tooltip?: string }) {
   const Comp = onClick ? "button" : "div";
   return (
     <Comp
       onClick={onClick}
+      title={tooltip}
       className={`rounded-lg border ${border ?? "border-border"} bg-surface p-2.5 text-left w-full ${
         onClick ? "cursor-pointer hover:border-amber/40 hover:bg-white/[0.02] transition-colors group" : ""
       }`}
@@ -79,15 +80,21 @@ export function BreadthTiles(props: BreadthProps) {
         <p className="font-mono text-sm text-primary tabular-nums">{props.totalSymbols}</p>
       </Tile>
 
-      <Tile label="Turnover Financed %">
+      <Tile
+        label="Turnover Financed %"
+        tooltip="Total MTF book / today's total market turnover, across the whole universe -- a book-weighted aggregate, not a per-stock average. Can exceed 100% since the book is a cumulative stock, not a single day's flow."
+      >
         <p className="font-mono text-sm text-primary tabular-nums">
           {props.aggregateTurnoverFinancedPct !== null ? `${props.aggregateTurnoverFinancedPct.toFixed(1)}%` : "—"}
         </p>
       </Tile>
 
-      <Tile label="Avg Financed % (mean)">
+      <Tile
+        label="Median Financed %"
+        tooltip="Median (not mean) of each tradeable stock's own book/turnover ratio -- the 'typical stock' picture. Switched from a simple mean after confirming it was dominated by a handful of near-zero-turnover-day outliers."
+      >
         <p className="font-mono text-sm text-primary tabular-nums">
-          {props.avgTurnoverFinancedPct !== null ? `${props.avgTurnoverFinancedPct.toFixed(1)}%` : "—"}
+          {props.medianTurnoverFinancedPct !== null ? `${props.medianTurnoverFinancedPct.toFixed(1)}%` : "—"}
         </p>
       </Tile>
 

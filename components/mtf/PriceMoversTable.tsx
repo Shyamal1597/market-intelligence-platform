@@ -4,21 +4,19 @@ import { useMemo, useState } from "react";
 import { Sparkline } from "@/components/macro/Sparkline";
 import { SortHeader, compareNullable, type SortDir } from "./SortHeader";
 
-interface FunderRow {
+interface PriceMoverRow {
   symbol: string; name: string | null;
-  cont: number; priceCont: number | null;
-  amtChangePct: number; priceChangePct: number | null;
-  amtToday: number | null; sparkline: number[];
+  priceCont: number; cont: number | null;
+  amtChangePct: number | null; priceChangePct: number | null;
+  amtToday: number | null; priceToday: number | null; sparkline: number[];
 }
 
-type SortField = "symbol" | "cont" | "priceCont" | "amtChangePct" | "priceChangePct";
+type SortField = "symbol" | "priceCont" | "cont" | "amtChangePct" | "priceChangePct";
 
-export function ContinuousFundersTable({
+export function PriceMoversTable({
   up, down, onSelectSymbol,
-}: { up: FunderRow[]; down: FunderRow[]; onSelectSymbol?: (symbol: string) => void }) {
+}: { up: PriceMoverRow[]; down: PriceMoverRow[]; onSelectSymbol?: (symbol: string) => void }) {
   const [tab, setTab] = useState<"up" | "down">("up");
-  // null = leave the API's own order alone (persistence, then magnitude) --
-  // only re-sort once the user actually clicks a column.
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const rows = tab === "up" ? up : down;
@@ -50,31 +48,30 @@ export function ContinuousFundersTable({
           onClick={() => setTab("up")}
           className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${tab === "up" ? "bg-teal/10 text-teal border border-teal/25" : "text-muted hover:text-primary"}`}
         >
-          Leveraging Up ({up.length})
+          Price Up ({up.length})
         </button>
         <button
           onClick={() => setTab("down")}
           className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${tab === "down" ? "bg-danger/10 text-danger border border-danger/25" : "text-muted hover:text-primary"}`}
         >
-          Deleveraging ({down.length})
+          Price Down ({down.length})
         </button>
       </div>
       <p className="text-[9px] text-muted/60 px-3 py-1.5 border-b border-border/40 shrink-0">
-        Volume Movers -- straight from the report&rsquo;s own MTF DATA {tab === "up" ? "POSITIVE" : "NEGATIVE"} sheet: stocks
-        where 4 or more of the last ~5 day-over-day MTF-financing changes were {tab === "up" ? "positive" : "negative"}
-        -- a persistent trend, not a one-day blip. &ldquo;Price Cont.&rdquo; is the SAME stock&rsquo;s own price-persistence count
-        (independent -- financing can be persistent while price isn&rsquo;t, or vice versa). Default order is by MTF count,
-        highest first -- click any column to re-sort.
+        Price Movers -- the report&rsquo;s own persistence count for the STOCK PRICE itself, independent of its
+        MTF-financing trend (shown alongside as &ldquo;MTF Cont.&rdquo; for comparison). A stock can show up here with
+        a persistently {tab === "up" ? "rising" : "falling"} price even if financing is flat or moving the other way.
+        Default order is by price count, highest first -- click any column to re-sort.
       </p>
       <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <thead className="sticky top-0 bg-surface z-10">
             <tr className="text-muted text-[9px] uppercase tracking-wider border-b border-border">
               <SortHeader label="Symbol" field="symbol" active={sortField === "symbol"} dir={sortDir} onClick={toggleSort} align="left" />
-              <SortHeader label="MTF Cont." field="cont" active={sortField === "cont"} dir={sortDir} onClick={toggleSort} />
               <SortHeader label="Price Cont." field="priceCont" active={sortField === "priceCont"} dir={sortDir} onClick={toggleSort} />
-              <SortHeader label="MTF Chg %" field="amtChangePct" active={sortField === "amtChangePct"} dir={sortDir} onClick={toggleSort} />
+              <SortHeader label="MTF Cont." field="cont" active={sortField === "cont"} dir={sortDir} onClick={toggleSort} />
               <SortHeader label="Price Chg %" field="priceChangePct" active={sortField === "priceChangePct"} dir={sortDir} onClick={toggleSort} />
+              <SortHeader label="MTF Chg %" field="amtChangePct" active={sortField === "amtChangePct"} dir={sortDir} onClick={toggleSort} />
               <th className="text-right font-normal px-2 py-1.5">Trend</th>
             </tr>
           </thead>
@@ -96,16 +93,16 @@ export function ContinuousFundersTable({
                     {r.symbol}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${tab === "up" ? "text-teal" : "text-danger"}`}>
-                    {r.cont}/5
+                    {r.priceCont}/5
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-muted">
-                    {r.priceCont != null ? `${r.priceCont}/5` : "—"}
-                  </td>
-                  <td className={`px-2 py-1.5 text-right tabular-nums ${r.amtChangePct >= 0 ? "text-teal" : "text-danger"}`}>
-                    {r.amtChangePct.toFixed(2)}%
+                    {r.cont != null ? `${r.cont}/5` : "—"}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                     {r.priceChangePct != null ? `${r.priceChangePct.toFixed(2)}%` : "—"}
+                  </td>
+                  <td className={`px-2 py-1.5 text-right tabular-nums ${(r.amtChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
+                    {r.amtChangePct != null ? `${r.amtChangePct.toFixed(2)}%` : "—"}
                   </td>
                   <td className="px-2 py-1.5 w-20">
                     <Sparkline data={r.sparkline} positive={tab === "up"} />

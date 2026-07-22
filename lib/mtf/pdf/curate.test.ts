@@ -8,7 +8,7 @@ function sector(sector: string, amtToday: number): SectorBreakdownRow {
   return { sector, amtToday, amtYesterday: amtToday, amtChangePct: 0, symbolCount: 1 };
 }
 function funder(symbol: string, cont: number): ContinuousFunderRow {
-  return { symbol, name: null, cont, amtChangePct: 1, priceChangePct: 1, amtToday: 100, sparkline: [] };
+  return { symbol, name: null, cont, priceCont: 1, amtChangePct: 1, priceChangePct: 1, amtToday: 100, sparkline: [] };
 }
 function divergent(symbol: string, amtChangePct: number): DivergenceRow {
   return {

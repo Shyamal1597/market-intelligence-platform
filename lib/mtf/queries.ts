@@ -164,10 +164,26 @@ export interface Breadth {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
-  /** Sum(amtToday) / Sum(turnoverLakhs) -- book-weighted. */
+  /** Sum(amtToday) / Sum(turnoverLakhs) -- book-weighted, whole universe. */
   aggregateTurnoverFinancedPct: number | null;
-  /** Simple mean of each symbol's turnoverFinancedPct -- unweighted, shows typical symbol not the book. */
-  avgTurnoverFinancedPct: number | null;
+  /**
+   * Median (not mean) of each isTradeable symbol's turnoverFinancedPct --
+   * "typical stock" rather than the book-weighted aggregate above. A simple
+   * mean was tried first and confirmed unusable against real data
+   * (2026-07-20): it read 450.5%, dominated by a handful of near-zero-
+   * turnover-day outliers (e.g. CREST at 30,423% -- Rs 6.75L of turnover
+   * against a real Rs 2,053.6L book). One such row moves an unweighted mean
+   * over ~2,100 symbols by double-digit percentage points; the median that
+   * same day was a much more representative 193.1%/282.3% (all/tradeable).
+   */
+  medianTurnoverFinancedPct: number | null;
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 export async function getBreadth(): Promise<Breadth> {
@@ -178,12 +194,14 @@ export async function getBreadth(): Promise<Breadth> {
     : null;
   const totalTurnover = rows.reduce((s, r) => s + (r.turnoverLakhs ?? 0), 0);
 
+  // isTradeable-filtered (unlike the whole-universe totals above) -- matches
+  // every other "typical stock" panel (Movers/Heatmap/Divergence) so this
+  // number isn't skewed by immaterial or NAV-pegged noise on top of the
+  // outlier problem the median already guards against.
   const financedPcts = rows
+    .filter((r) => isTradeable(r))
     .map((r) => r.turnoverFinancedPct)
     .filter((v): v is number => v !== null);
-  const avgTurnoverFinancedPct = financedPcts.length > 0
-    ? financedPcts.reduce((s, v) => s + v, 0) / financedPcts.length
-    : null;
 
   return {
     date, previousDate,
@@ -203,7 +221,7 @@ export async function getBreadth(): Promise<Breadth> {
     countFlat: rows.filter((r) => (r.amtChangePct ?? 0) === 0).length,
     totalSymbols: rows.length,
     aggregateTurnoverFinancedPct: totalTurnover > 0 ? (totalAmtToday / totalTurnover) * 100 : null,
-    avgTurnoverFinancedPct,
+    medianTurnoverFinancedPct: median(financedPcts),
   };
 }
 
@@ -329,23 +347,40 @@ export interface SectorBreakdownRow {
  * is leverage money flowing into/out of." Uses lib/mtf/sector.ts (BSE-
  * sourced, covers the full MTF universe), NOT the research-coverage
  * SYMBOL_SECTOR map. Symbols we couldn't resolve a sector for are counted
- * in unclassifiedAmt/unclassifiedCount rather than silently dropped, so the
- * numbers always foot to the same total as the rest of the dashboard.
+ * in unclassifiedAmt/unclassifiedCount rather than silently dropped.
+ *
+ * This panel (like Movers/Heatmap/Divergence) only includes isTradeable
+ * symbols, whereas "Total MTF Book" on the breadth tiles sums the WHOLE
+ * universe -- so the two totals don't foot to each other by design.
+ * Confirmed against real data (2026-07-20): whole-universe book was
+ * Rs 135,984.97 Cr across 2,142 symbols; this panel's rows + unclassified
+ * sum to Rs 135,821.95 Cr across 1,592 symbols, a Rs 163.02 Cr / 550-symbol
+ * gap from the same materiality-floor/NAV-peg exclusion used everywhere
+ * else. excludedAmt/excludedCount surface that gap explicitly so it's
+ * disclosed rather than silently unexplained.
  */
 export async function getSectorBreakdown(): Promise<{
   date: string | null;
   rows: SectorBreakdownRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
+  excludedAmt: number;
+  excludedCount: number;
 }> {
   const { date, rows } = await getSnapshot();
   const sectorMap = getSectorMap();
   const bySector = new Map<string, { amtToday: number; amtYesterday: number; symbolCount: number }>();
   let unclassifiedAmt = 0;
   let unclassifiedCount = 0;
+  let excludedAmt = 0;
+  let excludedCount = 0;
 
   for (const r of rows) {
-    if (!isTradeable(r)) continue;
+    if (!isTradeable(r)) {
+      excludedAmt += r.amtToday ?? 0;
+      excludedCount++;
+      continue;
+    }
     const info = sectorMap[r.symbol];
     if (!info) {
       unclassifiedAmt += r.amtToday ?? 0;
@@ -369,7 +404,7 @@ export async function getSectorBreakdown(): Promise<{
     }))
     .sort((a, b) => b.amtToday - a.amtToday);
 
-  return { date, rows: sectorRows, unclassifiedAmt, unclassifiedCount };
+  return { date, rows: sectorRows, unclassifiedAmt, unclassifiedCount, excludedAmt, excludedCount };
 }
 
 /**
@@ -542,6 +577,13 @@ export interface ContinuousFunderRow {
   symbol: string;
   name: string | null;
   cont: number;
+  /** The SAME row's own price-persistence count from the report's "Margin
+   * Trading Price Mover" block -- independent of "cont" above. Confirmed
+   * against real data (2026-07-20): CEATLTD had cont=5/5 (financing built
+   * every day) while priceCont was only 2/5 (price rarely followed). Null
+   * only if the report's Price Mover block was missing/unparseable for
+   * this row. */
+  priceCont: number | null;
   amtChangePct: number;
   priceChangePct: number | null;
   amtToday: number | null;
@@ -571,8 +613,8 @@ export async function getContinuousFunders(
 
   const db = await getMtfDb();
   const contRows = db.prepare(
-    "SELECT symbol, cont, latest_pct_chg FROM mtf_mover_cont WHERE date = ? AND direction = ? AND cont >= ?",
-  ).all(date, direction, minCont) as { symbol: string; cont: number; latest_pct_chg: number | null }[];
+    "SELECT symbol, cont, latest_pct_chg, price_cont FROM mtf_mover_cont WHERE date = ? AND direction = ? AND cont >= ?",
+  ).all(date, direction, minCont) as { symbol: string; cont: number; latest_pct_chg: number | null; price_cont: number | null }[];
 
   if (contRows.length === 0) return { date, rows: [] };
 
@@ -596,6 +638,7 @@ export async function getContinuousFunders(
       symbol: r.symbol,
       name: snap.name,
       cont: r.cont,
+      priceCont: r.price_cont,
       amtChangePct: snap.amtChangePct ?? r.latest_pct_chg ?? 0,
       priceChangePct: snap.priceChangePct,
       amtToday: snap.amtToday,
@@ -604,5 +647,80 @@ export async function getContinuousFunders(
   }
 
   results.sort((a, b) => b.cont - a.cont || Math.abs(b.amtChangePct) - Math.abs(a.amtChangePct));
+  return { date, rows: results.slice(0, limit) };
+}
+
+export interface PriceMoverRow {
+  symbol: string;
+  name: string | null;
+  /** The ranking dimension for this card -- price-persistence count from the
+   * report's own "Margin Trading Price Mover" block. */
+  priceCont: number;
+  /** The SAME row's MTF-financing persistence count, shown for cross-
+   * reference against the Volume Movers card -- independent of priceCont. */
+  cont: number | null;
+  amtChangePct: number | null;
+  priceChangePct: number | null;
+  amtToday: number | null;
+  priceToday: number | null;
+  /** Close-price history, not financed-amount -- this card is about price
+   * persistence, so the trend sparkline should show price, not the book. */
+  sparkline: number[];
+}
+
+/**
+ * Symmetric counterpart to getContinuousFunders, ranked by the report's
+ * Price Mover persistence count instead of its Volume Mover one. Reuses the
+ * exact same already-ingested mtf_mover_cont rows -- direction "up" reads
+ * the POSITIVE sheet's price_cont (days price rose), "down" reads the
+ * NEGATIVE sheet's price_cont (days price fell), matching how the vendor's
+ * own sheet split works for the MTF side.
+ */
+export async function getPriceMovers(
+  direction: "up" | "down", minCont = MIN_CONT, limit = 50,
+): Promise<{ date: string | null; rows: PriceMoverRow[] }> {
+  const { date, rows: snapshotRows } = await getSnapshot();
+  if (!date) return { date: null, rows: [] };
+
+  const bySnapshot = new Map(snapshotRows.map((r) => [r.symbol, r]));
+
+  const db = await getMtfDb();
+  const contRows = db.prepare(
+    "SELECT symbol, cont, price_cont FROM mtf_mover_cont WHERE date = ? AND direction = ? AND price_cont >= ?",
+  ).all(date, direction, minCont) as { symbol: string; cont: number; price_cont: number | null }[];
+
+  if (contRows.length === 0) return { date, rows: [] };
+
+  const symbols = contRows.map((r) => r.symbol);
+  const placeholders = symbols.map(() => "?").join(",");
+  const history = db.prepare(
+    `SELECT symbol, date, close FROM mtf_daily WHERE symbol IN (${placeholders}) ORDER BY date ASC`,
+  ).all(...symbols) as { symbol: string; date: string; close: number | null }[];
+  const sparkBySymbol = new Map<string, number[]>();
+  for (const h of history) {
+    const arr = sparkBySymbol.get(h.symbol) ?? [];
+    if (h.close != null) arr.push(h.close);
+    sparkBySymbol.set(h.symbol, arr);
+  }
+
+  const results: PriceMoverRow[] = [];
+  for (const r of contRows) {
+    if (r.price_cont === null) continue;
+    const snap = bySnapshot.get(r.symbol);
+    if (!snap || !isTradeable(snap)) continue;
+    results.push({
+      symbol: r.symbol,
+      name: snap.name,
+      priceCont: r.price_cont,
+      cont: r.cont,
+      amtChangePct: snap.amtChangePct,
+      priceChangePct: snap.priceChangePct,
+      amtToday: snap.amtToday,
+      priceToday: snap.priceToday,
+      sparkline: sparkBySymbol.get(r.symbol) ?? [],
+    });
+  }
+
+  results.sort((a, b) => b.priceCont - a.priceCont || Math.abs(b.priceChangePct ?? 0) - Math.abs(a.priceChangePct ?? 0));
   return { date, rows: results.slice(0, limit) };
 }

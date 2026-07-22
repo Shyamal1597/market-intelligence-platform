@@ -40,6 +40,8 @@ export async function GET() {
           sectors: curateForPdf.sectors(sectorBreakdown.rows),
           unclassifiedAmt: sectorBreakdown.unclassifiedAmt,
           unclassifiedCount: sectorBreakdown.unclassifiedCount,
+          excludedAmt: sectorBreakdown.excludedAmt,
+          excludedCount: sectorBreakdown.excludedCount,
           fundersUp: curateForPdf.continuousFunders(fundersUp.rows),
           fundersDown: curateForPdf.continuousFunders(fundersDown.rows),
           divergence: curateForPdf.divergence(divergence.rows),

@@ -4,17 +4,19 @@ import { useState } from "react";
 import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 
 const GLOSSARY: { term: string; def: string }[] = [
-  { term: "Total MTF Book", def: "Total value of shares currently bought on margin (borrowed money) across every tracked stock, as of today." },
+  { term: "Total MTF Book", def: "Total value of shares currently bought on margin (borrowed money) across every tracked stock, as of today -- the WHOLE universe. Continuous Funders, the Heatmap, Sector Breakdown and Divergence all exclude immaterial/NAV-pegged symbols, so their totals won't sum to this figure -- see each panel's own note for the exact gap." },
   { term: "vs Prior Day", def: "% change in the Total MTF Book compared to the previous trading day." },
   { term: "Leveraging Up / Deleveraging", def: "Number of stocks where margin financing increased / decreased today." },
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
-  { term: "Turnover Financed %", def: "Share of today's total market trading value that was done using margin financing -- a market-wide average, not any single stock." },
+  { term: "Turnover Financed %", def: "Total MTF book / today's total market turnover -- a book-weighted aggregate across the whole universe, not a per-stock average. Can exceed 100% since the book is a cumulative stock, not a single day's flow." },
+  { term: "Median Financed %", def: "Median (not mean) of each tradeable stock's own book/turnover ratio -- the \"typical stock\" picture. A simple mean was tried first and confirmed unusable: a handful of stocks with near-zero turnover on a given day but a real financed book produce ratios in the thousands of percent, which drag an unweighted mean far above what any real stock looks like." },
   { term: "Top Gainer / Top Loser", def: "The single stock with the largest % increase / decrease in MTF financing today -- this is a change in margin financing, not in the stock's share price." },
-  { term: "Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
+  { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
+  { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: a stock can show 5/5 on financing while its price only followed 1 or 2 of those days, or vice versa. This is different from Leverage vs Price Divergence below, which flags a single day's mismatch rather than a multi-day pattern." },
   { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
   { term: "Price Chg %", def: "Day-over-day % change in that stock's share price." },
   { term: "Book", def: "The MTF-financed amount for that stock." },
-  { term: "Leverage up/down, price up/down", def: "Flags days where margin financing and the share price moved in OPPOSITE directions -- financing added to a falling stock, or pulled from a rising one." },
+  { term: "Leverage vs Price Divergence", def: "Flags stocks where margin financing and the share price moved in OPPOSITE directions on a single day -- financing added to a falling stock, or pulled from a rising one. This is a one-day signal, unlike Price Cont./MTF Cont. above which track a multi-day pattern -- a stock can appear here without showing up as a Continuous Funder, and vice versa." },
 ];
 
 export function MtfGlossary() {

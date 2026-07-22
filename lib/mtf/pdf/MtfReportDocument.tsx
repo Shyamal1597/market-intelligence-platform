@@ -34,12 +34,14 @@ const styles = StyleSheet.create({
   trLast: { flexDirection: "row" },
   thCell: { padding: 4, fontSize: 7, fontFamily: "Helvetica-Bold", color: MUTED, textTransform: "uppercase" },
   tdCell: { padding: 4, fontSize: 8 },
-  colRank: { width: "6%", textAlign: "center", color: MUTED },
+  colRank: { width: "5%", textAlign: "center", color: MUTED },
   colSymbol: { width: "22%" },
   colSymbolNarrow: { width: "16%" },
+  colSymbolFunder: { width: "19%" },
   colWide: { width: "34%" },
   colNum: { width: "17%", textAlign: "right" },
   colNumSmall: { width: "14%", textAlign: "right" },
+  colContTiny: { width: "12%", textAlign: "right" },
   colTerm: { width: "20%", fontFamily: "Helvetica-Bold" },
   colDefinition: { width: "80%" },
   disclaimerTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", textAlign: "center", marginBottom: 8 },
@@ -79,6 +81,8 @@ export interface MtfReportData {
   sectors: SectorBreakdownRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
+  excludedAmt: number;
+  excludedCount: number;
   fundersUp: ContinuousFunderRow[];
   fundersDown: ContinuousFunderRow[];
   divergence: DivergenceRow[];
@@ -105,7 +109,8 @@ const GLOSSARY: { term: string; def: string }[] = [
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
   { term: "Turnover Financed %", def: "Share of today's total market trading value that was done using margin financing -- a market-wide average, not any single stock." },
   { term: "Top Gainer / Top Loser", def: "The single stock with the largest % increase / decrease in MTF financing today -- this is a change in margin financing, not in the stock's share price." },
-  { term: "Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
+  { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
+  { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: financing can be persistent while price isn't, or vice versa." },
   { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
   { term: "Price Chg %", def: "Day-over-day % change in that stock's share price." },
   { term: "Book", def: "The MTF-financed amount for that stock, shown in Rs Crores." },
@@ -135,8 +140,9 @@ function FunderTable({ rows }: { rows: ContinuousFunderRow[] }) {
       <View style={styles.table}>
         <View style={styles.tr}>
           <Text style={[styles.thCell, styles.colRank]}>#</Text>
-          <Text style={[styles.thCell, styles.colSymbolNarrow]}>Symbol</Text>
-          <Text style={[styles.thCell, styles.colNumSmall]}>Cont.</Text>
+          <Text style={[styles.thCell, styles.colSymbolFunder]}>Symbol</Text>
+          <Text style={[styles.thCell, styles.colContTiny]}>MTF Cont.</Text>
+          <Text style={[styles.thCell, styles.colContTiny]}>Price Cont.</Text>
           <Text style={[styles.thCell, styles.colNum]}>MTF Chg%</Text>
           <Text style={[styles.thCell, styles.colNum]}>Price Chg%</Text>
           <Text style={[styles.thCell, styles.colNum]}>Book</Text>
@@ -144,8 +150,9 @@ function FunderTable({ rows }: { rows: ContinuousFunderRow[] }) {
         {rows.map((r, i) => (
           <View key={r.symbol} style={i === rows.length - 1 ? styles.trLast : styles.tr}>
             <Text style={[styles.tdCell, styles.colRank]}>{i + 1}</Text>
-            <Text style={[styles.tdCell, styles.colSymbolNarrow]}>{r.symbol}</Text>
-            <Text style={[styles.tdCell, styles.colNumSmall]}>{r.cont}/5</Text>
+            <Text style={[styles.tdCell, styles.colSymbolFunder]}>{r.symbol}</Text>
+            <Text style={[styles.tdCell, styles.colContTiny]}>{r.cont}/5</Text>
+            <Text style={[styles.tdCell, styles.colContTiny]}>{r.priceCont != null ? `${r.priceCont}/5` : "—"}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.amtChangePct) }]}>{fmtPct(r.amtChangePct)}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.priceChangePct) }]}>{fmtPct(r.priceChangePct)}</Text>
             <Text style={[styles.tdCell, styles.colNum]}>{fmtCrLocal(r.amtToday)}</Text>
@@ -191,7 +198,10 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         </View>
 
         <Text style={styles.sectionTitle}>MTF Book by Sector</Text>
-        <Text style={styles.sectionSubtitle}>Where leverage money is flowing, top {data.sectors.length} sectors by book size.</Text>
+        <Text style={styles.sectionSubtitle}>
+          Where leverage money is flowing, top {data.sectors.length} sectors by book size.
+          {data.excludedCount > 0 && ` Excludes ${data.excludedCount} immaterial/NAV-pegged symbols (${fmtCrLocal(data.excludedAmt)}) -- that's why this table won't sum to "Total MTF Book" above, which counts the whole universe.`}
+        </Text>
         <View style={styles.table}>
           <View style={styles.tr}>
             <Text style={[styles.thCell, styles.colWide]}>Sector</Text>
@@ -227,7 +237,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           the SAME row set re-ranked by book size -- "which of these has the most money behind it." */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. Price Cont. is the same stock&rsquo;s own price-persistence count, independent of MTF Cont. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
         <FunderTable rows={data.fundersUp} />
 
         <Text style={styles.sectionTitle}>Same list, ranked by book size</Text>
