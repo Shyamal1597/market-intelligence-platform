@@ -10,7 +10,9 @@ import type {
 } from "../queries";
 
 const SECTOR_LIMIT = 10;
-const FUNDER_LIMIT = 12;
+// The reference report's whole point is these two "100 stocks" tables -- the client PDF
+// mirrors that depth here, unlike the other panels which stay tightly curated.
+const FUNDER_LIMIT = 100;
 const TURNOVER_LIMIT = 12;
 const DIVERGENCE_LIMIT = 12;
 const TOP_MOVERS_LIMIT = 15;

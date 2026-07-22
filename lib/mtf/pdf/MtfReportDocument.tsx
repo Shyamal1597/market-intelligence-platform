@@ -88,10 +88,9 @@ function KpiTile({ label, value, color }: { label: string; value: string; color?
   );
 }
 
-function FunderTable({ title, rows }: { title: string; rows: ContinuousFunderRow[] }) {
+function FunderTable({ rows }: { rows: ContinuousFunderRow[] }) {
   return (
-    <View style={{ flex: 1 }}>
-      <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", marginBottom: 4 }}>{title}</Text>
+    <View>
       <View style={styles.table}>
         <View style={styles.tr}>
           <Text style={[styles.thCell, styles.colSymbol]}>Symbol</Text>
@@ -172,15 +171,27 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 2: Continuous Funders */}
+      {/* Page 2: Continuous Funders -- Leveraging Up. Own page (not side-by-side) because this
+          list runs to 100+ rows -- react-pdf auto-continues overflowing content onto additional
+          A4 pages cloned from this one, so the table just flows across as many physical pages as
+          it needs. */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Continuous Funders</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive or negative — a trend, not a one-day blip.</Text>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <FunderTable title="Leveraging Up" rows={data.fundersUp} />
-          <FunderTable title="Deleveraging" rows={data.fundersDown} />
-        </View>
+        <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. Up to 100 shown.</Text>
+        <FunderTable rows={data.fundersUp} />
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
 
+      {/* Page 3: Continuous Funders -- Deleveraging. Same auto-pagination note as above. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Continuous Funders — Deleveraging</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. Up to 100 shown.</Text>
+        <FunderTable rows={data.fundersDown} />
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
+
+      {/* Page 4: Turnover / Crowding Leaders */}
+      <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Turnover / Crowding Leaders</Text>
         <Text style={styles.sectionSubtitle}>Highest MTF book relative to today&rsquo;s traded value — a large multiple means an unwind would have nowhere to go.</Text>
         <View style={styles.table}>
@@ -203,7 +214,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 3: Divergence + Top Movers */}
+      {/* Page 5: Divergence + Top Movers */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Leverage vs Price Divergence</Text>
         <Text style={styles.sectionSubtitle}>Stocks where margin financing and price moved in opposite directions today — a signal a plain movers list won&rsquo;t surface.</Text>
@@ -252,7 +263,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 4: Disclaimer (verbatim from the reference report) */}
+      {/* Page 6: Disclaimer (verbatim from the reference report) */}
       <Page size="A4" style={styles.page}>
         <Image src={BANNER_BUFFER} style={[styles.banner, { height: 40 }]} />
         <Text style={styles.disclaimerTitle}>Disclosures and Disclaimer</Text>

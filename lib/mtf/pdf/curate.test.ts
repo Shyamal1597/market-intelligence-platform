@@ -36,9 +36,14 @@ describe("curateForPdf", () => {
     expect(out[9].sector).toBe("S9");
   });
 
-  test("trims continuous funders to top 12", () => {
-    const rows = Array.from({ length: 20 }, (_, i) => funder(`SYM${i}`, 5));
-    expect(curateForPdf.continuousFunders(rows)).toHaveLength(12);
+  test("trims continuous funders to top 100", () => {
+    const rows = Array.from({ length: 150 }, (_, i) => funder(`SYM${i}`, 5));
+    expect(curateForPdf.continuousFunders(rows)).toHaveLength(100);
+  });
+
+  test("continuous funders passes through shorter lists unchanged (fewer than 100 persistent movers on a given day)", () => {
+    const rows = Array.from({ length: 79 }, (_, i) => funder(`SYM${i}`, 4));
+    expect(curateForPdf.continuousFunders(rows)).toHaveLength(79);
   });
 
   test("trims turnover leaders to top 12", () => {
