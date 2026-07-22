@@ -2,7 +2,7 @@ import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/render
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import type {
-  Breadth, ContinuousFunderRow, SectorBreakdownRow, DivergenceRow, HeatmapNode,
+  Breadth, ContinuousFunderRow, PriceMoverRow, SectorBreakdownRow, DivergenceRow, HeatmapNode,
 } from "../queries";
 
 // react-pdf's built-in "Helvetica" font family covers regular/bold/oblique
@@ -85,6 +85,8 @@ export interface MtfReportData {
   excludedCount: number;
   fundersUp: ContinuousFunderRow[];
   fundersDown: ContinuousFunderRow[];
+  priceMoversUp: PriceMoverRow[];
+  priceMoversDown: PriceMoverRow[];
   divergence: DivergenceRow[];
   topMovers: HeatmapNode[];
 }
@@ -134,7 +136,20 @@ function Glossary() {
   );
 }
 
-function FunderTable({ rows }: { rows: ContinuousFunderRow[] }) {
+// Shared shape between ContinuousFunderRow and PriceMoverRow -- both carry
+// exactly these fields, just with a different column driving the ranking/
+// filter upstream. Letting FunderTable accept either means the Price Movers
+// pages reuse the identical table markup/styling, not a parallel copy of it.
+interface FunderTableRow {
+  symbol: string;
+  cont: number | null;
+  priceCont: number | null;
+  amtChangePct: number | null;
+  priceChangePct: number | null;
+  amtToday: number | null;
+}
+
+function FunderTable({ rows }: { rows: FunderTableRow[] }) {
   return (
     <View>
       <View style={styles.table}>
@@ -151,7 +166,7 @@ function FunderTable({ rows }: { rows: ContinuousFunderRow[] }) {
           <View key={r.symbol} style={i === rows.length - 1 ? styles.trLast : styles.tr}>
             <Text style={[styles.tdCell, styles.colRank]}>{i + 1}</Text>
             <Text style={[styles.tdCell, styles.colSymbolFunder]}>{r.symbol}</Text>
-            <Text style={[styles.tdCell, styles.colContTiny]}>{r.cont}/5</Text>
+            <Text style={[styles.tdCell, styles.colContTiny]}>{r.cont != null ? `${r.cont}/5` : "—"}</Text>
             <Text style={[styles.tdCell, styles.colContTiny]}>{r.priceCont != null ? `${r.priceCont}/5` : "—"}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.amtChangePct) }]}>{fmtPct(r.amtChangePct)}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.priceChangePct) }]}>{fmtPct(r.priceChangePct)}</Text>
@@ -260,7 +275,28 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 4: Divergence + Top Movers */}
+      {/* Page 4: Price Movers -- Price Up. Symmetric counterpart to Continuous Funders
+          (pages 2-3), ranked by the report's own PRICE-persistence count instead of its
+          financing-persistence count. Reuses the same FunderTable markup/styling --
+          content only, no new table format. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Price Movers — Price Up</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently positive — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversUp.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
+        <FunderTable rows={data.priceMoversUp} />
+
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
+
+      {/* Page 5: Price Movers -- Price Down. Same auto-pagination note as pages 2-3. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Price Movers — Price Down</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently negative — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversDown.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
+        <FunderTable rows={data.priceMoversDown} />
+
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
+
+      {/* Page 6: Divergence + Top Movers */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Leverage vs Price Divergence</Text>
         <Text style={styles.sectionSubtitle}>Stocks where margin financing and price moved in opposite directions today — a signal a plain movers list won&rsquo;t surface.</Text>
@@ -309,7 +345,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 5: Disclaimer (verbatim from the reference report) */}
+      {/* Page 7: Disclaimer (verbatim from the reference report) */}
       <Page size="A4" style={styles.page}>
         <Image src={BANNER_BUFFER} style={[styles.banner, { height: 40 }]} />
         <Text style={styles.disclaimerTitle}>Disclosures and Disclaimer</Text>

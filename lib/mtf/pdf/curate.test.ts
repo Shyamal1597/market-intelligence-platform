@@ -1,7 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { curateForPdf } from "./curate";
 import type {
-  SectorBreakdownRow, ContinuousFunderRow, DivergenceRow, HeatmapNode,
+  SectorBreakdownRow, ContinuousFunderRow, PriceMoverRow, DivergenceRow, HeatmapNode,
 } from "../queries";
 
 function sector(sector: string, amtToday: number): SectorBreakdownRow {
@@ -9,6 +9,9 @@ function sector(sector: string, amtToday: number): SectorBreakdownRow {
 }
 function funder(symbol: string, cont: number): ContinuousFunderRow {
   return { symbol, name: null, cont, priceCont: 1, amtChangePct: 1, priceChangePct: 1, amtToday: 100, sparkline: [] };
+}
+function priceMover(symbol: string, priceCont: number): PriceMoverRow {
+  return { symbol, name: null, priceCont, cont: 1, amtChangePct: 1, priceChangePct: 1, amtToday: 100, priceToday: 100, sparkline: [] };
 }
 function divergent(symbol: string, amtChangePct: number): DivergenceRow {
   return {
@@ -37,6 +40,11 @@ describe("curateForPdf", () => {
   test("continuous funders passes through shorter lists unchanged (fewer than 100 persistent movers on a given day)", () => {
     const rows = Array.from({ length: 79 }, (_, i) => funder(`SYM${i}`, 4));
     expect(curateForPdf.continuousFunders(rows)).toHaveLength(79);
+  });
+
+  test("trims price movers to top 100", () => {
+    const rows = Array.from({ length: 150 }, (_, i) => priceMover(`SYM${i}`, 5));
+    expect(curateForPdf.priceMovers(rows)).toHaveLength(100);
   });
 
   test("trims divergence to top 12", () => {

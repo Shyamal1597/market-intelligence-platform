@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import {
-  getBreadth, getMovers, getContinuousFunders, getLeverageHeatmap,
+  getBreadth, getMovers, getContinuousFunders, getPriceMovers, getLeverageHeatmap,
   getSectorBreakdown, getDivergence,
 } from "@/lib/mtf/queries";
 import { curateForPdf } from "@/lib/mtf/pdf/curate";
@@ -11,17 +11,21 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const [breadth, topUp, topDown, fundersUp, fundersDown, heatmap, sectorBreakdown, divergence] =
-      await Promise.all([
-        getBreadth(),
-        getMovers("up", 1),
-        getMovers("down", 1),
-        getContinuousFunders("up", 4, 100),
-        getContinuousFunders("down", 4, 100),
-        getLeverageHeatmap(120),
-        getSectorBreakdown(),
-        getDivergence(30),
-      ]);
+    const [
+      breadth, topUp, topDown, fundersUp, fundersDown, priceMoversUp, priceMoversDown,
+      heatmap, sectorBreakdown, divergence,
+    ] = await Promise.all([
+      getBreadth(),
+      getMovers("up", 1),
+      getMovers("down", 1),
+      getContinuousFunders("up", 4, 100),
+      getContinuousFunders("down", 4, 100),
+      getPriceMovers("up", 4, 100),
+      getPriceMovers("down", 4, 100),
+      getLeverageHeatmap(120),
+      getSectorBreakdown(),
+      getDivergence(30),
+    ]);
 
     if (!breadth.date) {
       return NextResponse.json(
@@ -44,6 +48,8 @@ export async function GET() {
           excludedCount: sectorBreakdown.excludedCount,
           fundersUp: curateForPdf.continuousFunders(fundersUp.rows),
           fundersDown: curateForPdf.continuousFunders(fundersDown.rows),
+          priceMoversUp: curateForPdf.priceMovers(priceMoversUp.rows),
+          priceMoversDown: curateForPdf.priceMovers(priceMoversDown.rows),
           divergence: curateForPdf.divergence(divergence.rows),
           topMovers: curateForPdf.topMovers(heatmap.nodes),
         },

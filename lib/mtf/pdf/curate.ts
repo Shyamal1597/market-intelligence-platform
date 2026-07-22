@@ -6,12 +6,13 @@
  * they never re-sort.
  */
 import type {
-  SectorBreakdownRow, ContinuousFunderRow, DivergenceRow, HeatmapNode,
+  SectorBreakdownRow, ContinuousFunderRow, PriceMoverRow, DivergenceRow, HeatmapNode,
 } from "../queries";
 
 const SECTOR_LIMIT = 10;
 // The reference report's whole point is these two "100 stocks" tables -- the client PDF
-// mirrors that depth here, unlike the other panels which stay tightly curated.
+// mirrors that depth here, unlike the other panels which stay tightly curated. Price
+// Movers mirrors the same depth as its Continuous Funders counterpart.
 const FUNDER_LIMIT = 100;
 const DIVERGENCE_LIMIT = 12;
 const TOP_MOVERS_LIMIT = 15;
@@ -19,6 +20,7 @@ const TOP_MOVERS_LIMIT = 15;
 export const curateForPdf = {
   sectors: (rows: SectorBreakdownRow[]): SectorBreakdownRow[] => rows.slice(0, SECTOR_LIMIT),
   continuousFunders: (rows: ContinuousFunderRow[]): ContinuousFunderRow[] => rows.slice(0, FUNDER_LIMIT),
+  priceMovers: (rows: PriceMoverRow[]): PriceMoverRow[] => rows.slice(0, FUNDER_LIMIT),
   divergence: (rows: DivergenceRow[]): DivergenceRow[] => rows.slice(0, DIVERGENCE_LIMIT),
   topMovers: (rows: HeatmapNode[]): HeatmapNode[] => rows.slice(0, TOP_MOVERS_LIMIT),
 };
