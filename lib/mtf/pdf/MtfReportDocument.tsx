@@ -16,20 +16,20 @@ const BORDER = "#E2E5EA";
 const INK = "#1C1814";
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 28, paddingVertical: 24, fontSize: 9, fontFamily: "Helvetica", color: INK },
-  banner: { width: "100%", marginBottom: 4 },
-  updatedRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  updatedText: { fontSize: 8, color: MUTED },
-  sectionTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", marginTop: 14, marginBottom: 6, color: INK },
-  sectionSubtitle: { fontSize: 7.5, color: MUTED, marginBottom: 8 },
+  page: { paddingHorizontal: 26, paddingVertical: 22, fontSize: 9, fontFamily: "Helvetica", color: INK },
+  banner: { width: "100%", marginBottom: 3 },
+  updatedRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  updatedText: { fontSize: 7.5, color: MUTED },
+  sectionTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginTop: 9, marginBottom: 4, color: INK },
+  sectionSubtitle: { fontSize: 7.5, color: MUTED, marginBottom: 5 },
   // Two explicit rows of 4 fixed-width tiles, rather than a single flexWrap row -- flexWrap
   // wraps based on each tile's natural minWidth vs available space, which reliably produces an
   // uneven 4/3/1 split for 8 tiles. Fixed widths guarantee an even 4x2 grid regardless of label length.
-  kpiGrid: { gap: 8, marginBottom: 4 },
-  kpiRow: { flexDirection: "row", gap: 8 },
-  kpiTile: { width: "23%", borderWidth: 1, borderColor: BORDER, borderRadius: 4, padding: 8 },
-  kpiLabel: { fontSize: 7, color: MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 },
-  kpiValue: { fontSize: 13, fontFamily: "Helvetica-Bold" },
+  kpiGrid: { gap: 6, marginBottom: 2 },
+  kpiRow: { flexDirection: "row", gap: 6 },
+  kpiTile: { width: "23%", borderWidth: 1, borderColor: BORDER, borderRadius: 4, padding: 6 },
+  kpiLabel: { fontSize: 6.5, color: MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  kpiValue: { fontSize: 11, fontFamily: "Helvetica-Bold" },
   table: { borderWidth: 1, borderColor: BORDER, borderRadius: 3 },
   tr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: BORDER },
   trLast: { flexDirection: "row" },
@@ -41,8 +41,8 @@ const styles = StyleSheet.create({
   colWide: { width: "34%" },
   colNum: { width: "17%", textAlign: "right" },
   colNumSmall: { width: "14%", textAlign: "right" },
-  disclaimerTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", textAlign: "center", marginBottom: 10 },
-  disclaimerBody: { fontSize: 7.5, lineHeight: 1.5, color: INK, marginBottom: 8 },
+  disclaimerTitle: { fontSize: 11, fontFamily: "Helvetica-Bold", textAlign: "center", marginBottom: 8 },
+  disclaimerBody: { fontSize: 7.5, lineHeight: 1.4, color: INK, marginBottom: 6 },
   footer: { position: "absolute", bottom: 16, left: 28, right: 28, fontSize: 6.5, color: MUTED, textAlign: "center" },
 });
 
@@ -180,30 +180,8 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           )}
         </View>
 
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
-      </Page>
-
-      {/* Page 2: Continuous Funders -- Leveraging Up. Own page (not side-by-side) because this
-          list runs to 100+ rows -- react-pdf auto-continues overflowing content onto additional
-          A4 pages cloned from this one, so the table just flows across as many physical pages as
-          it needs. */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
-        <FunderTable rows={data.fundersUp} />
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
-      </Page>
-
-      {/* Page 3: Continuous Funders -- Deleveraging. Same auto-pagination note as above. */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Continuous Funders — Deleveraging</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. {data.fundersDown.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
-        <FunderTable rows={data.fundersDown} />
-        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
-      </Page>
-
-      {/* Page 4: Turnover / Crowding Leaders */}
-      <Page size="A4" style={styles.page}>
+        {/* Short table (~12 rows) -- fits on page 1 alongside the KPI/sector content above,
+            instead of a near-empty dedicated page. */}
         <Text style={styles.sectionTitle}>Turnover / Crowding Leaders</Text>
         <Text style={styles.sectionSubtitle}>Highest MTF book relative to today&rsquo;s traded value — a large multiple means an unwind would have nowhere to go.</Text>
         <View style={styles.table}>
@@ -226,7 +204,26 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 5: Divergence + Top Movers */}
+      {/* Page 2: Continuous Funders -- Leveraging Up. Own page (not side-by-side) because this
+          list runs to 100+ rows -- react-pdf auto-continues overflowing content onto additional
+          A4 pages cloned from this one, so the table just flows across as many physical pages as
+          it needs. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
+        <FunderTable rows={data.fundersUp} />
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
+
+      {/* Page 3: Continuous Funders -- Deleveraging. Same auto-pagination note as above. */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Continuous Funders — Deleveraging</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. {data.fundersDown.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
+        <FunderTable rows={data.fundersDown} />
+        <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
+      </Page>
+
+      {/* Page 4: Divergence + Top Movers */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Leverage vs Price Divergence</Text>
         <Text style={styles.sectionSubtitle}>Stocks where margin financing and price moved in opposite directions today — a signal a plain movers list won&rsquo;t surface.</Text>
@@ -275,7 +272,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.footer}>Sunidhi Securities & Finance Ltd. — For private circulation. See final page for disclosures and disclaimer.</Text>
       </Page>
 
-      {/* Page 6: Disclaimer (verbatim from the reference report) */}
+      {/* Page 5: Disclaimer (verbatim from the reference report) */}
       <Page size="A4" style={styles.page}>
         <Image src={BANNER_BUFFER} style={[styles.banner, { height: 40 }]} />
         <Text style={styles.disclaimerTitle}>Disclosures and Disclaimer</Text>

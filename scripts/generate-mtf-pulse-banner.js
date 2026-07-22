@@ -36,10 +36,11 @@ async function main() {
   <!-- thin accent line beside logo (red portion) -->
   <rect x="${s(802)}" y="${s(110)}" width="${s(307)}" height="${s(8)}" fill="#FF0000"/>
 
-  <!-- title text with soft drop shadow -->
-  <text x="${s(644)}" y="${s(62)}" font-family="Calibri, Arial, sans-serif" font-size="${s(30)}"
+  <!-- title text with soft drop shadow, centered on the blue box (x 50 to 803, center 426.5),
+       not the whole banner width (the logo sits further right, outside the blue box) -->
+  <text x="${s(428.5)}" y="${s(84)}" font-family="Calibri, Arial, sans-serif" font-size="${s(22)}"
         font-weight="bold" fill="#000000" opacity="0.3" text-anchor="middle">MTF Market Pulse</text>
-  <text x="${s(642)}" y="${s(60)}" font-family="Calibri, Arial, sans-serif" font-size="${s(30)}"
+  <text x="${s(426.5)}" y="${s(82)}" font-family="Calibri, Arial, sans-serif" font-size="${s(22)}"
         font-weight="bold" fill="#FFFFFF" text-anchor="middle">MTF Market Pulse</text>
 
   <!-- logo, on white background -->
