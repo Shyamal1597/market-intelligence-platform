@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Download } from "lucide-react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
@@ -80,6 +81,35 @@ export default function MarginTradingPage() {
   const [listModal, setListModal] = useState<ListModalState>(null);
   const [listRows, setListRows] = useState<ListRow[] | null>(null);
   const [listLoading, setListLoading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const exportPdf = useCallback(async () => {
+    setExportingPdf(true);
+    try {
+      const res = await fetch("/api/mtf/pdf-export");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? `Export failed: ${res.statusText}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const today = new Date().toLocaleDateString("en-IN", {
+        day: "2-digit", month: "2-digit", year: "2-digit",
+      }).replace(/\//g, ".");
+      a.download = `MTF Market Pulse - ${today}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("MTF PDF export failed:", e);
+      alert(e instanceof Error ? e.message : "Export failed.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }, []);
 
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
@@ -135,7 +165,18 @@ export default function MarginTradingPage() {
     <div className="p-6 space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl font-semibold text-primary">Margin Trading</h1>
-        <MtfUpload onComplete={load} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportPdf}
+            disabled={exportingPdf || !data || data.breadth.date === null}
+            title="Export MTF Market Pulse as PDF"
+            className="flex items-center gap-2 px-4 py-2 border border-amber/40 rounded-lg text-sm text-amber hover:bg-amber/10 hover:border-amber/70 transition-all disabled:opacity-50"
+          >
+            <Download className={`w-4 h-4 ${exportingPdf ? "animate-bounce" : ""}`} />
+            {exportingPdf ? "Generating…" : "Export PDF"}
+          </button>
+          <MtfUpload onComplete={load} />
+        </div>
       </div>
 
       {loading && (
