@@ -7,7 +7,6 @@ import { MtfGlossary } from "@/components/mtf/MtfGlossary";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
 import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
-import { TurnoverLeaderboard } from "@/components/mtf/TurnoverLeaderboard";
 import { SectorBreakdown } from "@/components/mtf/SectorBreakdown";
 import { DivergencePanel } from "@/components/mtf/DivergencePanel";
 import { SymbolDrilldown } from "@/components/mtf/SymbolDrilldown";
@@ -34,11 +33,6 @@ interface HeatmapNode {
   amtChangePct: number | null; priceChangePct: number | null; turnoverLakhs: number | null;
 }
 
-interface TurnoverRow {
-  symbol: string; name: string | null;
-  turnoverFinancedPct: number | null; amtToday: number | null;
-}
-
 interface SectorRow {
   sector: string; amtToday: number; amtYesterday: number;
   amtChangePct: number | null; symbolCount: number;
@@ -57,7 +51,6 @@ interface DashboardData {
   continuousFundersUp: FunderRow[];
   continuousFundersDown: FunderRow[];
   heatmap: HeatmapNode[];
-  turnoverLeaders: TurnoverRow[];
   sectorBreakdown: SectorRow[];
   unclassifiedAmt: number;
   unclassifiedCount: number;
@@ -211,14 +204,11 @@ export default function MarginTradingPage() {
           />
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-            <div className="xl:col-span-5">
+            <div className="xl:col-span-7">
               <ContinuousFundersTable up={data.continuousFundersUp} down={data.continuousFundersDown} onSelectSymbol={setSelectedSymbol} />
             </div>
-            <div className="xl:col-span-4">
+            <div className="xl:col-span-5">
               <MTFHeatmap nodes={data.heatmap} onSelectSymbol={setSelectedSymbol} />
-            </div>
-            <div className="xl:col-span-3">
-              <TurnoverLeaderboard rows={data.turnoverLeaders} onSelectSymbol={setSelectedSymbol} />
             </div>
           </div>
 
@@ -240,7 +230,7 @@ export default function MarginTradingPage() {
           rows={listRows}
           loading={listLoading}
           onClose={() => setListModal(null)}
-          onSelectSymbol={(symbol) => { setListModal(null); setSelectedSymbol(symbol); }}
+          onSelectSymbol={setSelectedSymbol}
         />
       )}
 

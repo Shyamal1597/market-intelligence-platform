@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { fmtCr } from "@/lib/mtf/format";
 
 interface TopMover { symbol: string; amtChangePct: number }
@@ -28,10 +29,15 @@ function Tile({
     <Comp
       onClick={onClick}
       className={`rounded-lg border ${border ?? "border-border"} bg-surface p-2.5 text-left w-full ${
-        onClick ? "cursor-pointer hover:border-amber/30 transition-colors" : ""
+        onClick ? "cursor-pointer hover:border-amber/40 hover:bg-white/[0.02] transition-colors group" : ""
       }`}
     >
-      <p className="text-[9px] uppercase tracking-widest text-muted mb-1">{label}</p>
+      <p className="text-[9px] uppercase tracking-widest text-muted mb-1 flex items-center justify-between gap-1">
+        <span>{label}</span>
+        {onClick && (
+          <ChevronRight className="w-3 h-3 shrink-0 text-muted/50 group-hover:text-amber group-hover:translate-x-0.5 transition-all" />
+        )}
+      </p>
       {children}
     </Comp>
   );

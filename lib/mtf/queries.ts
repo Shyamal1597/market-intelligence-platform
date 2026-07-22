@@ -306,17 +306,6 @@ export async function getLeverageHeatmap(limit = 120): Promise<{
   return { date, nodes };
 }
 
-export async function getTurnoverLeaders(
-  limit = 50,
-): Promise<{ date: string | null; rows: SymbolSnapshot[] }> {
-  const { date, rows } = await getSnapshot();
-  const sorted = rows
-    .filter((r) => isTradeable(r) && r.turnoverFinancedPct !== null)
-    .sort((a, b) => (b.turnoverFinancedPct ?? 0) - (a.turnoverFinancedPct ?? 0))
-    .slice(0, limit);
-  return { date, rows: sorted };
-}
-
 export interface SymbolHistoryPoint { date: string; amtFinancedLakhs: number | null; close: number | null; }
 
 export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoint[]> {

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import {
-  getBreadth, getMovers, getContinuousFunders, getLeverageHeatmap, getTurnoverLeaders,
+  getBreadth, getMovers, getContinuousFunders, getLeverageHeatmap,
   getSectorBreakdown, getDivergence,
 } from "@/lib/mtf/queries";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [breadth, topUp, topDown, funderUp, funderDown, heatmap, turnoverLeaders, sectorBreakdown, divergence] =
+  const [breadth, topUp, topDown, funderUp, funderDown, heatmap, sectorBreakdown, divergence] =
     await Promise.all([
       getBreadth(),
       getMovers("up", 1), // just the single top mover, for the breadth tile
@@ -15,7 +15,6 @@ export async function GET() {
       getContinuousFunders("up", 4, 100),
       getContinuousFunders("down", 4, 100),
       getLeverageHeatmap(120),
-      getTurnoverLeaders(50),
       getSectorBreakdown(),
       getDivergence(30),
     ]);
@@ -27,7 +26,6 @@ export async function GET() {
     continuousFundersUp: funderUp.rows,
     continuousFundersDown: funderDown.rows,
     heatmap: heatmap.nodes,
-    turnoverLeaders: turnoverLeaders.rows,
     sectorBreakdown: sectorBreakdown.rows,
     unclassifiedAmt: sectorBreakdown.unclassifiedAmt,
     unclassifiedCount: sectorBreakdown.unclassifiedCount,

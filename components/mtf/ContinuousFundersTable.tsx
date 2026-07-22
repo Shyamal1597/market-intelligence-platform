@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sparkline } from "@/components/macro/Sparkline";
+import { SortHeader, compareNullable, type SortDir } from "./SortHeader";
 
 interface FunderRow {
   symbol: string; name: string | null;
@@ -10,11 +11,37 @@ interface FunderRow {
   amtToday: number | null; sparkline: number[];
 }
 
+type SortField = "symbol" | "cont" | "amtChangePct" | "priceChangePct";
+
 export function ContinuousFundersTable({
   up, down, onSelectSymbol,
 }: { up: FunderRow[]; down: FunderRow[]; onSelectSymbol?: (symbol: string) => void }) {
   const [tab, setTab] = useState<"up" | "down">("up");
+  // null = leave the API's own order alone (persistence, then magnitude) --
+  // only re-sort once the user actually clicks a column.
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const rows = tab === "up" ? up : down;
+
+  const displayRows = useMemo(() => {
+    if (!sortField) return rows;
+    return [...rows].sort((a, b) => {
+      if (sortField === "symbol") {
+        const cmp = a.symbol.localeCompare(b.symbol);
+        return sortDir === "asc" ? cmp : -cmp;
+      }
+      return compareNullable(a[sortField], b[sortField], sortDir);
+    });
+  }, [rows, sortField, sortDir]);
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir(field === "symbol" ? "asc" : "desc");
+    }
+  }
 
   return (
     <div className="rounded-lg border border-border bg-surface flex flex-col h-[560px]">
@@ -35,28 +62,28 @@ export function ContinuousFundersTable({
       <p className="text-[9px] text-muted/60 px-3 py-1.5 border-b border-border/40 shrink-0">
         Straight from the report&rsquo;s own MTF DATA {tab === "up" ? "POSITIVE" : "NEGATIVE"} sheet: stocks
         where 4 or more of the last ~5 day-over-day MTF-financing changes were {tab === "up" ? "positive" : "negative"}
-        -- a persistent trend, not a one-day blip. Sorted by count, highest first.
+        -- a persistent trend, not a one-day blip. Default order is by count, highest first -- click any column to re-sort.
       </p>
       <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full text-[11px] font-mono border-collapse">
           <thead className="sticky top-0 bg-surface z-10">
             <tr className="text-muted text-[9px] uppercase tracking-wider border-b border-border">
-              <th className="text-left font-normal px-2 py-1.5">Symbol</th>
-              <th className="text-right font-normal px-2 py-1.5">Cont.</th>
-              <th className="text-right font-normal px-2 py-1.5">MTF Chg %</th>
-              <th className="text-right font-normal px-2 py-1.5">Price Chg %</th>
+              <SortHeader label="Symbol" field="symbol" active={sortField === "symbol"} dir={sortDir} onClick={toggleSort} align="left" />
+              <SortHeader label="Cont." field="cont" active={sortField === "cont"} dir={sortDir} onClick={toggleSort} />
+              <SortHeader label="MTF Chg %" field="amtChangePct" active={sortField === "amtChangePct"} dir={sortDir} onClick={toggleSort} />
+              <SortHeader label="Price Chg %" field="priceChangePct" active={sortField === "priceChangePct"} dir={sortDir} onClick={toggleSort} />
               <th className="text-right font-normal px-2 py-1.5">Trend</th>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-2 py-8 text-center text-muted">
                   No stocks qualify right now.
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
+              displayRows.map((r) => (
                 <tr
                   key={r.symbol}
                   onClick={() => onSelectSymbol?.(r.symbol)}
