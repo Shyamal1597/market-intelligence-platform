@@ -33,6 +33,31 @@ function num(v: unknown): number | null {
 interface MoverContRow { symbol: string; cont: number; latestPctChg: number | null; }
 
 /**
+ * The "MTF TRADING" sheet's Amt Fin column is read by fixed column position
+ * (index 3), never by a hardcoded unit assumption -- its header text has
+ * changed from "...Rs. In Lakhs)" to "...Rs. In Cr)" before without the
+ * column moving, and every other part of this codebase (mtf_daily's
+ * amt_financed_lakhs column, every %-change/turnover-ratio/materiality-floor
+ * calculation in lib/mtf/queries.ts, both the dashboard and the PDF export)
+ * assumes the stored value is in Lakhs. Silently trusting the raw number
+ * when the source has switched to Cr would understate every financed amount
+ * in the system by 100x -- the highest-severity kind of data error, since it
+ * feeds both the live dashboard and the client-facing PDF. Detected from the
+ * header text every ingest, factor applied before storage, and refuses to
+ * guess (throws) if the header doesn't clearly say one or the other.
+ */
+export function detectAmtFinancedUnitFactor(headerText: string): { factor: number; label: string } {
+  const h = headerText.toLowerCase();
+  if (/\bcr\b|\bcrore/.test(h)) return { factor: 100, label: "Crores" };
+  if (/\blakh/.test(h)) return { factor: 1, label: "Lakhs" };
+  throw new Error(
+    `Cannot determine the unit of the "MTF TRADING" sheet's Amt Fin column from its header ` +
+    `("${headerText}") -- expected it to mention "Lakhs" or "Cr"/"Crore". Refusing to guess, since ` +
+    `misreading the unit would silently misstate every financed amount in the system by 100x.`,
+  );
+}
+
+/**
  * "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets, Volume Movers panel only
  * (cols A-M; the Price Mover panel starting at col O is a separate ranking
  * we don't need -- price change is already tracked from BHAVCOPY). Row
@@ -80,11 +105,23 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
   if (!mtfSheet) throw new Error('Sheet "MTF TRADING" not found in workbook.');
   if (!bhavSheet) throw new Error('Sheet "BHAVCOPY" not found in workbook.');
 
-  const mtfRows = XLSX.utils.sheet_to_json<unknown[]>(mtfSheet, { header: 1 }).slice(1);
+  const mtfRowsRaw = XLSX.utils.sheet_to_json<unknown[]>(mtfSheet, { header: 1 });
+  const mtfHeader = mtfRowsRaw[0] ?? [];
+  const mtfRows = mtfRowsRaw.slice(1);
   const bhavRows = XLSX.utils.sheet_to_json<unknown[]>(bhavSheet, { header: 1 }).slice(1);
 
   if (mtfRows.length === 0) throw new Error('"MTF TRADING" sheet has no data rows.');
   if (bhavRows.length === 0) throw new Error('"BHAVCOPY" sheet has no data rows.');
+
+  const amtFinancedHeaderText = String(mtfHeader[3] ?? "");
+  const { factor: amtUnitFactor, label: amtUnitLabel } = detectAmtFinancedUnitFactor(amtFinancedHeaderText);
+  // Only surface this when a conversion actually happened -- the routine Lakhs
+  // case is the expected default and shouldn't add an amber "warning" box to
+  // every single upload, but a Cr-sourced file changing every stored figure
+  // by 100x is exactly the kind of thing the uploader should see confirmed.
+  if (amtUnitFactor !== 1) {
+    warnings.push(`Amt Fin column read as ${amtUnitLabel} -- converted x${amtUnitFactor} to Lakhs for storage.`);
+  }
 
   // Build BHAVCOPY lookup keyed by symbol, across all series.
   //
@@ -131,7 +168,8 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
     if (!symbol || symbol.startsWith("*")) continue;
     const name = String(row[1] ?? "").trim() || null;
     const qtyFinanced = num(row[2]);
-    const amtFinanced = num(row[3]);
+    const amtFinancedRaw = num(row[3]);
+    const amtFinanced = amtFinancedRaw !== null ? amtFinancedRaw * amtUnitFactor : null;
 
     const bhav = bhavBySymbol.get(symbol);
     if (!bhav) {
