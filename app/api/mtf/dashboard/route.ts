@@ -12,8 +12,8 @@ export async function GET() {
       getBreadth(),
       getMovers("up", 1), // just the single top mover, for the breadth tile
       getMovers("down", 1),
-      getContinuousFunders("up", 4, 50),
-      getContinuousFunders("down", 4, 50),
+      getContinuousFunders("up", 4, 100),
+      getContinuousFunders("down", 4, 100),
       getLeverageHeatmap(120),
       getTurnoverLeaders(50),
       getSectorBreakdown(),
