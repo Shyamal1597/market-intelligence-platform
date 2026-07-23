@@ -25,6 +25,10 @@ import { fetchAllQuotes, fetchGlobalQuotes } from "@/lib/yahoo-finance";
 import type { QuoteData } from "@/lib/yahoo-finance";
 import { computePeriodTotals } from "@/lib/flow-periods";
 import { fetchBseSectors, mapEodSectors } from "@/lib/bse-sectors";
+import {
+  SEBI_REG_NUMBER, BSE_REG_NUMBER, NSE_REG_NUMBER, MSEI_REG_NUMBER,
+  COMPLIANCE_ADDRESS, COMPLIANCE_OFFICER_NAME, COMPLIANCE_OFFICER_PHONE,
+} from "@/lib/complianceInfo";
 
 export const dynamic = "force-dynamic";
 
@@ -467,7 +471,7 @@ export async function GET() {
     ws.mergeCells(39, 2, 39, 9);
     const discBody = ws.getCell(39, 2);
     discBody.value =
-      `This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as "Sunidhi") SEBI Research Analyst Registration Number: INH000000000 for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and Metropolitan Stock Exchange of India Limited in cash, derivatives and currency derivatives segments. It is also having registration as a Depository Participant with CDSL.\n\n` +
+      `This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as "Sunidhi") SEBI Research Analyst Registration Number: ${SEBI_REG_NUMBER} for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and Metropolitan Stock Exchange of India Limited in cash, derivatives and currency derivatives segments. It is also having registration as a Depository Participant with CDSL.\n\n` +
       `Sunidhi has other business divisions with independent research teams separated by Chinese walls, and therefore may, at times, have different or contrary views on stocks and markets.\n\n` +
       `Sunidhi or its associates has not been debarred / suspended by SEBI or any other regulatory authority for accessing / dealing in securities Market. Sunidhi or analyst or his relatives do not hold any financial interest in the subject company. Associates may have such interest in its ordinary course of business as a distinct and independent body. Sunidhi or its associates or Analyst do not have any conflict or material conflict of interest at the time of publication of the research report with the company covered by Analyst.\n\n` +
       `Sunidhi or its associates / analyst has not received any compensation / managed or co-managed public offering of securities of the company covered by Analyst during the past twelve months. Sunidhi or its associates has not received any compensation or other benefits from the company covered by Analyst or third party in connection with the research report. Analyst has not served as an officer, director or employee of subject company and Sunidhi / analyst has not been engaged in market making activity of the subject company.\n\n` +
@@ -485,7 +489,7 @@ export async function GET() {
     ws.getRow(40).height = 18.6;
     ws.mergeCells(40, 2, 40, 9);
     const footerCell = ws.getCell(40, 2);
-    footerCell.value = "Sunidhi Securities & Finance Ltd. - Research Analyst - INH000000000";
+    footerCell.value = `Sunidhi Securities & Finance Ltd. - Research Analyst - ${SEBI_REG_NUMBER}`;
     footerCell.font = { bold: true, name: "Calibri", size: 9 };
     footerCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
@@ -493,7 +497,7 @@ export async function GET() {
     ws.getRow(41).height = 20.4;
     ws.mergeCells(41, 2, 41, 9);
     const addrCell = ws.getCell(41, 2);
-    addrCell.value = "Registered office address (configure via MTF_COMPLIANCE_ADDRESS)";
+    addrCell.value = COMPLIANCE_ADDRESS;
     addrCell.font = { name: "Calibri", size: 9 };
     addrCell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
@@ -502,12 +506,12 @@ export async function GET() {
       [42, [[2, 3, "Bombay Stock Exchange (BSE)"],
             [4, 6, "National Stock Exchange of India Ltd (NSE)"],
             [7, 9, "Metropolitan Stock Exchange of India Limited (MSEI)"]]],
-      [43, [[2, 3, "Registration no. INZ000000000"],
-            [4, 6, "Registration no. INZ000000000"],
-            [7, 9, "Registration no. INZ000000000"]]],
+      [43, [[2, 3, `Registration no. ${BSE_REG_NUMBER}`],
+            [4, 6, `Registration no. ${NSE_REG_NUMBER}`],
+            [7, 9, `Registration no. ${MSEI_REG_NUMBER}`]]],
       [44, [[2, 3, "Compliance Officer Name:"],
-            [4, 6, "Compliance Officer Name"],
-            [7, 9, "Phone No: +91-00000-00000"]]],
+            [4, 6, COMPLIANCE_OFFICER_NAME],
+            [7, 9, `Phone No: ${COMPLIANCE_OFFICER_PHONE}`]]],
     ];
 
     for (const [row, cols] of REG_ROWS) {

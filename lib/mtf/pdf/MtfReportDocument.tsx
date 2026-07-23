@@ -4,6 +4,10 @@ import { readFileSync } from "node:fs";
 import type {
   Breadth, ContinuousFunderRow, PriceMoverRow, SectorBreakdownRow, DivergenceRow, HeatmapNode,
 } from "../queries";
+import {
+  SEBI_REG_NUMBER, BSE_REG_NUMBER, NSE_REG_NUMBER, MSEI_REG_NUMBER,
+  COMPLIANCE_ADDRESS, COMPLIANCE_OFFICER_NAME, COMPLIANCE_OFFICER_PHONE,
+} from "@/lib/complianceInfo";
 
 // react-pdf's built-in "Helvetica" font family covers regular/bold/oblique
 // out of the box -- no Font.register needed, no network fetch at render time.
@@ -370,7 +374,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
         <Text style={styles.disclaimerTitle}>Disclosures and Disclaimer</Text>
         <Text style={styles.disclaimerBody}>
           Disclosures and Disclaimers: This Report is published by Sunidhi Securities & Finance Limited (hereinafter referred to as “Sunidhi”) SEBI Research Analyst
-          Registration Number: INH000000000 for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and
+          Registration Number: {SEBI_REG_NUMBER} for private circulation. Sunidhi is a registered Stock Broker with National Stock Exchange of India Limited, BSE Limited and
           Metropolitan Stock Exchange of India Limited in cash, derivatives and currency derivatives segments. It is also having registration as a Depository Participant
           with CDSL.
         </Text>
@@ -419,17 +423,17 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           nor its directors, employees or affiliates shall be liable for any loss or damage that may arise from or in connection with the use of this information.
         </Text>
         <Text style={[styles.disclaimerBody, { fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 6 }]}>
-          Sunidhi Securities & Finance Ltd. – Research Analyst – INH000000000
+          Sunidhi Securities & Finance Ltd. – Research Analyst – {SEBI_REG_NUMBER}
         </Text>
         <Text style={[styles.disclaimerBody, { textAlign: "center" }]}>
-          Registered office address (configure via MTF_COMPLIANCE_ADDRESS)
+          {COMPLIANCE_ADDRESS}
         </Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 6 }}>
-          <Text style={{ fontSize: 7, color: MUTED }}>BSE Registration no. INZ000000000</Text>
-          <Text style={{ fontSize: 7, color: MUTED }}>NSE Registration no. INZ000000000</Text>
-          <Text style={{ fontSize: 7, color: MUTED }}>MSEI Registration no. INZ000000000</Text>
+          <Text style={{ fontSize: 7, color: MUTED }}>BSE Registration no. {BSE_REG_NUMBER}</Text>
+          <Text style={{ fontSize: 7, color: MUTED }}>NSE Registration no. {NSE_REG_NUMBER}</Text>
+          <Text style={{ fontSize: 7, color: MUTED }}>MSEI Registration no. {MSEI_REG_NUMBER}</Text>
         </View>
-        <Text style={{ fontSize: 7, color: MUTED, marginTop: 4 }}>Compliance Officer: Compliance Officer Name — Phone: +91-00000-00000</Text>
+        <Text style={{ fontSize: 7, color: MUTED, marginTop: 4 }}>Compliance Officer: {COMPLIANCE_OFFICER_NAME} — Phone: {COMPLIANCE_OFFICER_PHONE}</Text>
         <Footer />
       </Page>
     </Document>
