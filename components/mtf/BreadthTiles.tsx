@@ -98,31 +98,40 @@ export function BreadthTiles(props: BreadthProps) {
         </p>
       </Tile>
 
-      <Tile label="Top MTF Mover">
-        <div className="flex flex-col gap-0.5">
-          {props.topGainer ? (
-            <button
-              onClick={() => props.onSelectSymbol?.(props.topGainer!.symbol)}
-              className="flex items-center justify-between w-full font-mono text-[11px] text-teal hover:underline text-left"
-            >
-              <span>{props.topGainer.symbol}</span>
-              <span className="tabular-nums">+{props.topGainer.amtChangePct.toFixed(1)}%</span>
-            </button>
-          ) : (
-            <p className="font-mono text-[11px] text-muted">—</p>
-          )}
-          {props.topLoser ? (
-            <button
-              onClick={() => props.onSelectSymbol?.(props.topLoser!.symbol)}
-              className="flex items-center justify-between w-full font-mono text-[11px] text-danger hover:underline text-left"
-            >
-              <span>{props.topLoser.symbol}</span>
-              <span className="tabular-nums">{props.topLoser.amtChangePct.toFixed(1)}%</span>
-            </button>
-          ) : (
-            <p className="font-mono text-[11px] text-muted">—</p>
-          )}
-        </div>
+      <Tile
+        label="Top Gainer"
+        border="border-teal/20"
+        onClick={props.topGainer ? () => props.onSelectSymbol?.(props.topGainer!.symbol) : undefined}
+        tooltip="The stock with the largest DAY-OVER-DAY increase in MTF-financed amount (today vs the previous trading day only -- not a multi-day or cumulative change)."
+      >
+        {props.topGainer ? (
+          <>
+            <p className="font-mono text-sm text-teal tabular-nums">{props.topGainer.symbol}</p>
+            <p className="font-mono text-[10px] tabular-nums text-teal">
+              +{props.topGainer.amtChangePct.toFixed(1)}% <span className="text-muted/60">day/day</span>
+            </p>
+          </>
+        ) : (
+          <p className="font-mono text-sm text-muted">—</p>
+        )}
+      </Tile>
+
+      <Tile
+        label="Top Loser"
+        border="border-danger/20"
+        onClick={props.topLoser ? () => props.onSelectSymbol?.(props.topLoser!.symbol) : undefined}
+        tooltip="The stock with the largest DAY-OVER-DAY decrease in MTF-financed amount (today vs the previous trading day only -- not a multi-day or cumulative change)."
+      >
+        {props.topLoser ? (
+          <>
+            <p className="font-mono text-sm text-danger tabular-nums">{props.topLoser.symbol}</p>
+            <p className="font-mono text-[10px] tabular-nums text-danger">
+              {props.topLoser.amtChangePct.toFixed(1)}% <span className="text-muted/60">day/day</span>
+            </p>
+          </>
+        ) : (
+          <p className="font-mono text-sm text-muted">—</p>
+        )}
       </Tile>
     </div>
   );

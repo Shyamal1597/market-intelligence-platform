@@ -129,7 +129,7 @@ const GLOSSARY: { term: string; def: string }[] = [
   { term: "Leveraging Up / Deleveraging", def: "Number of stocks where margin financing increased / decreased today." },
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
   { term: "Turnover Financed %", def: "Share of today's total market trading value that was done using margin financing -- a market-wide average, not any single stock." },
-  { term: "Top Gainer / Top Loser", def: "The single stock with the largest % increase / decrease in MTF financing today -- this is a change in margin financing, not in the stock's share price." },
+  { term: "Top Gainer / Top Loser", def: "The single stock with the largest DAY-OVER-DAY % increase / decrease in MTF financing (today vs the previous trading day only, not a multi-day or cumulative change) -- this is a change in margin financing, not in the stock's share price." },
   { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
   { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: financing can be persistent while price isn't, or vice versa." },
   { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
