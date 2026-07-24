@@ -46,6 +46,7 @@ Centralises equity research and trading intelligence into a single intranet plat
 | **Analyst Scorecard** | Track analyst accuracy over time — target price hit rates, rating distribution, coverage breadth. |
 | **Ticker Strip** | Live scrolling price ticker with WebSocket-style polling, configurable watchlist. |
 | **Theme System** | Dual-theme (dark editorial + light) with CSS custom properties, localStorage persistence, zero-FOUC switching. |
+| **MTF Dashboard & PDF Report** | Turns a daily raw Margin Trading Facility export into a live breadth/movers/heatmap dashboard and a same-day PDF, both derived from one shared query layer so the two never disagree. See below. |
 
 ## Intel Pipeline (Management Guidance Tracker)
 
@@ -71,6 +72,18 @@ Stage 5: Generate quarterly narrative summaries
 - 98/100 symbols with extracted claims for FY26 quarters
 - 137+ actuals (transcript evidence snippets) across 52 symbols
 - Per-company data quality notes surface missing data without blocking the UI
+
+## MTF Dashboard & PDF Report
+
+A daily raw `.xls` export (margin-financed value per stock, joined against exchange BHAVCOPY data) turned into a live dashboard and a same-day PDF — built to answer "where is leverage money flowing" without anyone opening the spreadsheet by hand.
+
+**Reading the raw file first, not assuming its schema.** The source workbook has four sheets (`MTF TRADING`, `BHAVCOPY`, and two vendor-computed "persistence" sheets), each parsed directly with `@e965/xlsx` rather than guessed at. That surfaced real quirks early — headers and dates carry a stray leading space in the export, and an initial join that restricted matching to `SERIES === "EQ"` turned out to silently drop 100+ legitimately-financed stocks that trade under other exchange series codes (`BE`, `BZ`). Dropping that filter and joining on symbol alone fixed it.
+
+**Architecture**: one SQLite table (`better-sqlite3`), one row per `(date, symbol)`, upserted on ingest so re-uploading a day's file is always safe. Nothing derived — day-over-day %, breadth counts, sector rollups, rankings — is stored; it's all computed on read from the raw columns, in one query module that both the dashboard's API routes and the PDF generator call. That means the PDF and the live dashboard can never show different numbers for the same day, because there's only one place the numbers are computed.
+
+**The part worth being honest about**: several metrics shipped once, then got corrected after checking real data or a real objection — not guessed right on the first attempt. A Trade-to-Trade exclusion filter that looked validated (it excluded exactly the handful of symbols expected) turned out to be filtering on the wrong signal entirely, and only caught 8 of what should have been 130+ genuinely ineligible stocks — found by chasing down one specific named counter-example and reading the raw row directly, not by re-deriving the formula from theory. A chart comparing two financial quantities went through five design iterations after repeated (and reasonable) confusion about whether one metric could legitimately exceed another — resolved by pulling the actual daily series for a real stock and showing the two numbers behave like a persisting balance and an independent daily flow, not two things that should track each other. The full account, including the exact numbers and the exact wrong turns, is in [`docs/mtf-dashboard-build-log.md`](docs/mtf-dashboard-build-log.md).
+
+**Compliance handling**: the PDF's disclaimer page carries real regulatory disclosures (registration numbers, office contact). Those live in environment variables with safe placeholder defaults, never hardcoded in source.
 
 ## Recent Additions
 
@@ -144,6 +157,8 @@ npx tsx scripts/build-actuals.ts
 - **Sector-first LLM prompts** — generic extraction misses domain KPIs; sector registries ensure the model asks about NIM for banks, VNB margin for insurers
 - **"LLM writes words, not numbers"** — all quantitative verification uses structured data; LLM only classifies verdicts from transcript evidence
 - **Keyword actuals before LLM actuals** — transcript evidence is surfaced via a deterministic keyword search pass first; LLM-based extraction is a planned upgrade once budget permits
+- **Derive on read, store nothing computed (MTF)** — every dashboard/PDF metric is computed from raw ingested columns at request time, not pre-aggregated; a formula fix applies retroactively to the whole history with zero backfill required
+- **Exchange classification over inferred heuristics** — Trade-to-Trade exclusion reads BHAVCOPY's own `SERIES` code rather than inferring it from delivery-percentage patterns, after the inferred version was found to miss the majority of real cases
 
 ## License
 
