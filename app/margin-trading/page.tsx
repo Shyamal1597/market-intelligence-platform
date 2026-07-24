@@ -16,8 +16,8 @@ import { SymbolListModal } from "@/components/mtf/SymbolListModal";
 interface Breadth {
   date: string | null; totalAmtToday: number; totalAmtYesterday: number | null;
   countUp: number; countDown: number; countFlat: number; totalSymbols: number;
-  aggregateTurnoverFinancedPct: number | null;
-  medianTurnoverFinancedPct: number | null;
+  aggregateDeliveryFinancedPct: number | null;
+  avgDeliveryPct: number | null;
 }
 
 interface FunderRow {

@@ -26,7 +26,19 @@ export interface SymbolSnapshot {
   priceYesterday: number | null;
   priceChangePct: number | null;
   turnoverLakhs: number | null;
-  turnoverFinancedPct: number | null;
+  /** Today's delivered value in Lakhs -- deliv_qty (shares actually delivered,
+   * from BHAVCOPY) x close price. An approximation (close, not a true
+   * volume-weighted average delivery price -- BHAVCOPY doesn't carry that),
+   * but close is what's already stored for every date, so this works for the
+   * full history immediately rather than only from whenever a new column
+   * would start being populated. */
+  deliveryValueLakhs: number | null;
+  /** BHAVCOPY's own DELIV_PER -- % of today's traded quantity that was
+   * delivered (settled as real ownership) rather than squared off intraday.
+   * Used for the "Avg Delivery %" breadth tile, a market-wide gauge of
+   * whether today's activity reflects genuine conviction or speculative
+   * churn -- distinct from anything MTF-book-based. */
+  deliveryPct: number | null;
   /** See isNavPegged() below. */
   isNavPegged: boolean;
 }
@@ -106,6 +118,77 @@ function isTradeable(r: SymbolSnapshot): boolean {
   return isMaterial(r) && !r.isNavPegged;
 }
 
+/**
+ * Trade-to-Trade (T2T) symbols settle under compulsory delivery -- every
+ * trade must be delivered, no intraday squaring off -- and are structurally
+ * ineligible for margin trading. Any MTF amount attributed to one is not
+ * real financing (most likely a stale/leftover entry from before a T2T
+ * reclassification, or the source feed including a symbol the exchange
+ * itself doesn't allow MTF on).
+ *
+ * Originally detected via "today's delivery % >= 100", on the assumption
+ * that compulsory-delivery symbols would report 100% delivery. That was
+ * wrong: real data shows BE/BZ-series (T2T) rows report DELIV_QTY/DELIV_PER
+ * as blank ("-"), not literally 100 -- e.g. MTARTECH, series " BE", reports
+ * deliv_pct as null on every date checked, so the >=100 check silently let
+ * it (and every other T2T row with blank delivery data) straight through.
+ * The 8-of-2,146 "hits" the old check found on 2026-07-21 were a handful of
+ * illiquid EQ-series ETFs that coincidentally traded 100% delivery that one
+ * day -- not T2T stocks at all.
+ *
+ * BHAVCOPY's own SERIES column is the exchange's actual classification and
+ * doesn't have this ambiguity: confirmed against all 9 available raw source
+ * files (2026-06-25 through 2026-07-10), SERIES "BE" or "BZ" identifies
+ * 114-153 of the ~2,150 "MTF TRADING" symbols per file (the same
+ * bhav-lookup fix in ingest.ts already found this independently -- see its
+ * comment on dropping the EQ-only join filter).
+ */
+const T2T_SERIES = new Set(["BE", "BZ"]);
+
+/**
+ * Fallback for dates ingested before the `series` column existed (2026-07-13
+ * through 2026-07-21): the raw upload isn't retained after ingestion (see
+ * app/api/mtf/upload/route.ts), so those rows' true series can't be
+ * recovered and `series` is null for them. This is the union of every
+ * BE/BZ symbol observed across all 9 raw files still on disk -- used only
+ * when a row's own `series` is unavailable. T2T membership does shift over
+ * time, so this is an approximation for that gap window, not a permanent
+ * substitute -- every date ingested from here on stores its own real
+ * series and never needs this list.
+ */
+const KNOWN_T2T_SYMBOLS = new Set([
+  "AARTECH", "AFFORDABLE", "AFIL", "AGL", "AMANTA", "APTECHT", "ARROWGREEN",
+  "ASMS", "AUTOIND", "AVADHSUGAR", "AVG", "BALAXI", "BASML", "BGRENERGY",
+  "BHAGERIA", "BHARATGEAR", "BIRLACABLE", "BLACKROSE", "BLISSGVS", "BODALCHEM",
+  "BSHSL", "BYKE", "CHEMBOND", "CHEMCON", "CHEMFAB", "COFFEEDAY", "CORDSCABLE",
+  "CPCAP", "CYBERTECH", "DBEIL", "DBOL", "DBREALTY", "DCI", "DEEDEV",
+  "DELPHIFX", "DISHTV", "DPSCLTD", "DPWIRES", "ECOSMOBLTY", "EIFFL", "EMMBI",
+  "ESSENTIA", "EVERESTIND", "FAIRCHEMOR", "FCSSOFT", "FOCUS", "GAUDIUMIVF",
+  "GINNIFILA", "GLOBECIVIL", "GLOTTIS", "GOLDTECH", "GUJENERGY", "GULFPETRO",
+  "HALDYNGL", "HILINFRA", "HILTON", "IBULLSLTD", "IDEAFORGE", "IFBAGRO",
+  "INDOAMIN", "INDOTECH", "INDOWIND", "JAIBALAJI", "JKIPL", "KAMDHENU",
+  "KANORICHEM", "KECL", "KHADIM", "KHAICHEM", "KILITCH", "KOPRAN", "KOTYARK",
+  "KRITI", "KRITINUT", "KRN", "LAXMIINDIA", "LIKHITHA", "LOKESHMACH",
+  "LYKALABS", "MANORG", "MAWANASUG", "MAZDA", "MBLINFRA", "MCLEODRUSS",
+  "MEIL", "MENONBE", "MGEL", "MICEL", "MODISONLTD", "MTARTECH", "NAGAFERT",
+  "NAHARSPING", "NECLIFE", "NOVAAGRI", "NRL", "OCCLLTD", "OILCOUNTUB",
+  "OMFREIGHT", "ONIDA", "ONMOBILE", "ORBTEXP", "OSWALAGRO", "PARSVNATH",
+  "PASUPTAC", "PAVNAIND", "PENINLAND", "PFOCUS", "PLAZACABLE", "PPL",
+  "PRADPME", "PREMIERPOL", "PRITIKAUTO", "QPOWER", "QUICKHEAL", "RAJESHEXPO",
+  "RAJOOENG", "RAMASTEEL", "REGAAL", "RELINFRA", "RSWM", "RUBYMILLS",
+  "SAKUMA", "SARVESHWAR", "SHIVALIK", "SIGACHI", "SIGMAADV", "STERTOOLS",
+  "STLNETWORK", "STLTECH", "STYLEBAAZA", "SUBEXLTD", "SUMIT", "SUTLEJTEX",
+  "SYSTMTXC", "TAKE", "TIGERLOGS", "TIRUPATIFL", "TRANSWORLD", "UNIDT",
+  "UNIVASTU", "VALIANTLAB", "VALIANTORG", "VARDHACRLC", "VASCONEQ",
+  "VENUSREM", "VETO", "VIKRAMSOLR", "VIPCLOTHNG", "VMSTMT", "VPRPL",
+  "ZEELEARN", "ZIMLAB", "ZODIAC",
+]);
+
+function isTradeToTrade(series: string | null, symbol: string): boolean {
+  if (series) return T2T_SERIES.has(series);
+  return KNOWN_T2T_SYMBOLS.has(symbol);
+}
+
 /** The two most recent distinct dates in the table, newest first. */
 export async function getLatestTwoDates(): Promise<{ latest: string | null; previous: string | null }> {
   const db = await getMtfDb();
@@ -123,7 +206,8 @@ export async function getSnapshot(): Promise<{
   if (!latest) return { date: null, previousDate: null, rows: [] };
 
   const db = await getMtfDb();
-  const today = db.prepare("SELECT * FROM mtf_daily WHERE date = ?").all(latest) as any[];
+  const todayRaw = db.prepare("SELECT * FROM mtf_daily WHERE date = ?").all(latest) as any[];
+  const today = todayRaw.filter((t) => !isTradeToTrade(t.series, t.symbol));
   const yestBySymbol = new Map<string, any>();
   if (previous) {
     for (const r of db.prepare("SELECT * FROM mtf_daily WHERE date = ?").all(previous) as any[]) {
@@ -133,9 +217,9 @@ export async function getSnapshot(): Promise<{
 
   const rows: SymbolSnapshot[] = today.map((t) => {
     const y = yestBySymbol.get(t.symbol);
-    const turnoverFinancedPct =
-      t.turnover_lakhs && t.turnover_lakhs > 0 && t.amt_financed_lakhs !== null
-        ? (t.amt_financed_lakhs / t.turnover_lakhs) * 100
+    const deliveryValueLakhs =
+      t.deliv_qty && t.deliv_qty > 0 && t.close && t.close > 0
+        ? (t.deliv_qty * t.close) / 100000
         : null;
     return {
       symbol: t.symbol,
@@ -147,7 +231,8 @@ export async function getSnapshot(): Promise<{
       priceYesterday: y?.close ?? null,
       priceChangePct: priceChangePct(t.close, y?.close ?? null),
       turnoverLakhs: t.turnover_lakhs,
-      turnoverFinancedPct,
+      deliveryValueLakhs,
+      deliveryPct: t.deliv_pct,
       isNavPegged: computeIsNavPegged(t.high, t.low, t.close),
     };
   });
@@ -164,26 +249,35 @@ export interface Breadth {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
-  /** Sum(amtToday) / Sum(turnoverLakhs) -- book-weighted, whole universe. */
-  aggregateTurnoverFinancedPct: number | null;
   /**
-   * Median (not mean) of each isTradeable symbol's turnoverFinancedPct --
-   * "typical stock" rather than the book-weighted aggregate above. A simple
-   * mean was tried first and confirmed unusable against real data
-   * (2026-07-20): it read 450.5%, dominated by a handful of near-zero-
-   * turnover-day outliers (e.g. CREST at 30,423% -- Rs 6.75L of turnover
-   * against a real Rs 2,053.6L book). One such row moves an unweighted mean
-   * over ~2,100 symbols by double-digit percentage points; the median that
-   * same day was a much more representative 193.1%/282.3% (all/tradeable).
+   * (Sum(amtToday) - Sum(amtYesterday)) / Sum(deliveryValueLakhs) -- the
+   * WHOLE universe's net GAIN/LOSS in MTF book today, relative to today's
+   * total delivery value. A FLOW metric (day's change), not a level ratio --
+   * signed, can be negative on a day the book shrank. Answers "how much of
+   * today's real (delivered) trading value does today's net financing swing
+   * represent" -- distinct from turnoverFinancedPct-style ratios, which
+   * compare an accumulated book LEVEL against a single day's volume and are
+   * always positive. Replaced the original level-ratio design
+   * (aggregateTurnoverFinancedPct, then briefly a delivery-value level
+   * ratio) per explicit correction.
    */
-  medianTurnoverFinancedPct: number | null;
+  aggregateDeliveryFinancedPct: number | null;
+  /**
+   * Mean of deliveryPct (BHAVCOPY's own DELIV_PER) across isTradeable
+   * symbols -- how much of today's activity was genuine delivery-based
+   * conviction rather than speculative/intraday churn. Genuinely distinct
+   * from every other tile here (none of them look at price/volume quality,
+   * only MTF-book levels or flows) -- a simple mean is statistically safe
+   * for this one, unlike the old turnover-ratio tile it replaced: deliv_pct
+   * is naturally bounded 0-100, so there's no unbounded-outlier risk the way
+   * an unbounded book/turnover ratio had.
+   */
+  avgDeliveryPct: number | null;
 }
 
-function median(values: number[]): number | null {
+function mean(values: number[]): number | null {
   if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return values.reduce((s, v) => s + v, 0) / values.length;
 }
 
 export async function getBreadth(): Promise<Breadth> {
@@ -192,15 +286,14 @@ export async function getBreadth(): Promise<Breadth> {
   const totalAmtYesterday = previousDate
     ? rows.reduce((s, r) => s + (r.amtYesterday ?? 0), 0)
     : null;
-  const totalTurnover = rows.reduce((s, r) => s + (r.turnoverLakhs ?? 0), 0);
+  const totalDeliveryValue = rows.reduce((s, r) => s + (r.deliveryValueLakhs ?? 0), 0);
 
-  // isTradeable-filtered (unlike the whole-universe totals above) -- matches
-  // every other "typical stock" panel (Movers/Heatmap/Divergence) so this
-  // number isn't skewed by immaterial or NAV-pegged noise on top of the
-  // outlier problem the median already guards against.
-  const financedPcts = rows
+  // isTradeable-filtered so this isn't skewed by immaterial or NAV-pegged
+  // noise -- matches every other "typical stock" panel (Movers/Heatmap/
+  // Divergence).
+  const deliveryPcts = rows
     .filter((r) => isTradeable(r))
-    .map((r) => r.turnoverFinancedPct)
+    .map((r) => r.deliveryPct)
     .filter((v): v is number => v !== null);
 
   return {
@@ -220,8 +313,11 @@ export async function getBreadth(): Promise<Breadth> {
     // "new symbol" bucket in the UI for the rare genuinely-new case to go to.
     countFlat: rows.filter((r) => (r.amtChangePct ?? 0) === 0).length,
     totalSymbols: rows.length,
-    aggregateTurnoverFinancedPct: totalTurnover > 0 ? (totalAmtToday / totalTurnover) * 100 : null,
-    medianTurnoverFinancedPct: median(financedPcts),
+    aggregateDeliveryFinancedPct:
+      totalDeliveryValue > 0 && totalAmtYesterday !== null
+        ? ((totalAmtToday - totalAmtYesterday) / totalDeliveryValue) * 100
+        : null,
+    avgDeliveryPct: mean(deliveryPcts),
   };
 }
 
@@ -324,14 +420,55 @@ export async function getLeverageHeatmap(limit = 120): Promise<{
   return { date, nodes };
 }
 
-export interface SymbolHistoryPoint { date: string; amtFinancedLakhs: number | null; close: number | null; }
+export interface SymbolHistoryPoint {
+  date: string;
+  /** Day-over-day CHANGE in qty_financed (shares currently financed on
+   * margin), NOT the outstanding balance itself -- signed, can be negative.
+   * The raw feed's "Qty Fin by all the members" is a cumulative book figure
+   * (confirmed against real data: it moves smoothly day-to-day like a
+   * balance, e.g. INGERRAND 6207 -> 6238 -> 6397 -> 6339 ..., not an
+   * erratic same-day count like deliv_qty), so there is no genuine
+   * "shares financed today" figure in the source -- this delta is the
+   * closest real "for the day" quantity: how many shares were added to
+   * (positive) or removed from (negative) the margin book that day. */
+  mtfVolumeChange: number | null;
+  close: number | null;
+  /** BHAVCOPY's own DELIV_QTY for this date -- shares actually delivered
+   * that day, a genuine same-day flow (unlike mtfVolumeChange's book-delta
+   * derivation, deliv_qty needs no transformation). Raw share count, not a
+   * Rupee value, so it's directly comparable to mtfVolumeChange on one axis. */
+  deliveryVolume: number | null;
+}
+
+/** Drilldown shows a short recent window, not the symbol's entire ingested
+ * history -- per explicit instruction, the last 6 trading sessions. */
+const SYMBOL_HISTORY_SESSIONS = 6;
 
 export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoint[]> {
   const db = await getMtfDb();
+  // Fetch one extra session before the displayed window purely as the
+  // baseline to diff the first displayed day's qty_financed against.
   const rows = db.prepare(
-    "SELECT date, amt_financed_lakhs, close FROM mtf_daily WHERE symbol = ? ORDER BY date ASC",
-  ).all(symbol.toUpperCase()) as { date: string; amt_financed_lakhs: number | null; close: number | null }[];
-  return rows.map((r) => ({ date: r.date, amtFinancedLakhs: r.amt_financed_lakhs, close: r.close }));
+    `SELECT date, qty_financed, close, deliv_qty FROM (
+       SELECT date, qty_financed, close, deliv_qty FROM mtf_daily
+       WHERE symbol = ? ORDER BY date DESC LIMIT ?
+     ) ORDER BY date ASC`,
+  ).all(symbol.toUpperCase(), SYMBOL_HISTORY_SESSIONS + 1) as { date: string; qty_financed: number | null; close: number | null; deliv_qty: number | null }[];
+
+  const points: SymbolHistoryPoint[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const today = rows[i];
+    const prevQty = rows[i - 1].qty_financed;
+    const mtfVolumeChange =
+      today.qty_financed !== null && prevQty !== null ? today.qty_financed - prevQty : null;
+    points.push({
+      date: today.date,
+      mtfVolumeChange,
+      close: today.close,
+      deliveryVolume: today.deliv_qty,
+    });
+  }
+  return points;
 }
 
 export interface SectorBreakdownRow {

@@ -66,11 +66,55 @@ d) NAV-PEGGED INSTRUMENT DETECTION (NAV_PEG_RANGE_PCT = 0.3%):
 e) COMBINED TRADEABILITY FILTER:
      isTradeable = isMaterial AND NOT isNavPegged
    Applied by: Continuous Funders, Price Movers, Heatmap, Sector Breakdown,
-   Divergence, and the Top MTF Mover breadth tile.
+   Divergence, and the Top Gainer/Top Loser breadth tiles.
    NOT applied by: the Leveraging Up/Deleveraging/Unchanged breadth COUNTS
-   and the "Total MTF Book"/"Turnover Financed %" totals, which deliberately
+   and the "Total MTF Book"/"Delivery Financed %" totals, which deliberately
    sum the WHOLE universe (see section 3's note on the universe-scope gap
    this creates against every isTradeable-filtered panel below it).
+
+f) DELIVERY VALUE (approximation, used by Delivery Financed % and the
+   drilldown's Delivery Value bars):
+     deliveryValueLakhs = (deliv_qty * close) / 100000
+   deliv_qty is BHAVCOPY's own DELIV_QTY column -- shares that actually
+   settled as real ownership transfer that day, as opposed to turnoverLakhs
+   which includes ALL traded volume (including same-day intraday square-offs
+   that never become real delivery). BHAVCOPY does not carry a true volume-
+   weighted average delivery price, so close is used as the per-share value
+   proxy -- close is already stored for every historical date, so this
+   works immediately across full history rather than only from whenever a
+   new column would start being populated. Null if deliv_qty or close is
+   zero/missing for that symbol/date.
+
+g) TRADE-TO-TRADE (T2T) EXCLUSION -- applied at getSnapshot() itself, before
+   ANY other filter, so it propagates to literally everything, including the
+   whole-universe totals that skip isTradeable (guard e):
+     isTradeToTrade = (series IN ('BE','BZ'))  [falls back to a fixed symbol
+                       list when series wasn't captured for that date -- see
+                       below]
+   T2T symbols settle under compulsory delivery -- no intraday squaring off
+   at all -- and are structurally ineligible for margin trading; any MTF
+   amount attributed to one isn't real financing. BHAVCOPY's own SERIES
+   column ("BE"/"BZ") is the exchange's actual classification for this.
+   FIRST ATTEMPT (superseded): "deliv_pct >= 100" on the assumption T2T rows
+   report 100% delivery. Wrong against real data -- BE/BZ rows report
+   deliv_qty/deliv_pct as blank ("-", stored as null), not 100, so that
+   check let every T2T row with missing delivery data straight through (e.g.
+   MTARTECH, series "BE", never once tripped it). The 8-of-2,146 hits it did
+   find (2026-07-21) were a handful of illiquid EQ-series ETFs that
+   coincidentally traded 100% delivery that one day, not T2T stocks.
+   CURRENT: SERIES-based, confirmed against all 9 available raw source files
+   (2026-06-25 through 2026-07-10) -- 114-153 of the ~2,150 "MTF TRADING"
+   symbols per file trade under BE or BZ, not EQ. The `series` column was
+   added to mtf_daily after several dates were already ingested and their
+   raw uploads aren't retained (app/api/mtf/upload/route.ts discards the
+   buffer after ingest), so dates 2026-07-13 through 2026-07-21 have no
+   stored series; for those, isTradeToTrade falls back to a fixed symbol
+   list built from the union of BE/BZ symbols across the 9 files that are
+   still on disk. Every date ingested from here on stores its own real
+   series and never needs the fallback.
+   These rows are dropped from getSnapshot()'s rows array entirely -- not
+   just excluded from isTradeable-gated panels -- so "Total MTF Book" and
+   "Symbols w/ Data" are both net of this exclusion too.
 
 
 --------------------------------------------------------------------------------
@@ -78,8 +122,9 @@ e) COMBINED TRADEABILITY FILTER:
 --------------------------------------------------------------------------------
 Last Updated             = the latest date itself (section 1)
 Total MTF Book           = sum(amtToday) across the FULL universe -- every
-                           symbol in mtf_daily for the latest date, no
-                           tradeability filter applied
+                           symbol in mtf_daily for the latest date EXCEPT
+                           Trade-to-Trade rows (guard 2g, dropped upstream of
+                           this tile too) -- no isTradeable filter applied
   vs prior day            = pctChange(totalAmtToday, totalAmtYesterday)
 Leveraging Up            = count of symbols where amtChangePct > 0
                            (full universe, unfiltered)
@@ -93,32 +138,44 @@ Unchanged                = count of symbols where amtChangePct = 0
                            0-Lakh, and folding both into "flat" is what
                            keeps up+down+flat === totalSymbols always true)
 Symbols w/ Data          = total row count in the latest snapshot (full
-                           universe)
-Turnover Financed % (agg)= "aggregateTurnoverFinancedPct" -- BOOK-WEIGHTED,
-                           WHOLE universe: sum(amtToday) / sum(turnoverLakhs)
-                           * 100. Can exceed 100% since the book is a
-                           cumulative stock, not a single day's flow.
-Median Financed %        = "medianTurnoverFinancedPct" -- MEDIAN (not mean)
-                           of each TRADEABLE symbol's own turnoverFinancedPct
-                           (isTradeable-filtered, section 2e). A simple
-                           unweighted MEAN was tried first and confirmed
-                           unusable against real data (2026-07-20): it read
-                           450.5%, dominated by a handful of near-zero-
-                           turnover-day outliers (e.g. CREST at 30,423% --
-                           Rs 6.75L of turnover against a real Rs 2,053.6L
-                           book). One such row moves a mean over ~2,100
-                           symbols by double-digit percentage points; the
-                           median that same day was a far more
-                           representative 282.3% (tradeable-only).
-Top MTF Mover (up/down)  = the single tradeable symbol with the highest /
-                           lowest amtChangePct today (getMovers(dir, limit=1))
+                           universe, net of the T2T exclusion in guard 2g)
+Delivery Financed %      = "aggregateDeliveryFinancedPct" -- WHOLE universe:
+                           (sum(amtToday) - sum(amtYesterday)) /
+                           sum(deliveryValueLakhs, section 2f) * 100. A FLOW
+                           metric (today's net gain/loss in the book) divided
+                           by today's delivery value -- signed, can be
+                           negative. Went through two earlier designs before
+                           this one: first a turnover-based level ratio
+                           (aggregateTurnoverFinancedPct), then briefly a
+                           delivery-based level ratio, both replaced per
+                           explicit correction to a flow-vs-delivery framing.
+Avg Delivery %           = "avgDeliveryPct" -- simple MEAN of deliveryPct
+                           (BHAVCOPY's own DELIV_PER) across TRADEABLE
+                           symbols (isTradeable-filtered, section 2e).
+                           Replaced "Median Financed %" (a turnover-ratio
+                           LEVEL statistic) per explicit request for a more
+                           worthwhile investor-facing KPI -- this one reads
+                           delivery/participation QUALITY, a genuinely
+                           different lens than every other tile here, all of
+                           which are MTF-book levels or flows. A plain mean
+                           is safe for this metric specifically because
+                           deliv_pct is bounded 0-100 by construction --
+                           unlike an unbounded book/turnover ratio, there's
+                           no single outlier that can drag it to an
+                           unrepresentative number, so median-for-robustness
+                           isn't needed here the way it was for the old tile.
+Top Gainer / Top Loser   = the single tradeable symbol with the highest /
+                           lowest DAY-OVER-DAY amtChangePct today
+                           (getMovers(dir, limit=1)) -- two separate tiles,
+                           each showing that symbol's % change labeled
+                           "day/day" to make clear it's not multi-day.
 Clicking a breadth tile opens the FULL symbol list behind that exact count
   (getBreadthSymbols) -- same predicate as the tile itself, so the number on
   the tile and the length of that list always match exactly. Sorted by
   |amtChangePct| descending for up/down, by book size descending for "flat"
   (nothing else to rank flat symbols by).
 
-UNIVERSE-SCOPE GAP: "Total MTF Book" and "Turnover Financed %" sum the WHOLE
+UNIVERSE-SCOPE GAP: "Total MTF Book" and "Delivery Financed %" sum the WHOLE
   universe (no isTradeable filter), while Continuous Funders/Price Movers/
   Heatmap/Sector Breakdown/Divergence all exclude immaterial/NAV-pegged
   symbols. Confirmed against real data (2026-07-20): whole-universe book was
@@ -304,10 +361,48 @@ Sorted descending by gap. Dashboard shows top 30 (getDivergence(30)).
 --------------------------------------------------------------------------------
 9. SYMBOL DRILLDOWN (per-symbol chart, opened by clicking any row/box)
 --------------------------------------------------------------------------------
-Plots that symbol's FULL history from mtf_daily (every date on record for
-  that symbol, no date range limiting):
-  Left axis  = amt_financed_lakhs, converted to Cr for display (divide by 100)
-  Right axis = close price, shown as-is (raw Rupees, no conversion)
+Plots that symbol's last 6 trading sessions from mtf_daily (SYMBOL_HISTORY_
+  SESSIONS in queries.ts) -- NOT the full ingested history, per explicit
+  instruction:
+  Left axis   = MTF Volume Delta (bar, signed) and Delivery Volume (bar),
+                both raw SHARE counts, rendered as two bars side-by-side per
+                date (grouped, not stacked, no shared stackId).
+                MTF Volume Delta = qty_financed[today] - qty_financed
+                [previous session] -- the raw feed's "Qty Fin by all the
+                members" is a cumulative outstanding-book figure (confirmed
+                against real data: it moves smoothly day-to-day like a
+                balance, e.g. INGERRAND 6207 -> 6238 -> 6397 -> 6339 ...,
+                unlike deliv_qty's erratic same-day swings), so there is no
+                genuine "shares financed today" field to plot directly --
+                this day-over-day delta is the closest real "for the day"
+                quantity. Colored teal when positive (book grew that day),
+                danger-red when negative (book shrank). Needs one extra
+                prior session fetched purely as the diff baseline for the
+                first displayed day (fetches SYMBOL_HISTORY_SESSIONS + 1
+                rows, then discards the baseline row from the output).
+                Delivery Volume is deliv_qty as-is, no transformation --
+                already a genuine same-day flow, so it needs none.
+  Right axis  = close price (line), shown as-is (raw Rupees, no conversion)
+  Chart design history: originally two lines (MTF book Rs, price) on two
+  axes; then a 3rd axis was added for a "Delivery Financed %" ratio as bars
+  (cramped/overlapping at small scales); then MTF book switched to a line +
+  Delivery Value (Rs) as bars sharing the left axis; then both switched to
+  grouped Rs-value bars (MTF Financed book vs Delivery Value) -- this drew a
+  question of how the MTF book (a cumulative balance) could visually exceed
+  a single day's Delivery Value (a flow), which is expected (verified against
+  real data: no accounting identity bounds one by the other) but confusing
+  to read at a glance; the CURRENT design sidesteps the balance-vs-flow
+  comparison entirely by dropping the cumulative book from the chart and
+  showing only two genuine same-day quantities (the book's own day-over-day
+  CHANGE, and delivery volume) in the same unit (shares), which real data
+  confirms deliv_qty <= volume (total traded quantity) for 100% of rows
+  (28,804 checked, 0 exceptions) -- though that bound does NOT extend to
+  MTF Volume Delta, which is a margin-book change, not a subset of volume.
+No guards/filters applied here (materiality floor, NAV-peg detection, and
+  the 50% price guard are movers/heatmap/breadth-only concerns) -- the
+  drilldown is a raw, unfiltered look at one symbol's own numbers, including
+  Trade-to-Trade symbols (the T2T exclusion in guard 2g only applies to the
+  aggregate breadth/movers/heatmap panels, not to a symbol's own drilldown).
 No guards/filters applied here (materiality floor, NAV-peg detection, and
   the 50% price guard are movers/heatmap/breadth-only concerns) -- the
   drilldown is a raw, unfiltered look at one symbol's own numbers.

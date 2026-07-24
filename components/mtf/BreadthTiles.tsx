@@ -13,8 +13,8 @@ interface BreadthProps {
   countDown: number;
   countFlat: number;
   totalSymbols: number;
-  aggregateTurnoverFinancedPct: number | null;
-  medianTurnoverFinancedPct: number | null;
+  aggregateDeliveryFinancedPct: number | null;
+  avgDeliveryPct: number | null;
   topGainer: TopMover | null;
   topLoser: TopMover | null;
   onSelectSymbol?: (symbol: string) => void;
@@ -81,20 +81,25 @@ export function BreadthTiles(props: BreadthProps) {
       </Tile>
 
       <Tile
-        label="Turnover Financed %"
-        tooltip="Total MTF book / today's total market turnover, across the whole universe -- a book-weighted aggregate, not a per-stock average. Can exceed 100% since the book is a cumulative stock, not a single day's flow."
+        label="Delivery Financed %"
+        tooltip="Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total delivery value (shares actually delivered, not all traded volume). A flow metric, not a level -- can be negative on a day the book shrank. Delivery value approximates each stock's delivered quantity x close price."
       >
-        <p className="font-mono text-sm text-primary tabular-nums">
-          {props.aggregateTurnoverFinancedPct !== null ? `${props.aggregateTurnoverFinancedPct.toFixed(1)}%` : "—"}
+        <p className={`font-mono text-sm tabular-nums ${
+          props.aggregateDeliveryFinancedPct === null ? "text-primary"
+            : props.aggregateDeliveryFinancedPct >= 0 ? "text-teal" : "text-danger"
+        }`}>
+          {props.aggregateDeliveryFinancedPct !== null
+            ? `${props.aggregateDeliveryFinancedPct >= 0 ? "+" : ""}${props.aggregateDeliveryFinancedPct.toFixed(1)}%`
+            : "—"}
         </p>
       </Tile>
 
       <Tile
-        label="Median Financed %"
-        tooltip="Median (not mean) of each tradeable stock's own book/turnover ratio -- the 'typical stock' picture. Switched from a simple mean after confirming it was dominated by a handful of near-zero-turnover-day outliers."
+        label="Avg Delivery %"
+        tooltip="Average % of today's traded quantity that was delivered (real ownership changing hands) rather than squared off intraday, across every tradeable stock -- a market-wide gauge of conviction vs speculative churn, independent of MTF-book levels or flows."
       >
         <p className="font-mono text-sm text-primary tabular-nums">
-          {props.medianTurnoverFinancedPct !== null ? `${props.medianTurnoverFinancedPct.toFixed(1)}%` : "—"}
+          {props.avgDeliveryPct !== null ? `${props.avgDeliveryPct.toFixed(1)}%` : "—"}
         </p>
       </Tile>
 

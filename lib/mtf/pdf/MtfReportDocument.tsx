@@ -132,7 +132,7 @@ const GLOSSARY: { term: string; def: string }[] = [
   { term: "vs Prior Day", def: "% change in the Total MTF Book compared to the previous trading day." },
   { term: "Leveraging Up / Deleveraging", def: "Number of stocks where margin financing increased / decreased today." },
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
-  { term: "Turnover Financed %", def: "Share of today's total market trading value that was done using margin financing -- a market-wide average, not any single stock." },
+  { term: "Delivery Financed %", def: "Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total DELIVERY value (shares actually delivered -- real ownership changing hands, not all traded/intraday volume). A flow metric (day's change), not a level -- can be negative on a day the book shrank." },
   { term: "Top Gainer / Top Loser", def: "The single stock with the largest DAY-OVER-DAY % increase / decrease in MTF financing (today vs the previous trading day only, not a multi-day or cumulative change) -- this is a change in margin financing, not in the stock's share price." },
   { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
   { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: financing can be persistent while price isn't, or vice versa." },
@@ -229,7 +229,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           </View>
           <View style={styles.kpiRow}>
             <KpiTile label="Unchanged" value={String(breadth.countFlat)} />
-            <KpiTile label="Turnover Financed %" value={breadth.aggregateTurnoverFinancedPct != null ? `${breadth.aggregateTurnoverFinancedPct.toFixed(1)}%` : "—"} />
+            <KpiTile label="Delivery Financed %" value={fmtPct(breadth.aggregateDeliveryFinancedPct)} color={pctColor(breadth.aggregateDeliveryFinancedPct)} />
             <KpiTile label="Top Gainer (MTF Chg%)" value={data.topGainer ? `${data.topGainer.symbol} ${fmtPct(data.topGainer.amtChangePct)}` : "—"} color={TEAL} />
             <KpiTile label="Top Loser (MTF Chg%)" value={data.topLoser ? `${data.topLoser.symbol} ${fmtPct(data.topLoser.amtChangePct)}` : "—"} color={DANGER} />
           </View>

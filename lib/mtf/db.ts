@@ -39,6 +39,7 @@ export async function getMtfDb(): Promise<Database.Database> {
       trades             INTEGER,
       deliv_qty          INTEGER,
       deliv_pct          REAL,
+      series             TEXT,
       PRIMARY KEY (date, symbol)
     );
 
@@ -82,6 +83,16 @@ export async function getMtfDb(): Promise<Database.Database> {
     _db.exec("ALTER TABLE mtf_mover_cont ADD COLUMN price_latest_pct_chg REAL");
   }
 
+  // series: added after mtf_daily already shipped -- same migration pattern as
+  // price_cont above. Holds BHAVCOPY's own SERIES code (EQ, BE, BZ, ...),
+  // used to identify Trade-to-Trade (T2T) symbols directly from the
+  // exchange's own classification rather than inferring it from delivery %
+  // (see isTradeToTrade in queries.ts for why the inference was wrong).
+  const mtfDailyColumns = _db.prepare("PRAGMA table_info(mtf_daily)").all() as { name: string }[];
+  if (!mtfDailyColumns.some((c) => c.name === "series")) {
+    _db.exec("ALTER TABLE mtf_daily ADD COLUMN series TEXT");
+  }
+
   return _db;
 }
 
@@ -101,4 +112,5 @@ export interface MtfDailyRow {
   trades: number | null;
   deliv_qty: number | null;
   deliv_pct: number | null;
+  series: string | null;
 }

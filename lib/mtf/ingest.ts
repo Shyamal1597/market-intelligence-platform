@@ -213,6 +213,7 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       trades: bhav ? num(bhav[12]) : null,
       deliv_qty: bhav ? num(bhav[13]) : null,
       deliv_pct: bhav ? num(bhav[14]) : null,
+      series: bhav ? String(bhav[1] ?? "").trim() || null : null,
     });
   }
 
@@ -237,9 +238,9 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
   const db = await getMtfDb();
   const upsert = db.prepare(`
     INSERT INTO mtf_daily (date, symbol, name, qty_financed, amt_financed_lakhs,
-      open, high, low, close, prev_close, volume, turnover_lakhs, trades, deliv_qty, deliv_pct)
+      open, high, low, close, prev_close, volume, turnover_lakhs, trades, deliv_qty, deliv_pct, series)
     VALUES (@date, @symbol, @name, @qty_financed, @amt_financed_lakhs,
-      @open, @high, @low, @close, @prev_close, @volume, @turnover_lakhs, @trades, @deliv_qty, @deliv_pct)
+      @open, @high, @low, @close, @prev_close, @volume, @turnover_lakhs, @trades, @deliv_qty, @deliv_pct, @series)
     ON CONFLICT(date, symbol) DO UPDATE SET
       name = excluded.name,
       qty_financed = excluded.qty_financed,
@@ -247,7 +248,8 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       open = excluded.open, high = excluded.high, low = excluded.low,
       close = excluded.close, prev_close = excluded.prev_close,
       volume = excluded.volume, turnover_lakhs = excluded.turnover_lakhs,
-      trades = excluded.trades, deliv_qty = excluded.deliv_qty, deliv_pct = excluded.deliv_pct
+      trades = excluded.trades, deliv_qty = excluded.deliv_qty, deliv_pct = excluded.deliv_pct,
+      series = excluded.series
   `);
 
   const upsertAll = db.transaction((rows: MtfDailyRow[]) => {
