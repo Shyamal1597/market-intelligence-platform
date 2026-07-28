@@ -230,20 +230,29 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
   });
   for (const w of warnings0) console.warn(`  [warn] ${w}`);
 
-  // When onlyQuarters is set (e.g. auto-ingest adding a single new quarter), load the
-  // existing artifact and merge into it so previous quarters are not overwritten.
+  // Always load the existing artifact as a merge baseline -- NOT gated on
+  // onlyQuarters. A quarter's processQuarter call can fail outright (no API
+  // credits, rate limit, network error) and still returns a normal-looking
+  // { claims: [] } rather than throwing (see processQuarter's catch block),
+  // which is indistinguishable from a genuine "zero claims in this
+  // transcript" result unless the caller knows to check for it. Loading the
+  // existing file unconditionally means a full re-run (onlyQuarters unset)
+  // can no longer silently wipe every previously-extracted quarter just
+  // because every fresh attempt happened to fail this time -- confirmed
+  // against real data: this exact path is what the auto-ingest scheduled
+  // task hit while Anthropic credits were exhausted, overwriting 9 symbols'
+  // claims.json with all-empty quarters and an "LLM error" warning on every
+  // one of them.
   let existingByQuarter: Record<string, ExtractedClaim[]> = {};
   let existingWarnings: string[] = [];
-  if (args.onlyQuarters) {
-    try {
-      const existing = JSON.parse(await fs.readFile(args.outFile, "utf-8")) as ClaimsArtifact;
-      existingByQuarter = existing.byQuarter ?? {};
-      existingWarnings = existing.warnings ?? [];
-    } catch { /* no existing file -- start fresh */ }
-  }
+  try {
+    const existing = JSON.parse(await fs.readFile(args.outFile, "utf-8")) as ClaimsArtifact;
+    existingByQuarter = existing.byQuarter ?? {};
+    existingWarnings = existing.warnings ?? [];
+  } catch { /* no existing file -- start fresh */ }
 
   const byQuarter: Record<string, ExtractedClaim[]> = { ...existingByQuarter };
-  const warnings: string[] = [...existingWarnings];
+  const warnings: string[] = args.onlyQuarters ? [...existingWarnings] : [];
   let totalCost = 0;
 
   if (files.length === 0) {
@@ -258,8 +267,17 @@ export async function extractClaimsForSymbol(args: ExtractClaimsArgs): Promise<E
     const batch = files.slice(i, i + STAGE3_CONCURRENCY);
     const results = await Promise.all(batch.map((fname) => processQuarter(fname, args)));
     for (const r of results) {
-      byQuarter[r.quarter] = r.claims;
-      warnings.push(...r.warnings);
+      // cost===0 only happens when the LLM call itself threw (see processQuarter's
+      // catch) -- a real successful call always bills tokens for the prompt, even
+      // if it extracts zero claims. Don't let a call failure overwrite a quarter
+      // that previously had real extracted claims.
+      const isCallFailure = r.cost === 0 && r.claims.length === 0;
+      if (isCallFailure && (byQuarter[r.quarter]?.length ?? 0) > 0) {
+        warnings.push(...r.warnings, `${r.quarter}: kept previous extraction (this attempt failed)`);
+      } else {
+        byQuarter[r.quarter] = r.claims;
+        warnings.push(...r.warnings);
+      }
       totalCost += r.cost;
     }
   }
