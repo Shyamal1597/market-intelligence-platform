@@ -8,6 +8,9 @@ import {
   SEBI_REG_NUMBER, BSE_REG_NUMBER, NSE_REG_NUMBER, MSEI_REG_NUMBER,
   COMPLIANCE_ADDRESS, COMPLIANCE_OFFICER_NAME, COMPLIANCE_OFFICER_PHONE,
 } from "@/lib/complianceInfo";
+import { MOVER_WINDOW_DAYS } from "@/lib/mtf/format";
+
+const MIN_CONT_PDF = Math.round(MOVER_WINDOW_DAYS * 0.8);
 
 // react-pdf's built-in "Helvetica" font family covers regular/bold/oblique
 // out of the box -- no Font.register needed, no network fetch at render time.
@@ -134,8 +137,8 @@ const GLOSSARY: { term: string; def: string }[] = [
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
   { term: "Delivery Financed %", def: "Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total DELIVERY value (shares actually delivered -- real ownership changing hands, not all traded/intraday volume). A flow metric (day's change), not a level -- can be negative on a day the book shrank." },
   { term: "Top Gainer / Top Loser", def: "The single stock with the largest DAY-OVER-DAY % increase / decrease in MTF financing (today vs the previous trading day only, not a multi-day or cumulative change) -- this is a change in margin financing, not in the stock's share price." },
-  { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
-  { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: financing can be persistent while price isn't, or vice versa." },
+  { term: "MTF Cont.", def: `How many of the last ${MOVER_WINDOW_DAYS} trading days that stock's margin financing moved in the same direction. "${MOVER_WINDOW_DAYS}/${MOVER_WINDOW_DAYS}" = every one of the last ${MOVER_WINDOW_DAYS} days.` },
+  { term: "Price Cont.", def: `The SAME stock's own price-persistence count -- how many of the last ${MOVER_WINDOW_DAYS} trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: financing can be persistent while price isn't, or vice versa.` },
   { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
   { term: "Price Chg %", def: "Day-over-day % change in that stock's share price." },
   { term: "Book", def: "The MTF-financed amount for that stock, shown in Rs Crores." },
@@ -189,8 +192,8 @@ function FunderTable({ rows }: { rows: FunderTableRow[] }) {
           <View key={r.symbol} style={i === rows.length - 1 ? styles.trLast : styles.tr}>
             <Text style={[styles.tdCell, styles.colRank]}>{i + 1}</Text>
             <Text style={[styles.tdCell, styles.colSymbolFunder]}>{r.symbol}</Text>
-            <Text style={[styles.tdCell, styles.colContTiny]}>{r.cont != null ? `${r.cont}/5` : "—"}</Text>
-            <Text style={[styles.tdCell, styles.colContTiny]}>{r.priceCont != null ? `${r.priceCont}/5` : "—"}</Text>
+            <Text style={[styles.tdCell, styles.colContTiny]}>{r.cont != null ? `${r.cont}/${MOVER_WINDOW_DAYS}` : "—"}</Text>
+            <Text style={[styles.tdCell, styles.colContTiny]}>{r.priceCont != null ? `${r.priceCont}/${MOVER_WINDOW_DAYS}` : "—"}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.amtChangePct) }]}>{fmtPct(r.amtChangePct)}</Text>
             <Text style={[styles.tdCell, styles.colNum, { color: pctColor(r.priceChangePct) }]}>{fmtPct(r.priceChangePct)}</Text>
             <Text style={[styles.tdCell, styles.colNum]}>{fmtCrLocal(r.amtToday)}</Text>
@@ -275,7 +278,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           the SAME row set re-ranked by book size -- "which of these has the most money behind it." */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Continuous Funders — Leveraging Up</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. Price Cont. is the same stock&rsquo;s own price-persistence count, independent of MTF Cont. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where {MIN_CONT_PDF} or more of the last {MOVER_WINDOW_DAYS} day-over-day MTF-financing changes were persistently positive — a trend, not a one-day blip. Price Cont. is the same stock&rsquo;s own price-persistence count, independent of MTF Cont. {data.fundersUp.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
         <FunderTable rows={data.fundersUp} />
 
         <Text style={styles.sectionTitle}>Same list, ranked by book size</Text>
@@ -288,7 +291,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
       {/* Page 3: Continuous Funders -- Deleveraging. Same auto-pagination note as above. */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Continuous Funders — Deleveraging</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. {data.fundersDown.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where {MIN_CONT_PDF} or more of the last {MOVER_WINDOW_DAYS} day-over-day MTF-financing changes were persistently negative — a trend, not a one-day blip. {data.fundersDown.length} of up to 100 shown, ranked by persistence then magnitude.</Text>
         <FunderTable rows={data.fundersDown} />
 
         <Text style={styles.sectionTitle}>Same list, ranked by book size</Text>
@@ -304,7 +307,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
           content only, no new table format. */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Price Movers — Price Up</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently positive — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversUp.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where {MIN_CONT_PDF} or more of the last {MOVER_WINDOW_DAYS} day-over-day PRICE changes were persistently positive — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversUp.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
         <FunderTable rows={data.priceMoversUp} />
 
         <Footer />
@@ -313,7 +316,7 @@ export function MtfReportDocument({ data }: { data: MtfReportData }) {
       {/* Page 5: Price Movers -- Price Down. Same auto-pagination note as pages 2-3. */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Price Movers — Price Down</Text>
-        <Text style={styles.sectionSubtitle}>Stocks where 4 or more of the last 5 day-over-day PRICE changes were persistently negative — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversDown.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
+        <Text style={styles.sectionSubtitle}>Stocks where {MIN_CONT_PDF} or more of the last {MOVER_WINDOW_DAYS} day-over-day PRICE changes were persistently negative — independent of the stock&rsquo;s own MTF-financing trend (shown alongside as MTF Cont. for comparison). {data.priceMoversDown.length} of up to 100 shown, ranked by price persistence then magnitude.</Text>
         <FunderTable rows={data.priceMoversDown} />
 
         <Footer />

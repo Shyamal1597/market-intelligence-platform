@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { MtfUpload } from "@/components/mtf/MtfUpload";
 import { MtfGlossary } from "@/components/mtf/MtfGlossary";
 import { BreadthTiles } from "@/components/mtf/BreadthTiles";
+import { SymbolSearchBar } from "@/components/mtf/SymbolSearchBar";
 import { ContinuousFundersTable } from "@/components/mtf/ContinuousFundersTable";
 import { PriceMoversTable } from "@/components/mtf/PriceMoversTable";
 import { MTFHeatmap } from "@/components/mtf/MTFHeatmap";
@@ -169,9 +170,24 @@ export default function MarginTradingPage() {
 
   return (
     <div className="p-6 space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl font-semibold text-primary">Margin Trading</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-5 flex-wrap">
+          <h1 className="font-display text-3xl font-semibold text-primary">Margin Trading</h1>
+          {data && data.breadth.date !== null && (
+            <div className="flex items-center gap-5 pl-5 border-l border-border">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-widest text-muted">Last Updated</span>
+                <span className="font-mono text-xl font-semibold text-primary tabular-nums leading-tight">{data.breadth.date}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-widest text-muted">Symbols w/ Data</span>
+                <span className="font-mono text-xl font-semibold text-primary tabular-nums leading-tight">{data.breadth.totalSymbols.toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <SymbolSearchBar onSelectSymbol={setSelectedSymbol} />
           <button
             onClick={exportPdf}
             disabled={exportingPdf || !data || data.breadth.date === null}

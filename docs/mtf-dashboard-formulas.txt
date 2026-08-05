@@ -78,12 +78,15 @@ f) DELIVERY VALUE (approximation, used by Delivery Financed % and the
    deliv_qty is BHAVCOPY's own DELIV_QTY column -- shares that actually
    settled as real ownership transfer that day, as opposed to turnoverLakhs
    which includes ALL traded volume (including same-day intraday square-offs
-   that never become real delivery). BHAVCOPY does not carry a true volume-
-   weighted average delivery price, so close is used as the per-share value
-   proxy -- close is already stored for every historical date, so this
-   works immediately across full history rather than only from whenever a
-   new column would start being populated. Null if deliv_qty or close is
-   zero/missing for that symbol/date.
+   that never become real delivery). `close` here holds BHAVCOPY's AVG_PRICE
+   (the day's overall volume-weighted average across ALL trades, per
+   explicit instruction -- switched from CLOSE_PRICE, which real data
+   confirmed was identical to LAST_PRICE/LTP for every stock checked). Not
+   a delivery-specific volume-weighted price -- BHAVCOPY doesn't carry that
+   breakdown -- but avg price is already stored for every historical date,
+   so this works immediately across full history rather than only from
+   whenever a new column would start being populated. Null if deliv_qty or
+   close is zero/missing for that symbol/date.
 
 g) TRADE-TO-TRADE (T2T) EXCLUSION -- applied at getSnapshot() itself, before
    ANY other filter, so it propagates to literally everything, including the
@@ -193,27 +196,47 @@ upload history. Both are read directly from the uploaded report's own "MTF
 DATA POSITIVE" / "MTF DATA NEGATIVE" sheets via parseMoverSheet() in
 lib/mtf/ingest.ts, and stored verbatim in the mtf_mover_cont table. Each
 sheet row holds TWO independent blocks for the SAME symbol:
-  MTF Cont.   = cols A-M ("Margin Trading Volume Movers" block, column 2) --
-                a FREQUENCY COUNT of positive (or negative) day-over-day
-                MTF-FINANCING changes across the report's own trailing
-                ~5-day window -- NOT a consecutive streak. (Confirmed
-                against real data: a symbol showed cont=3 on the positive
-                sheet and cont=2 on the negative sheet for the SAME day --
-                only possible for a frequency count, never a true streak.)
-  Price Cont. = cols O+ ("Margin Trading Price Mover" block, column 2) --
-                the SAME symbol's own PRICE-persistence count, using the
-                identical frequency-count convention but counting positive/
-                negative day-over-day PRICE changes instead of financing
-                changes. Genuinely independent of MTF Cont.: confirmed
-                against real data (2026-07-20), CEATLTD had MTF Cont=5/5
-                (financing built every day) while its own Price Cont was
-                only 2/5 (price rarely followed).
-Selection: getContinuousFunders(direction, minCont=4, limit=50) --
-  WHERE date = latest AND direction = 'up'/'down' AND cont >= 4 (the MTF-side
+  MTF Cont.   = the "Margin Trading Volume Movers" block, column 2 (column
+                index found DYNAMICALLY -- see parseMoverSheet in
+                lib/mtf/ingest.ts) -- a FREQUENCY COUNT of positive (or
+                negative) day-over-day MTF-FINANCING changes across the
+                report's own trailing window -- NOT a consecutive streak.
+                (Confirmed against real data: a symbol showed cont=3 on the
+                positive sheet and cont=2 on the negative sheet for the SAME
+                day -- only possible for a frequency count, never a true
+                streak.)
+  Price Cont. = the "Margin Trading Price Mover" block (a second "Symbol"/
+                "Cont." pair further right in the same sheet, located
+                dynamically since its column offset moves with the window
+                length) -- the SAME symbol's own PRICE-persistence count,
+                using the identical frequency-count convention but counting
+                positive/negative day-over-day PRICE changes instead of
+                financing changes. Genuinely independent of MTF Cont.:
+                confirmed against real data (2026-07-20), CEATLTD had MTF
+                Cont=5/5 (financing built every day) while its own Price
+                Cont was only 2/5 (price rarely followed) -- back when the
+                window was 5 days.
+WINDOW LENGTH: changed from 5 trading days to 20 (MOVER_WINDOW_DAYS in
+  lib/mtf/format.ts), per the source vendor's own report update -- confirmed
+  against the raw file (2026-08-03): 21 date columns = 20 day-over-day
+  comparisons, real Cont. values up to 17/20 observed. Re-verified the
+  underlying meaning still holds at the new window length: DEEPAKFERT showed
+  MTF Cont=15/20 on the POSITIVE sheet and 5/20 on the NEGATIVE sheet for the
+  same date -- 15 + 5 = 20 exactly, confirming it's still a frequency count
+  over the full window (every day is either a positive or negative change,
+  never both), not a streak or some other statistic. Because the Price block's
+  column offset is a function of the window length, parseMoverSheet locates it
+  by scanning the header row for the second "Symbol" cell rather than a
+  hardcoded index -- this survives the window length changing again.
+Selection: getContinuousFunders(direction, minCont=16, limit=50) --
+  WHERE date = latest AND direction = 'up'/'down' AND cont >= 16 (the MTF-side
   cont only -- Price Cont. is NOT filtered on here, just displayed for
   cross-reference), joined back against the day's own snapshot and filtered
   to isTradeable (section 2e) -- a symbol flagged in the source sheet but
-  immaterial/NAV-pegged today is dropped from the table.
+  immaterial/NAV-pegged today is dropped from the table. minCont scales with
+  MOVER_WINDOW_DAYS to hold the same 80% relative bar as the original ">= 4
+  of 5" (16 of 20 = same 80%), confirmed as the intended behavior (not a
+  fixed absolute count) when the window widened.
 MTF Chg % displayed = snap.amtChangePct (our own standard pctChange formula,
   section 2a, computed from our accumulated mtf_daily history) if available,
   falling back to the sheet's own latest_pct_chg only when our own history
@@ -243,20 +266,22 @@ Trend color: teal (up tab) / red (down tab) -- fixed by which tab is active,
 5. PRICE MOVERS TABLE -- symmetric counterpart, ranked by PRICE persistence
 --------------------------------------------------------------------------------
 Reuses the exact same already-ingested mtf_mover_cont rows as section 4 --
-no separate data source. getPriceMovers(direction, minCont=4, limit=50):
-  WHERE date = latest AND direction = 'up'/'down' AND price_cont >= 4 (note:
+no separate data source. getPriceMovers(direction, minCont=16, limit=50):
+  WHERE date = latest AND direction = 'up'/'down' AND price_cont >= 16 (note:
   filtered on the PRICE-side count this time, MTF Cont. is just displayed
-  for cross-reference, mirrored from section 4).
+  for cross-reference, mirrored from section 4). minCont=16 for the same
+  20-day-window/80%-bar reason as section 4.
   direction "up" reads the POSITIVE sheet's price_cont (days price rose),
   "down" reads the NEGATIVE sheet's price_cont (days price fell) -- same
   split as the MTF side, just on the price-persistence dimension instead.
 A stock can appear here with a persistently rising/falling price even if
   its MTF-financing trend is flat, weak, or moving the opposite way --
   e.g. ACI showed Price Cont=5/5 with MTF Cont=0/5 on 2026-07-20 (price
-  persistently up 5 straight days on essentially no financing trend at all).
+  persistently up 5 straight days on essentially no financing trend at all)
+  -- back when the window was 5 days; the same pattern now reads out of 20.
 Sort default: Price Cont. DESCENDING, then abs(priceChangePct) DESCENDING.
   Same click-to-sort behavior as section 4.
-Sparkline column = that symbol's own CLOSE PRICE history (not financed
+Sparkline column = that symbol's own AVG PRICE history (not financed
   amount) -- this card is about price persistence, so the trend line shows
   price, not the book.
 Tabs labeled "Price Up (N)" / "Price Down (N)" to avoid confusion with the
@@ -382,7 +407,7 @@ Plots that symbol's last 6 trading sessions from mtf_daily (SYMBOL_HISTORY_
                 rows, then discards the baseline row from the output).
                 Delivery Volume is deliv_qty as-is, no transformation --
                 already a genuine same-day flow, so it needs none.
-  Right axis  = close price (line), shown as-is (raw Rupees, no conversion)
+  Right axis  = avg price (line), shown as-is (raw Rupees, no conversion)
   Chart design history: originally two lines (MTF book Rs, price) on two
   axes; then a 3rd axis was added for a "Delivery Financed %" ratio as bars
   (cramped/overlapping at small scales); then MTF book switched to a line +

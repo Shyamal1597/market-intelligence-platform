@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Sparkline } from "@/components/macro/Sparkline";
+import { MOVER_WINDOW_DAYS } from "@/lib/mtf/format";
 import { SortHeader, compareNullable, type SortDir } from "./SortHeader";
+
+const MIN_CONT = Math.round(MOVER_WINDOW_DAYS * 0.8);
 
 interface FunderRow {
   symbol: string; name: string | null;
@@ -61,7 +64,7 @@ export function ContinuousFundersTable({
       </div>
       <p className="text-[9px] text-muted/60 px-3 py-1.5 border-b border-border/40 shrink-0">
         Volume Movers -- straight from the report&rsquo;s own MTF DATA {tab === "up" ? "POSITIVE" : "NEGATIVE"} sheet: stocks
-        where 4 or more of the last ~5 day-over-day MTF-financing changes were {tab === "up" ? "positive" : "negative"}
+        where {MIN_CONT} or more of the last ~{MOVER_WINDOW_DAYS} day-over-day MTF-financing changes were {tab === "up" ? "positive" : "negative"}
         -- a persistent trend, not a one-day blip. &ldquo;Price Cont.&rdquo; is the SAME stock&rsquo;s own price-persistence count
         (independent -- financing can be persistent while price isn&rsquo;t, or vice versa). Default order is by MTF count,
         highest first -- click any column to re-sort.
@@ -96,10 +99,10 @@ export function ContinuousFundersTable({
                     {r.symbol}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${tab === "up" ? "text-teal" : "text-danger"}`}>
-                    {r.cont}/5
+                    {r.cont}/{MOVER_WINDOW_DAYS}
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-muted">
-                    {r.priceCont != null ? `${r.priceCont}/5` : "—"}
+                    {r.priceCont != null ? `${r.priceCont}/${MOVER_WINDOW_DAYS}` : "—"}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums ${r.amtChangePct >= 0 ? "text-teal" : "text-danger"}`}>
                     {r.amtChangePct.toFixed(2)}%

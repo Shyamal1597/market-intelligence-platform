@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Sparkline } from "@/components/macro/Sparkline";
+import { MOVER_WINDOW_DAYS } from "@/lib/mtf/format";
 import { SortHeader, compareNullable, type SortDir } from "./SortHeader";
 
 interface PriceMoverRow {
@@ -93,10 +94,10 @@ export function PriceMoversTable({
                     {r.symbol}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${tab === "up" ? "text-teal" : "text-danger"}`}>
-                    {r.priceCont}/5
+                    {r.priceCont}/{MOVER_WINDOW_DAYS}
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-muted">
-                    {r.cont != null ? `${r.cont}/5` : "—"}
+                    {r.cont != null ? `${r.cont}/${MOVER_WINDOW_DAYS}` : "—"}
                   </td>
                   <td className={`px-2 py-1.5 text-right tabular-nums ${(r.priceChangePct ?? 0) >= 0 ? "text-teal" : "text-danger"}`}>
                     {r.priceChangePct != null ? `${r.priceChangePct.toFixed(2)}%` : "—"}

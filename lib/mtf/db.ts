@@ -66,6 +66,29 @@ export async function getMtfDb(): Promise<Database.Database> {
     );
 
     CREATE INDEX IF NOT EXISTS idx_mtf_mover_cont_date ON mtf_mover_cont(date);
+
+    -- Per-day breakdown behind mtf_mover_cont's aggregated "cont" count --
+    -- one row per individual day-over-day %Change cell in the source
+    -- sheet's Volume/Price Mover blocks, rather than just the collapsed
+    -- frequency count. Added so the full raw history (not just a summary
+    -- statistic) is queryable/recallable -- e.g. "what was DEEPAKFERT's
+    -- day-over-day MTF change specifically on 2026-07-15" -- per explicit
+    -- instruction. comp_date is the date being compared TO the day before
+    -- it in the report's own trailing window (shared across every symbol
+    -- in a given upload, since it's the report's own date axis, not
+    -- symbol-specific).
+    CREATE TABLE IF NOT EXISTS mtf_mover_daily (
+      date        TEXT NOT NULL,
+      symbol      TEXT NOT NULL,
+      direction   TEXT NOT NULL CHECK(direction IN ('up','down')),
+      metric      TEXT NOT NULL CHECK(metric IN ('volume','price')),
+      comp_date   TEXT,
+      pct_change  REAL,
+      PRIMARY KEY (date, symbol, direction, metric, comp_date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_mtf_mover_daily_date ON mtf_mover_daily(date);
+    CREATE INDEX IF NOT EXISTS idx_mtf_mover_daily_symbol ON mtf_mover_daily(symbol);
   `);
 
   // price_cont/price_latest_pct_chg: added after mtf_mover_cont already

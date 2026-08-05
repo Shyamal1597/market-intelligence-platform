@@ -50,11 +50,7 @@ export function BreadthTiles(props: BreadthProps) {
     : null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-      <Tile label="Last Updated">
-        <p className="font-mono text-sm text-primary tabular-nums">{props.date ?? "—"}</p>
-      </Tile>
-
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <Tile label="Total MTF Book">
         <p className="font-mono text-sm text-primary tabular-nums">{fmtCr(props.totalAmtToday)}</p>
         {bookChangePct !== null && (
@@ -76,13 +72,9 @@ export function BreadthTiles(props: BreadthProps) {
         <p className="font-mono text-sm text-muted tabular-nums">{props.countFlat}</p>
       </Tile>
 
-      <Tile label="Symbols w/ Data">
-        <p className="font-mono text-sm text-primary tabular-nums">{props.totalSymbols}</p>
-      </Tile>
-
       <Tile
         label="Delivery Financed %"
-        tooltip="Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total delivery value (shares actually delivered, not all traded volume). A flow metric, not a level -- can be negative on a day the book shrank. Delivery value approximates each stock's delivered quantity x close price."
+        tooltip="Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total delivery value (shares actually delivered, not all traded volume). A flow metric, not a level -- can be negative on a day the book shrank. Delivery value approximates each stock's delivered quantity x avg price."
       >
         <p className={`font-mono text-sm tabular-nums ${
           props.aggregateDeliveryFinancedPct === null ? "text-primary"

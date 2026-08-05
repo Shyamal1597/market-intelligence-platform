@@ -24,15 +24,50 @@ function parseBhavDate(raw: unknown): string | null {
   return `${m[3]}-${month}-${m[1].padStart(2, "0")}`;
 }
 
+/**
+ * The "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets' own header row uses a
+ * DIFFERENT date format than BHAVCOPY -- and that format itself has changed
+ * across real files. Confirmed against all available raw files: every file
+ * up to 2026-07-30 uses "DD.MM.YYYY" (e.g. "09.06.2026"); the 2026-08-03
+ * file (the same one that widened the window to 20 days) switched to
+ * "DD-Mon-YYYY" (e.g. " 03-Aug-2026", matching BHAVCOPY's own format).
+ * Handles both rather than assuming one, since a bulk historical backfill
+ * spans both eras.
+ */
+export function parseMoverDate(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  const dashMonth = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+  if (dashMonth) {
+    const month = MONTH_MAP[dashMonth[2].toLowerCase()];
+    if (!month) return null;
+    return `${dashMonth[3]}-${month}-${dashMonth[1].padStart(2, "0")}`;
+  }
+  const dotted = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dotted) {
+    return `${dotted[3]}-${dotted[2].padStart(2, "0")}-${dotted[1].padStart(2, "0")}`;
+  }
+  return null;
+}
+
 function num(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = typeof v === "number" ? v : Number(String(v).trim());
   return Number.isFinite(n) ? n : null;
 }
 
+interface DailyChange {
+  compDate: string | null;
+  pctChange: number | null;
+}
+
 interface MoverContRow {
   symbol: string; cont: number; latestPctChg: number | null;
   priceCont: number | null; priceLatestPctChg: number | null;
+  /** Every individual day-over-day %Change cell behind `cont`/`priceCont`,
+   * not just the collapsed count -- see parseMoverSheet for the column
+   * layout this is extracted from. */
+  volumeDaily: DailyChange[];
+  priceDaily: DailyChange[];
 }
 
 /**
@@ -62,14 +97,22 @@ export function detectAmtFinancedUnitFactor(headerText: string): { factor: numbe
 
 /**
  * "MTF DATA POSITIVE"/"MTF DATA NEGATIVE" sheets. Each row holds TWO parallel
- * blocks for the SAME symbol: cols A-M "Margin Trading Volume Movers" (MTF
- * financing persistence) and cols O+ "Margin Trading Price Mover" (the
- * stock's own price persistence) -- confirmed independent against real data
- * (2026-07-20): CEATLTD had Volume cont=5/5 while its own Price cont was only
- * 2/5 (financing built for 5 straight days, price only followed 2 of them).
+ * blocks for the SAME symbol: cols A+ "Margin Trading Volume Movers" (MTF
+ * financing persistence) and a second "Symbol"/"Cont." block further right,
+ * "Margin Trading Price Mover" (the stock's own price persistence) --
+ * confirmed independent against real data (2026-07-20): CEATLTD had Volume
+ * cont=5/5 while its own Price cont was only 2/5 (financing built for 5
+ * straight days, price only followed 2 of them).
  * Row layout per block: Symbol, Cont., %Change, <date value>, %Change,
- * <date value>, ... across a trailing ~5-day window. The Price block starts
- * at column index 14 (O), so its Cont./first %Change sit at indices 15/16.
+ * <date value>, ... across a trailing lookback window.
+ *
+ * The Price block's starting column is located DYNAMICALLY by scanning the
+ * header row for the second "Symbol" cell, rather than a hardcoded index --
+ * the window length isn't fixed. Confirmed this actually moves: the window
+ * changed from 5 days (Price block header at column 14) to 20 days (2026-
+ * 08-03 file: 21 dates, Price block header at column 44) -- a hardcoded
+ * offset would have silently read mid-way through the Volume block's own
+ * %Change/date columns as if they were Price cont/pct data.
  *
  * "Cont." is NOT a consecutive streak -- confirmed against real data
  * (2026-07-16): it's the report's own count of positive (POSITIVE sheet) or
@@ -81,9 +124,66 @@ export function detectAmtFinancedUnitFactor(headerText: string): { factor: numbe
  * %Change is stored as a fraction (0.284 = 28.4%) in the sheet; converted
  * to a plain percentage here to match every other %change field in this app.
  */
-function parseMoverSheet(sheet: XLSX.WorkSheet | undefined): MoverContRow[] {
+/**
+ * Extracts every (%Change, date) pair in a block, from its first %Change
+ * column up to (excluding) the block's trailing baseline-date-only column
+ * (the window's oldest date has nothing earlier to compare against, so it
+ * carries a value but no %Change). Column positions only, works identically
+ * regardless of window length -- the caller supplies where this block's
+ * pairs start and end.
+ */
+function extractDailyChanges(
+  row: unknown[], headerRow: unknown[], pairsStartCol: number, pairsEndColExclusive: number,
+): DailyChange[] {
+  const out: DailyChange[] = [];
+  for (let c = pairsStartCol; c < pairsEndColExclusive; c += 2) {
+    const pct = num(row[c]);
+    out.push({
+      compDate: parseMoverDate(headerRow[c + 1]),
+      pctChange: pct !== null ? pct * 100 : null,
+    });
+  }
+  return out;
+}
+
+export function parseMoverSheet(sheet: XLSX.WorkSheet | undefined): MoverContRow[] {
   if (!sheet) return [];
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 }).slice(2);
+  const raw = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
+  const headerRow = raw[1] ?? [];
+  const priceBlockStart = headerRow.findIndex(
+    (v, i) => i > 0 && String(v ?? "").trim() === "Symbol",
+  );
+  if (priceBlockStart === -1) {
+    throw new Error(
+      `Could not locate the Price Mover block's second "Symbol" column in the ` +
+      `"MTF DATA POSITIVE"/"MTF DATA NEGATIVE" header row -- sheet layout may have ` +
+      `changed. Refusing to guess a column offset, since misreading it would silently ` +
+      `mislabel Volume-block data as Price-block data.`,
+    );
+  }
+  const priceContCol = priceBlockStart + 1;
+  const priceLatestPctCol = priceBlockStart + 2;
+  // Each block's pairs end at the first column whose header ISN'T literally
+  // "% Change" -- NOT computed from priceBlockStart or headerRow.length,
+  // both of which turned out to be unreliable: a real file (2026-07-30,
+  // "MTF DATA NEGATIVE" sheet) has a single stray garbage cell ("A") appended
+  // after the real data, making that sheet's header one column longer than
+  // its POSITIVE-sheet counterpart in the very same file -- a length-based
+  // boundary silently read that garbage cell as a 6th price-block pair
+  // (pctChange=48050, a nonsense value). Validating the actual label at each
+  // step is immune to trailing junk, an extra/missing gap column, or the
+  // window length itself, since it only trusts columns explicitly marked
+  // "% Change".
+  const findPairsEnd = (start: number) => {
+    let c = start;
+    while (c < headerRow.length && String(headerRow[c] ?? "").trim() === "% Change") c += 2;
+    return c;
+  };
+  const volumePairsEnd = findPairsEnd(2);
+  const pricePairsStart = priceBlockStart + 2;
+  const pricePairsEnd = findPairsEnd(pricePairsStart);
+
+  const rows = raw.slice(2);
   const out: MoverContRow[] = [];
   for (const row of rows) {
     const symbol = String(row[0] ?? "").trim().toUpperCase();
@@ -91,14 +191,16 @@ function parseMoverSheet(sheet: XLSX.WorkSheet | undefined): MoverContRow[] {
     const cont = num(row[1]);
     if (cont === null) continue;
     const latestPct = num(row[2]);
-    const priceCont = num(row[15]);
-    const priceLatestPct = num(row[16]);
+    const priceCont = num(row[priceContCol]);
+    const priceLatestPct = num(row[priceLatestPctCol]);
     out.push({
       symbol,
       cont,
       latestPctChg: latestPct !== null ? latestPct * 100 : null,
       priceCont,
       priceLatestPctChg: priceLatestPct !== null ? priceLatestPct * 100 : null,
+      volumeDaily: extractDailyChanges(row, headerRow, 2, volumePairsEnd),
+      priceDaily: extractDailyChanges(row, headerRow, pricePairsStart, pricePairsEnd),
     });
   }
   return out;
@@ -206,7 +308,17 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       open: bhav ? num(bhav[4]) : null,
       high: bhav ? num(bhav[5]) : null,
       low: bhav ? num(bhav[6]) : null,
-      close: bhav ? num(bhav[8]) : null,
+      // AVG_PRICE (col 9, the day's volume-weighted average), not CLOSE_PRICE
+      // (col 8) -- per explicit instruction, switched from close/LTP to avg
+      // price. Confirmed against real data (2026-08-03): LAST_PRICE and
+      // CLOSE_PRICE are identical for every stock checked (so the old
+      // close-price field WAS effectively LTP), while AVG_PRICE differs
+      // meaningfully, e.g. TCS close 2473.70 vs avg 2429.42 (~1.8%). Stored
+      // under the same `close` column/field name -- renaming it everywhere
+      // (UI, PDF, drilldown chart, docs) would be a large blast radius for
+      // no functional benefit; every user-facing label instead says "Avg
+      // Price" so the UI is honest about what the number actually is.
+      close: bhav ? num(bhav[9]) : null,
       prev_close: bhav ? num(bhav[3]) : null,
       volume: bhav ? num(bhav[10]) : null,
       turnover_lakhs: bhav ? num(bhav[11]) : null,
@@ -283,6 +395,36 @@ export async function ingestMtfWorkbook(buffer: Buffer): Promise<IngestSummary> 
       }
     });
     upsertContAll([
+      ...positiveRows.map((r) => ({ ...r, direction: "up" as const })),
+      ...negativeRows.map((r) => ({ ...r, direction: "down" as const })),
+    ]);
+
+    // Full day-by-day breakdown behind the cont/price_cont counts above --
+    // see mtf_mover_daily's own comment in db.ts for why this is stored
+    // separately from the collapsed count.
+    const upsertDaily = db.prepare(`
+      INSERT INTO mtf_mover_daily (date, symbol, direction, metric, comp_date, pct_change)
+      VALUES (@date, @symbol, @direction, @metric, @comp_date, @pct_change)
+      ON CONFLICT(date, symbol, direction, metric, comp_date) DO UPDATE SET
+        pct_change = excluded.pct_change
+    `);
+    const upsertDailyAll = db.transaction((rows: (MoverContRow & { direction: "up" | "down" })[]) => {
+      for (const r of rows) {
+        for (const d of r.volumeDaily) {
+          upsertDaily.run({
+            date: tradeDate, symbol: r.symbol, direction: r.direction,
+            metric: "volume", comp_date: d.compDate, pct_change: d.pctChange,
+          });
+        }
+        for (const d of r.priceDaily) {
+          upsertDaily.run({
+            date: tradeDate, symbol: r.symbol, direction: r.direction,
+            metric: "price", comp_date: d.compDate, pct_change: d.pctChange,
+          });
+        }
+      }
+    });
+    upsertDailyAll([
       ...positiveRows.map((r) => ({ ...r, direction: "up" as const })),
       ...negativeRows.map((r) => ({ ...r, direction: "down" as const })),
     ]);

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { X, Search } from "lucide-react";
 import { fmtCr } from "@/lib/mtf/format";
+import { matchesSymbolSearch } from "@/lib/mtf/symbolSearch";
 import { SortHeader, compareNullable, type SortDir } from "./SortHeader";
 
 interface Row {
@@ -14,34 +15,6 @@ interface Row {
 }
 
 type SortField = "symbol" | "amtChangePct" | "priceChangePct" | "amtToday";
-
-// Words that don't contribute a letter to a company's common short-form --
-// e.g. "State Bank OF India" -> S,B,I -> "SBI", not "SBOI".
-const NAME_STOPWORDS = new Set([
-  "OF", "THE", "AND", "LTD", "LIMITED", "CO", "CORP", "CORPORATION",
-  "PVT", "PRIVATE", "INC", "PLC", "&",
-]);
-
-/** First letter of each significant word in the company name, e.g.
- * "State Bank of India" -> "SBI" -- lets a search for "SBI" find a symbol
- * whose name never literally contains those three letters together. */
-function acronym(name: string): string {
-  return name
-    .toUpperCase()
-    .split(/[\s.,]+/)
-    .filter((w) => w && !NAME_STOPWORDS.has(w))
-    .map((w) => w[0])
-    .join("");
-}
-
-function matchesSearch(row: Row, query: string): boolean {
-  if (!query) return true;
-  if (row.symbol.toUpperCase().includes(query)) return true;
-  const name = (row.name ?? "").toUpperCase();
-  if (name.includes(query)) return true;
-  if (row.name && acronym(row.name).includes(query)) return true;
-  return false;
-}
 
 export function SymbolListModal({
   title, caption, rows, loading, onClose, onSelectSymbol,
@@ -60,7 +33,7 @@ export function SymbolListModal({
   const displayRows = useMemo(() => {
     if (!rows) return null;
     const q = query.trim().toUpperCase();
-    const filtered = q ? rows.filter((r) => matchesSearch(r, q)) : rows;
+    const filtered = q ? rows.filter((r) => matchesSymbolSearch(r, q)) : rows;
     return [...filtered].sort((a, b) => {
       if (sortField === "symbol") {
         const cmp = a.symbol.localeCompare(b.symbol);

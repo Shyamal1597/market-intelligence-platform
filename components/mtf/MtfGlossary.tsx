@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { MOVER_WINDOW_DAYS } from "@/lib/mtf/format";
 
 const GLOSSARY: { term: string; def: string }[] = [
   { term: "Total MTF Book", def: "Total value of shares currently bought on margin (borrowed money) across every tracked stock, as of today -- the WHOLE universe. Continuous Funders, the Heatmap, Sector Breakdown and Divergence all exclude immaterial/NAV-pegged symbols, so their totals won't sum to this figure -- see each panel's own note for the exact gap." },
   { term: "vs Prior Day", def: "% change in the Total MTF Book compared to the previous trading day." },
   { term: "Leveraging Up / Deleveraging", def: "Number of stocks where margin financing increased / decreased today." },
   { term: "Unchanged", def: "Number of stocks where margin financing stayed flat today, or has no comparable prior-day figure." },
-  { term: "Delivery Financed %", def: "Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total DELIVERY value (shares actually delivered -- real ownership changing hands, not all traded/intraday volume). A flow metric (day's change), not a level ratio -- signed, can be negative on a day the book shrank. Delivery value approximates each stock's delivered quantity x close price (BHAVCOPY doesn't carry a true volume-weighted delivery price)." },
+  { term: "Delivery Financed %", def: "Today's NET GAIN/LOSS in the whole universe's MTF book, relative to today's total DELIVERY value (shares actually delivered -- real ownership changing hands, not all traded/intraday volume). A flow metric (day's change), not a level ratio -- signed, can be negative on a day the book shrank. Delivery value approximates each stock's delivered quantity x avg price (BHAVCOPY's day-level volume-weighted average, not a true per-trade delivery price)." },
   { term: "Avg Delivery %", def: "Average % of today's traded quantity that was delivered (settled as real ownership, not squared off intraday), across every tradeable stock -- a market-wide gauge of conviction vs speculative churn. A simple mean is safe here (unlike the old Median Financed % it replaced): delivery % is naturally bounded 0-100, with no unbounded-outlier risk." },
   { term: "Top Gainer / Top Loser", def: "The single stock with the largest DAY-OVER-DAY % increase / decrease in MTF financing (today vs the previous trading day only, not a multi-day or cumulative change) -- this is a change in margin financing, not in the stock's share price." },
-  { term: "MTF Cont.", def: "How many of the last 5 trading days that stock's margin financing moved in the same direction. \"5/5\" = every one of the last 5 days." },
-  { term: "Price Cont.", def: "The SAME stock's own price-persistence count -- how many of the last 5 trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: a stock can show 5/5 on financing while its price only followed 1 or 2 of those days, or vice versa. This is different from Leverage vs Price Divergence below, which flags a single day's mismatch rather than a multi-day pattern." },
+  { term: "MTF Cont.", def: `How many of the last ${MOVER_WINDOW_DAYS} trading days that stock's margin financing moved in the same direction. "${MOVER_WINDOW_DAYS}/${MOVER_WINDOW_DAYS}" = every one of the last ${MOVER_WINDOW_DAYS} days.` },
+  { term: "Price Cont.", def: `The SAME stock's own price-persistence count -- how many of the last ${MOVER_WINDOW_DAYS} trading days its share price (not its financing) moved in the same direction. Independent of MTF Cont.: a stock can show ${MOVER_WINDOW_DAYS}/${MOVER_WINDOW_DAYS} on financing while its price only followed a handful of those days, or vice versa. This is different from Leverage vs Price Divergence below, which flags a single day's mismatch rather than a multi-day pattern.` },
   { term: "MTF Chg % / Chg %", def: "Day-over-day % change in that stock's (or sector's) margin-financed amount." },
   { term: "Price Chg %", def: "Day-over-day % change in that stock's share price." },
   { term: "Book", def: "The MTF-financed amount for that stock." },

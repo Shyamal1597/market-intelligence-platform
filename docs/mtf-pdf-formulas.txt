@@ -69,8 +69,11 @@ f) DELIVERY VALUE (approximation, used by Delivery Financed %):
      deliveryValueLakhs = (deliv_qty * close) / 100000
    deliv_qty is BHAVCOPY's own DELIV_QTY column -- shares that actually
    settled as real ownership transfer that day, unlike turnoverLakhs which
-   includes ALL traded volume. BHAVCOPY carries no true volume-weighted
-   delivery price, so close is used as the per-share value proxy.
+   includes ALL traded volume. `close` here holds BHAVCOPY's AVG_PRICE (the
+   day's overall volume-weighted average, per explicit instruction -- switched
+   from CLOSE_PRICE, confirmed identical to LAST_PRICE/LTP for every stock
+   checked). Not a delivery-specific volume-weighted price -- BHAVCOPY
+   doesn't carry that breakdown.
 
 g) TRADE-TO-TRADE (T2T) EXCLUSION -- applied at getSnapshot() itself, before
    any other filter, so it affects literally everything including the
@@ -157,26 +160,35 @@ sheet row holds TWO independent blocks for the SAME symbol:
   MTF Cont.   = the "Margin Trading Volume Movers" block's own count -- a
                 FREQUENCY COUNT of positive (or negative) day-over-day
                 MTF-FINANCING changes across the report's own trailing
-                ~5-day window -- NOT a consecutive streak. (Confirmed
-                against real data: a symbol can show cont=3 on the positive
-                sheet and cont=2 on the negative sheet for the SAME day,
-                only possible for a frequency count, never a streak.)
-  Price Cont. = the "Margin Trading Price Mover" block's own count -- the
-                SAME symbol's own PRICE-persistence count, same convention,
-                counting price changes instead of financing changes.
-                Genuinely independent: confirmed against real data
-                (2026-07-20), CEATLTD had MTF Cont=5/5 while its own Price
-                Cont was only 2/5.
-Selection: getContinuousFunders(direction, minCont=4, limit) --
-  WHERE date = latest AND direction = 'up'/'down' AND cont >= 4 (the MTF-side
+                window -- NOT a consecutive streak. (Confirmed against real
+                data: a symbol can show cont=3 on the positive sheet and
+                cont=2 on the negative sheet for the SAME day, only possible
+                for a frequency count, never a streak.)
+  Price Cont. = the "Margin Trading Price Mover" block's own count (a second
+                "Symbol"/"Cont." pair further right in the same sheet, its
+                column offset located dynamically since it moves with the
+                window length) -- the SAME symbol's own PRICE-persistence
+                count, same convention, counting price changes instead of
+                financing changes. Genuinely independent: confirmed against
+                real data (2026-07-20), CEATLTD had MTF Cont=5/5 while its
+                own Price Cont was only 2/5 -- back when the window was 5
+                days.
+WINDOW LENGTH: 20 trading days, was 5 -- per the source vendor's own report
+  update (MOVER_WINDOW_DAYS in lib/mtf/format.ts). Confirmed against the raw
+  file (2026-08-03): 21 date columns = 20 comparisons. Re-verified the
+  frequency-count meaning still holds: DEEPAKFERT showed 15/20 positive and
+  5/20 negative for the same date -- sums to exactly 20.
+Selection: getContinuousFunders(direction, minCont=16, limit) --
+  WHERE date = latest AND direction = 'up'/'down' AND cont >= 16 (the MTF-side
   count only -- Price Cont. is shown for cross-reference, not filtered on)
   then joined back against the day's own snapshot and filtered to isTradeable
   (guard 2e) -- a stock flagged in the source sheet but immaterial/NAV-pegged
-  today is dropped.
+  today is dropped. minCont=16 holds the same 80% relative bar as the
+  original ">= 4 of 5" now that the window is 20 days.
 Sort order: MTF Cont. DESCENDING, then abs(amtChangePct) DESCENDING as a
   tiebreak. "#" rank column = the row's 1-indexed position in this order.
 PDF limit: up to 100 per direction (curateForPdf.continuousFunders, see #8)
-  -- on a day where fewer than 100 stocks genuinely have cont >= 4 in a given
+  -- on a day where fewer than 100 stocks genuinely have cont >= 16 in a given
   direction, fewer than 100 are shown (never padded; the section subtitle
   always states the true count shown, e.g. "77 of up to 100 shown").
 Each direction's page shows the SAME row set TWICE: once in the default

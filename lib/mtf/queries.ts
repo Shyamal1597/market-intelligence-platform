@@ -15,6 +15,7 @@
  */
 import { getMtfDb } from "./db";
 import { getSectorMap } from "./sector";
+import { MOVER_WINDOW_DAYS } from "./format";
 
 export interface SymbolSnapshot {
   symbol: string;
@@ -27,11 +28,12 @@ export interface SymbolSnapshot {
   priceChangePct: number | null;
   turnoverLakhs: number | null;
   /** Today's delivered value in Lakhs -- deliv_qty (shares actually delivered,
-   * from BHAVCOPY) x close price. An approximation (close, not a true
-   * volume-weighted average delivery price -- BHAVCOPY doesn't carry that),
-   * but close is what's already stored for every date, so this works for the
-   * full history immediately rather than only from whenever a new column
-   * would start being populated. */
+   * from BHAVCOPY) x avg price (BHAVCOPY's own AVG_PRICE, the day's overall
+   * volume-weighted average across ALL trades). An approximation -- not a
+   * delivery-specific volume-weighted price, since BHAVCOPY doesn't carry
+   * that breakdown -- but it's already stored for every date, so this works
+   * for the full history immediately rather than only from whenever a new
+   * column would start being populated. */
   deliveryValueLakhs: number | null;
   /** BHAVCOPY's own DELIV_PER -- % of today's traded quantity that was
    * delivered (settled as real ownership) rather than squared off intraday.
@@ -345,6 +347,18 @@ export async function getBreadthSymbols(direction: "up" | "down" | "flat"): Prom
   });
 }
 
+/**
+ * Every symbol in getSnapshot() (the full universe, matching the "Symbols
+ * w/ Data" tile count exactly) sorted by book size -- backs the header's
+ * all-symbols search bar, which needs to find ANY symbol with data, not
+ * just the ones surfaced in movers/heatmap/sector panels (those are all
+ * isTradeable-filtered subsets).
+ */
+export async function getAllSymbols(): Promise<SymbolSnapshot[]> {
+  const { rows } = await getSnapshot();
+  return [...rows].sort((a, b) => (b.amtToday ?? 0) - (a.amtToday ?? 0));
+}
+
 export interface MoverRow extends SymbolSnapshot {
   sparkline: number[];
 }
@@ -438,6 +452,12 @@ export interface SymbolHistoryPoint {
    * derivation, deliv_qty needs no transformation). Raw share count, not a
    * Rupee value, so it's directly comparable to mtfVolumeChange on one axis. */
   deliveryVolume: number | null;
+  /** Trailing MOVER_WINDOW_DAYS-session average of deliveryVolume, ending at
+   * (inclusive of) this date -- lets a day's delivery volume be read against
+   * its own recent baseline directly on the chart, not just eyeballed
+   * against the 6 other visible bars. Null only if every session in that
+   * 20-day window had null deliv_qty (e.g. a newly-listed symbol). */
+  avgDeliveryVolume20d: number | null;
 }
 
 /** Drilldown shows a short recent window, not the symbol's entire ingested
@@ -446,26 +466,42 @@ const SYMBOL_HISTORY_SESSIONS = 6;
 
 export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoint[]> {
   const db = await getMtfDb();
-  // Fetch one extra session before the displayed window purely as the
-  // baseline to diff the first displayed day's qty_financed against.
+  // Fetch SYMBOL_HISTORY_SESSIONS + MOVER_WINDOW_DAYS sessions total: the
+  // displayed window needs one extra prior session as the baseline for the
+  // first displayed day's qty_financed delta, AND the first displayed day's
+  // own trailing 20-day delivery-volume average needs MOVER_WINDOW_DAYS-1
+  // sessions before it too -- both needs covered by fetching this much
+  // further back than what's actually shown.
+  const fetchCount = SYMBOL_HISTORY_SESSIONS + MOVER_WINDOW_DAYS;
   const rows = db.prepare(
     `SELECT date, qty_financed, close, deliv_qty FROM (
        SELECT date, qty_financed, close, deliv_qty FROM mtf_daily
        WHERE symbol = ? ORDER BY date DESC LIMIT ?
      ) ORDER BY date ASC`,
-  ).all(symbol.toUpperCase(), SYMBOL_HISTORY_SESSIONS + 1) as { date: string; qty_financed: number | null; close: number | null; deliv_qty: number | null }[];
+  ).all(symbol.toUpperCase(), fetchCount) as { date: string; qty_financed: number | null; close: number | null; deliv_qty: number | null }[];
 
+  const firstDisplayedIndex = Math.max(1, rows.length - SYMBOL_HISTORY_SESSIONS);
   const points: SymbolHistoryPoint[] = [];
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = firstDisplayedIndex; i < rows.length; i++) {
     const today = rows[i];
     const prevQty = rows[i - 1].qty_financed;
     const mtfVolumeChange =
       today.qty_financed !== null && prevQty !== null ? today.qty_financed - prevQty : null;
+
+    const windowStart = Math.max(0, i - MOVER_WINDOW_DAYS + 1);
+    const windowVals = rows.slice(windowStart, i + 1)
+      .map((r) => r.deliv_qty)
+      .filter((v): v is number => v !== null);
+    const avgDeliveryVolume20d = windowVals.length > 0
+      ? windowVals.reduce((s, v) => s + v, 0) / windowVals.length
+      : null;
+
     points.push({
       date: today.date,
       mtfVolumeChange,
       close: today.close,
       deliveryVolume: today.deliv_qty,
+      avgDeliveryVolume20d,
     });
   }
   return points;
@@ -727,17 +763,24 @@ export interface ContinuousFunderRow {
   sparkline: number[];
 }
 
-const MIN_CONT = 4;
+/**
+ * MIN_CONT scales with MOVER_WINDOW_DAYS to hold the same RELATIVE bar --
+ * >=80% of the window showing a same-direction change, same threshold
+ * strength as the original ">= 4 of 5" (80%) before the window widened to
+ * 20 days, confirmed as the intended behavior (not a fixed absolute count)
+ * per explicit instruction when the window changed.
+ */
+const MIN_CONT = Math.round(MOVER_WINDOW_DAYS * 0.8);
 
 /**
  * Symbols flagged by the report's own "MTF DATA POSITIVE"/"MTF DATA
- * NEGATIVE" sheets with cont >= 4 (see parseMoverSheet in lib/mtf/ingest.ts
- * for exactly what "cont" means -- a frequency count over the report's own
- * trailing window, not a streak). Sourced directly from that sheet per
- * explicit instruction, rather than derived from our own accumulated
- * upload history; our own mtf_daily history is still used for the trend
- * sparkline, and priceChangePct/amtChangePct still come from our own
- * snapshot (same split-guarded, day-over-day methodology as every other
+ * NEGATIVE" sheets with cont >= MIN_CONT (see parseMoverSheet in
+ * lib/mtf/ingest.ts for exactly what "cont" means -- a frequency count over
+ * the report's own trailing window, not a streak). Sourced directly from
+ * that sheet per explicit instruction, rather than derived from our own
+ * accumulated upload history; our own mtf_daily history is still used for
+ * the trend sparkline, and priceChangePct/amtChangePct still come from our
+ * own snapshot (same split-guarded, day-over-day methodology as every other
  * panel), so only the "which stocks qualify" part changed.
  */
 export async function getContinuousFunders(
