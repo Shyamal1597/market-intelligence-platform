@@ -70,7 +70,7 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="w-full max-w-5xl bg-surface border border-border rounded-xl shadow-2xl shadow-black/50 p-6"
+        className="w-full max-w-[95vw] xl:max-w-[1500px] max-h-[92vh] overflow-y-auto bg-surface border border-border rounded-xl shadow-2xl shadow-black/50 p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-1">
@@ -102,7 +102,7 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
             <p className="text-[10px] text-muted/60 mb-3">
               MTF Volume Δ is the day-over-day CHANGE in shares currently financed on margin, not the outstanding balance itself -- the raw feed only reports a cumulative book figure, not a same-day financing count, so this is the closest real "for the day" number (positive = book grew, negative = book shrank). Delivery Volume is BHAVCOPY&rsquo;s own delivered-share count for that day. 20d Avg Delivery Volume is the trailing 20-session average of that same figure ending on that date, shown in a contrasting color so it reads as a baseline to compare the day&rsquo;s own bar against, not a fourth independent series. All three share the same LEFT axis (raw shares) so they&rsquo;re directly comparable; Avg Price is shown separately on the right for context.
             </p>
-            <ResponsiveContainer width="100%" height={420}>
+            <ResponsiveContainer width="100%" height={540}>
               <ComposedChart data={history} margin={{ top: 5, right: 10, bottom: 20, left: 20 }}>
                 <CartesianGrid stroke="var(--color-border)" />
                 <XAxis dataKey="date" tick={{ fill: "var(--color-muted)", fontSize: 11 }} />
@@ -114,13 +114,13 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
                 </YAxis>
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine yAxisId="vol" y={0} stroke="var(--color-border)" />
-                <Bar yAxisId="vol" dataKey="mtfVolumeChange" name="MTF Volume Δ" barSize={10}>
+                <Bar yAxisId="vol" dataKey="mtfVolumeChange" name="MTF Volume Δ" barSize={14}>
                   {history.map((h, i) => (
                     <Cell key={i} fill={h.mtfVolumeChange === null ? "var(--color-muted)" : h.mtfVolumeChange >= 0 ? TEAL : DANGER} />
                   ))}
                 </Bar>
-                <Bar yAxisId="vol" dataKey="deliveryVolume" fill={VIOLET} name="Delivery Volume" barSize={10} />
-                <Bar yAxisId="vol" dataKey="avgDeliveryVolume20d" fill={SKY} name="20d Avg Delivery Volume" barSize={10} />
+                <Bar yAxisId="vol" dataKey="deliveryVolume" fill={VIOLET} name="Delivery Volume" barSize={14} />
+                <Bar yAxisId="vol" dataKey="avgDeliveryVolume20d" fill={SKY} name="20d Avg Delivery Volume" barSize={14} />
                 <Line yAxisId="price" type="monotone" dataKey="close" stroke={AMBER} strokeWidth={2} dot={false} name="Avg Price" />
               </ComposedChart>
             </ResponsiveContainer>
