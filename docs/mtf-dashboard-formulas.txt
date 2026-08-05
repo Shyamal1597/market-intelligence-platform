@@ -419,7 +419,22 @@ Plots that symbol's last 20 trading sessions from mtf_daily (SYMBOL_HISTORY_
                 baseline -- getSymbolHistory fetches SYMBOL_HISTORY_SESSIONS
                 + MOVER_WINDOW_DAYS rows total to cover both needs, then
                 discards everything before the displayed window.
-  Right axis  = avg price (line), shown as-is (raw Rupees, no conversion)
+  Right axis  = avg price (line, amber) AND MTF Book Level (line, dashed,
+                var(--color-primary)) -- TWO separate right axes, not
+                sharing one. MTF Book Level is qty_financed as-is (the
+                outstanding balance, not mtfVolumeChange's delta) -- added
+                per explicit instruction once the delta-bar redesign (5.4
+                below) already existed, so the day's CHANGE and the book's
+                overall LEVEL are both visible together. Confirmed against
+                real data (SYRMA, 2026-08-03) the book runs ~19,00,000
+                shares, 4-5x the largest bar on the left axis -- sharing
+                that axis would flatten every bar to near-zero by
+                comparison, hence its own axis. Colored via the CSS
+                variable driving axis text everywhere else (not a new
+                hardcoded hex) specifically so it's guaranteed readable in
+                both themes without separate contrast verification;
+                dashed (not solid) so it's visually distinct from the Avg
+                Price line even for a colorblind reader, not just by hue.
   Chart design history: originally two lines (MTF book Rs, price) on two
   axes; then a 3rd axis was added for a "Delivery Financed %" ratio as bars
   (cramped/overlapping at small scales); then MTF book switched to a line +

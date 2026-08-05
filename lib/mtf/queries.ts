@@ -458,6 +458,14 @@ export interface SymbolHistoryPoint {
    * against the other visible bars. Null only if every session in that
    * 20-day window had null deliv_qty (e.g. a newly-listed symbol). */
   avgDeliveryVolume20d: number | null;
+  /** qty_financed as-is -- the outstanding MTF book LEVEL on this date (not
+   * mtfVolumeChange's day-over-day delta). Per explicit instruction, shown
+   * as its own line alongside the delta bars so both the day's change and
+   * the book's overall size/trend are visible together. Needs its own axis:
+   * confirmed against real data (SYRMA, 2026-08-03) the book level runs
+   * ~1.9M shares, 4-5x the largest delivery-volume bar -- sharing the
+   * "vol" axis would flatten every bar to look near-zero by comparison. */
+  mtfBookLevel: number | null;
 }
 
 /** Drilldown shows a short recent window, not the symbol's entire ingested
@@ -507,6 +515,7 @@ export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoi
       close: today.close,
       deliveryVolume: today.deliv_qty,
       avgDeliveryVolume20d,
+      mtfBookLevel: today.qty_financed,
     });
   }
   return points;
