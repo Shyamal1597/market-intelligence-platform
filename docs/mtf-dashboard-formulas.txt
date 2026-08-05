@@ -386,12 +386,13 @@ Sorted descending by gap. Dashboard shows top 30 (getDivergence(30)).
 --------------------------------------------------------------------------------
 9. SYMBOL DRILLDOWN (per-symbol chart, opened by clicking any row/box)
 --------------------------------------------------------------------------------
-Plots that symbol's last 6 trading sessions from mtf_daily (SYMBOL_HISTORY_
-  SESSIONS in queries.ts) -- NOT the full ingested history, per explicit
-  instruction:
-  Left axis   = MTF Volume Delta (bar, signed) and Delivery Volume (bar),
-                both raw SHARE counts, rendered as two bars side-by-side per
-                date (grouped, not stacked, no shared stackId).
+Plots that symbol's last 20 trading sessions from mtf_daily (SYMBOL_HISTORY_
+  SESSIONS in queries.ts, widened from 6 per explicit instruction so an
+  actual trend is visible) -- NOT the full ingested history:
+  Left axis   = MTF Volume Delta (bar, signed), Delivery Volume (bar), and
+                20d Avg Delivery Volume (bar) -- all raw SHARE counts,
+                rendered as three bars side-by-side per date (grouped, not
+                stacked, no shared stackId).
                 MTF Volume Delta = qty_financed[today] - qty_financed
                 [previous session] -- the raw feed's "Qty Fin by all the
                 members" is a cumulative outstanding-book figure (confirmed
@@ -403,10 +404,21 @@ Plots that symbol's last 6 trading sessions from mtf_daily (SYMBOL_HISTORY_
                 quantity. Colored teal when positive (book grew that day),
                 danger-red when negative (book shrank). Needs one extra
                 prior session fetched purely as the diff baseline for the
-                first displayed day (fetches SYMBOL_HISTORY_SESSIONS + 1
-                rows, then discards the baseline row from the output).
+                first displayed day.
                 Delivery Volume is deliv_qty as-is, no transformation --
                 already a genuine same-day flow, so it needs none.
+                20d Avg Delivery Volume is the trailing MOVER_WINDOW_DAYS-
+                session average of Delivery Volume ending on that date
+                (sky blue, a deliberately different hue from Delivery
+                Volume's violet so the two read as "today vs its own
+                baseline" rather than a third independent series) -- per
+                explicit instruction, added once full historical BHAVCOPY
+                delivery data was backfilled far enough back to compute it.
+                Needs MOVER_WINDOW_DAYS-1 sessions of history before the
+                first displayed day, on top of the MTF delta's own 1-session
+                baseline -- getSymbolHistory fetches SYMBOL_HISTORY_SESSIONS
+                + MOVER_WINDOW_DAYS rows total to cover both needs, then
+                discards everything before the displayed window.
   Right axis  = avg price (line), shown as-is (raw Rupees, no conversion)
   Chart design history: originally two lines (MTF book Rs, price) on two
   axes; then a 3rd axis was added for a "Delivery Financed %" ratio as bars
@@ -428,9 +440,6 @@ No guards/filters applied here (materiality floor, NAV-peg detection, and
   drilldown is a raw, unfiltered look at one symbol's own numbers, including
   Trade-to-Trade symbols (the T2T exclusion in guard 2g only applies to the
   aggregate breadth/movers/heatmap panels, not to a symbol's own drilldown).
-No guards/filters applied here (materiality floor, NAV-peg detection, and
-  the 50% price guard are movers/heatmap/breadth-only concerns) -- the
-  drilldown is a raw, unfiltered look at one symbol's own numbers.
 Opened from a list modal (breadth tile, sector row, Continuous Funders,
   Price Movers) stays mounted underneath the drilldown -- closing the
   drilldown returns to that list, it does not close back to the bare

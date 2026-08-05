@@ -455,14 +455,19 @@ export interface SymbolHistoryPoint {
   /** Trailing MOVER_WINDOW_DAYS-session average of deliveryVolume, ending at
    * (inclusive of) this date -- lets a day's delivery volume be read against
    * its own recent baseline directly on the chart, not just eyeballed
-   * against the 6 other visible bars. Null only if every session in that
+   * against the other visible bars. Null only if every session in that
    * 20-day window had null deliv_qty (e.g. a newly-listed symbol). */
   avgDeliveryVolume20d: number | null;
 }
 
 /** Drilldown shows a short recent window, not the symbol's entire ingested
- * history -- per explicit instruction, the last 6 trading sessions. */
-const SYMBOL_HISTORY_SESSIONS = 6;
+ * history -- per explicit instruction, the last 20 trading sessions (widened
+ * from 6, so a real trend is visible rather than just a handful of points).
+ * Deliberately a SEPARATE constant from MOVER_WINDOW_DAYS even though both
+ * are 20 today -- one is a display-window choice, the other is the source
+ * report's own persistence-window length; nothing requires them to move
+ * together if either changes again. */
+const SYMBOL_HISTORY_SESSIONS = 20;
 
 export async function getSymbolHistory(symbol: string): Promise<SymbolHistoryPoint[]> {
   const db = await getMtfDb();
