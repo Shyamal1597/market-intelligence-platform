@@ -26,22 +26,13 @@ Most of what I could show you is "feature built, feature works." This one is mor
 
 **A light-theme bug from an actual screenshot.** Chart axis text was reported as barely visible. The cause: axis colors were hardcoded to a value tuned for the dark theme, invisible against the light theme's background — a direct instance of a rule the project's own conventions already stated (use theme-aware color tokens, not literal hex) that got missed in one component. Fixed by matching the pattern an adjacent, already-correct chart component in the same codebase used.
 
-**A vendor format change that silently broke a hardcoded assumption.** Partway through, the source report's own persistence window widened from 5 trading days to 20, and its price basis shifted from close price to a true volume-weighted average. Neither was cosmetic. The threshold for "flagged as persistent" had to be checked, not just multiplied — confirmed that "levered up in ≥4 of the last 5 days" and "≥16 of 20" express the same 80% relative bar, rather than assumed. Separately, a second data block inside the sheet had been located with a hardcoded column offset calibrated for the old, narrower window; once the window widened, that offset silently pointed into the middle of the wrong block, mislabeling one column of numbers as another with no error thrown, because both are just numbers in adjacent cells. The fix in both cases was the same lesson repeated from earlier in the build: stop trusting a fixed position, and derive every boundary from what the sheet's own header literally says at read time — which is what then caught a real, unrelated defect during the historical backfill that followed (one file had a stray non-data cell trailing its real content, invisible to a length-based boundary but not to a header-content check).
-
 ## What this demonstrates
 
 - Reading and validating a real, messy external data source before writing code against it, instead of coding to an assumed schema.
 - Recognizing when a plausible-looking heuristic needs an actual counter-example to disprove, and going and finding one in the raw data rather than trusting that "it passed a spot check."
 - Distinguishing a genuinely-required data invariant from a false one, and treating "I checked every row" as a different, stronger claim than "this looks right" — worth making the distinction explicit rather than blurring it.
 - Designing for one source of truth across two output surfaces (dashboard + PDF) specifically because financial reporting can't tolerate two different numbers for the same fact.
-- Iterating a design honestly: this chart went through seven versions before the one that shipped, and none of the earlier ones are hidden from this account.
-- Treating an upstream format change (a wider window, a different price basis) as a reason to make the parser assume less about the sheet's shape, not just patch the one number a person happened to notice was wrong.
-
-## Real-world outcome
-
-This isn't a demo — it's in daily use on the desk. The clearest evidence came secondhand: the desk head reported that the desk's director now checks this PDF before trading, and called it one of the strongest pieces of feedback the team has received.
-
-Credit where it's due. The desk head set every requirement this document describes — what to build, which numbers actually mattered to a trader, and, specifically, every correction described above traces back to a real objection from someone who knows this data firsthand (the T2T counter-example, the "can financed value exceed delivery value" challenge, the request to widen the window and switch to average price to match how the underlying report is actually assembled). That direction wasn't mine. What was mine: reading the raw files before writing code against them, tracing each objection back to its actual root cause instead of patching the symptom, keeping the dashboard and PDF wired to one shared source of truth through every one of those changes, and doing the historical backfill work without being asked to. A tool someone chooses to check before putting money on the line is a harder bar to clear than a demo that goes well.
+- Iterating a design honestly: this chart's *fifth* version is the one that shipped, and the earlier four aren't hidden from this account.
 
 ## Stack
 
