@@ -113,18 +113,24 @@ export function SymbolDrilldown({ symbol, onClose }: { symbol: string; onClose: 
               MTF Volume Δ is the day-over-day CHANGE in shares currently financed on margin, not the outstanding balance itself -- the raw feed only reports a cumulative book figure, not a same-day financing count, so this is the closest real "for the day" number (positive = book grew, negative = book shrank). Delivery Volume is BHAVCOPY&rsquo;s own delivered-share count for that day. 20d Avg Delivery Volume is the trailing 20-session average of that same figure ending on that date, shown in a contrasting color so it reads as a baseline to compare the day&rsquo;s own bar against, not a fourth independent series. All three share the same LEFT axis (raw shares) so they&rsquo;re directly comparable. MTF Book Level is qty_financed as-is (the outstanding balance, not the delta) -- shown as its own dashed line on a separate right axis since the book runs several times larger than any bar here and would flatten them if it shared their axis. Avg Price is on its own right axis too, for context.
             </p>
             <ResponsiveContainer width="100%" height={540}>
-              <ComposedChart data={history} margin={{ top: 5, right: 70, bottom: 20, left: 20 }}>
+              <ComposedChart data={history} margin={{ top: 5, right: 20, bottom: 20, left: 20 }}>
                 <CartesianGrid stroke="var(--color-border)" />
                 <XAxis dataKey="date" tick={{ fill: "var(--color-muted)", fontSize: 11 }} />
                 <YAxis yAxisId="vol" domain={["auto", "auto"]} tick={{ fill: "var(--color-primary)", fontSize: 11 }} tickFormatter={sharesAxisTick} width={70}>
                   <Label value="Shares" angle={-90} position="left" style={{ fill: "var(--color-muted)", fontSize: 11, textAnchor: "middle" }} />
                 </YAxis>
-                <YAxis yAxisId="price" orientation="right" domain={["auto", "auto"]} tick={{ fill: AMBER, fontSize: 11 }} width={70}>
-                  <Label value="₹ / share" angle={90} position="right" style={{ fill: AMBER, fontSize: 11, textAnchor: "middle" }} />
-                </YAxis>
-                <YAxis yAxisId="book" orientation="right" domain={["auto", "auto"]} tick={{ fill: "var(--color-primary)", fontSize: 11 }} tickFormatter={sharesAxisTick} width={80}>
-                  <Label value="MTF Book (Shares)" angle={90} position="right" offset={10} style={{ fill: "var(--color-muted)", fontSize: 11, textAnchor: "middle" }} />
-                </YAxis>
+                {/* No in-chart rotated title on these two right-side axes: Recharts
+                    renders a rotated <Label position="right"> outside its own axis's
+                    reserved `width`, regardless of how large that width is, so with
+                    two stacked right axes it reliably bleeds into whichever axis is
+                    next to it -- confirmed by measurement (the label's own x
+                    position landed exactly on the neighboring axis's tick column,
+                    even after widening from 80 to 115px). The legend row above
+                    already names both axes ("MTF Book Level ... — right axis",
+                    "Avg Price ... — right axis"), so nothing is lost by dropping
+                    the redundant in-chart title. */}
+                <YAxis yAxisId="price" orientation="right" domain={["auto", "auto"]} tick={{ fill: AMBER, fontSize: 11 }} width={55} />
+                <YAxis yAxisId="book" orientation="right" domain={["auto", "auto"]} tick={{ fill: "var(--color-primary)", fontSize: 11 }} tickFormatter={sharesAxisTick} width={90} />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine yAxisId="vol" y={0} stroke="var(--color-border)" />
                 <Bar yAxisId="vol" dataKey="mtfVolumeChange" name="MTF Volume Δ" barSize={14}>
